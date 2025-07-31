@@ -38,6 +38,8 @@ export default function DataManagement() {
           const result = e.target?.result;
           if (typeof result === "string") {
             const { tasks: importedTasks, settings: importedSettings } = JSON.parse(result);
+            // We need to be careful here. The AppProvider's setTasks and setSettings
+            // now write to Firestore. We should use them.
             setTasks(importedTasks);
             setSettings(importedSettings);
             toast({ title: "Success", description: "Data imported successfully." });
@@ -59,7 +61,7 @@ export default function DataManagement() {
       <CardContent className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-2 p-4 border rounded-lg">
             <h3 className="font-semibold">Import/Export Data</h3>
-            <p className="text-sm text-muted-foreground">Save your current data or load from a backup file.</p>
+            <p className="text-sm text-muted-foreground">Save your current data or load from a backup file. This operates on local data and Firestore.</p>
             <div className="flex gap-2 mt-2">
                 <Button onClick={handleImportClick}>Import JSON</Button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
@@ -74,7 +76,7 @@ export default function DataManagement() {
                  <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive">Clear All Tasks</Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all tasks.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all tasks from Firestore.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => { setTasks([]); toast({title: "Success", description: "All tasks have been cleared."}) }}>Clear Tasks</AlertDialogAction>
@@ -84,7 +86,7 @@ export default function DataManagement() {
                 <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive" >Reset Settings</Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will reset all settings to their default values.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will reset all settings to their default values in Firestore.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => { setSettings(defaultSettings); toast({title: "Success", description: "Settings have been reset."}) }}>Reset Settings</AlertDialogAction>
@@ -94,7 +96,7 @@ export default function DataManagement() {
                 <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive" >Factory Reset</Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will clear all tasks and reset all settings. This is irreversible.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will clear all tasks and reset all settings in Firestore. This is irreversible.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => { setTasks(defaultTasks); setSettings(defaultSettings); toast({title: "Success", description: "Application has been reset."}) }}>I'm sure, reset everything</AlertDialogAction>
