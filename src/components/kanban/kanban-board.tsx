@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -35,7 +36,7 @@ export default function KanbanBoard({ tasks }: KanbanBoardProps) {
 
   return (
     <div className="flex gap-4 h-full w-full">
-      {settings.workflowCategories.map((category) => (
+      {(settings.workflowCategories || []).map((category) => (
         <KanbanColumn
           key={category.id}
           category={category}
