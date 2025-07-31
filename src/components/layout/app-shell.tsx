@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
@@ -74,6 +75,7 @@ function PageHeader() {
   const pathname = usePathname();
 
   const stats = useMemo(() => {
+    if (!tasks) return { active: 0, overdue: 0, dueToday: 0, dueThisWeek: 0 };
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(today);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { AppSettings, Task, AppFilters, KanbanFilter, SubCategory, WorkflowCateg
 import { defaultSettings, defaultTasks } from '@/lib/defaults';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDoc, writeBatch } from 'firebase/firestore';
 
 interface AppContextType {
   tasks: Task[];
@@ -38,6 +39,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [filters, setFilters] = useLocalStorage<AppFilters>('filters', { kanban: 'all' });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'app-settings');
@@ -47,23 +49,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (docSnap.exists()) {
         setSettings(docSnap.data() as AppSettings);
       } else {
-        // If no settings exist in firestore, create it with default settings
-        setDoc(settingsDocRef, defaultSettings);
+        console.log("No settings found, creating default settings...");
+        setDoc(settingsDocRef, defaultSettings).then(() => setSettings(defaultSettings));
       }
+    }, (error) => {
+        console.error("Error fetching settings:", error);
     });
 
     const unsubscribeTasks = onSnapshot(tasksCollectionRef, (snapshot) => {
-      if (snapshot.empty) {
-        // If no tasks exist in firestore, create default tasks
-        defaultTasks.forEach(task => {
-          const { id, ...taskData } = task; // Exclude id from the data being sent to Firestore
-          addDoc(tasksCollectionRef, taskData);
-        });
-        setTasks(defaultTasks);
-      } else {
-        const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-        setTasks(tasksData);
-      }
+        if (snapshot.empty) {
+            console.log("No tasks found, creating default tasks...");
+            const batch = writeBatch(db);
+            defaultTasks.forEach(task => {
+                const { id, ...taskData } = task;
+                const taskDocRef = doc(tasksCollectionRef, id); // Use explicit ID
+                batch.set(taskDocRef, taskData);
+            });
+            batch.commit().then(() => {
+                setTasks(defaultTasks);
+                setLoading(false);
+            });
+        } else {
+            const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+            setTasks(tasksData);
+            setLoading(false);
+        }
+    }, (error) => {
+        console.error("Error fetching tasks:", error);
+        setLoading(false);
     });
 
     return () => {
@@ -154,19 +167,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFilters({ ...filters, kanban: filter });
   };
   
-  const manualSetTasks = (newTasks: Task[]) => {
-    // This function is for local manipulation if needed, e.g., for import/export feature
-    // It should also update firestore
+  const manualSetTasks = async (newTasks: Task[]) => {
+    const batch = writeBatch(db);
     const tasksCollectionRef = collection(db, 'tasks');
+    
     // Clear existing tasks
-    tasks.forEach(async (task) => {
-      await deleteDoc(doc(db, 'tasks', task.id));
+    const existingTasksSnapshot = await getDoc(tasksCollectionRef as any);
+    existingTasksSnapshot.docs.forEach((doc: any) => {
+      batch.delete(doc.ref);
     });
+
     // Add new tasks
-    newTasks.forEach(async (task) => {
+    newTasks.forEach(task => {
       const { id, ...taskData } = task;
-      await addDoc(tasksCollectionRef, taskData);
+      const taskDocRef = doc(tasksCollectionRef, id); // Use explicit ID
+      batch.set(taskDocRef, taskData);
     });
+
+    await batch.commit();
   }
 
   const contextValue = useMemo(() => ({
@@ -192,6 +210,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteBidOrigin,
     setKanbanFilter,
   }), [tasks, settings, filters]);
+
+  if (loading) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={contextValue}>
