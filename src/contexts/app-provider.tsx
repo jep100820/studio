@@ -39,10 +39,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [filters, setFilters] = useLocalStorage<AppFilters>('filters', { kanban: 'all' });
-  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
-  const [isTasksLoading, setIsTasksLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const settingsDocRef = doc(db, 'settings', 'app-settings');
     const tasksCollectionRef = collection(db, 'tasks');
 
@@ -64,26 +70,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
           console.error("Error initializing database:", error);
         }
       }
-      setIsSettingsLoading(false);
+      // setIsLoading(false); // We can manage loading state more granularly
     }, (error) => {
         console.error("Error fetching settings:", error);
-        setIsSettingsLoading(false);
+       // setIsLoading(false);
     });
 
     const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
         const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
         setTasks(tasksData);
-        setIsTasksLoading(false);
+        setIsLoading(false); // Set loading to false after tasks are fetched
     }, (error) => {
         console.error("Error fetching tasks:", error);
-        setIsTasksLoading(false);
+        setIsLoading(false);
     });
 
     return () => {
       unsubscribeSettings();
       unsubscribeTasks();
     };
-  }, []);
+  }, [isClient]);
 
 
   const addTask = async (task: Omit<Task, 'id'>) => {
@@ -210,11 +216,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setKanbanFilter,
   }), [tasks, settings, filters]);
 
-  if (isSettingsLoading || isTasksLoading) {
+  if (!isClient || isLoading) {
     return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Loading application data...</p>
-        </div>
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading application data...</p>
+      </div>
     );
   }
 
