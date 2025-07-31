@@ -23,6 +23,7 @@ export interface SubCategory {
   id: string;
   name: string;
   parentCategory: string; // The name of the parent workflow category
+  color?: string;
 }
 
 export interface ImportanceLevel {
