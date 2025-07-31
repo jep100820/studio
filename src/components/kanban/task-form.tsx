@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -133,7 +134,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
   }
   
   const selectedStatus = form.watch("status");
-  const availableSubStatuses = settings.subCategories.filter(
+  const availableSubStatuses = (settings.subCategories || []).filter(
     (sc) => sc.parentCategory === selectedStatus
   );
 
