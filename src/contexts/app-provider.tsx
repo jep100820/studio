@@ -39,7 +39,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [filters, setFilters] = useLocalStorage<AppFilters>('filters', { kanban: 'all' });
-  const [loading, setLoading] = useState(true);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [isTasksLoading, setIsTasksLoading] = useState(true);
 
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'app-settings');
@@ -49,53 +50,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (settingsSnap.exists()) {
         setSettings(settingsSnap.data() as AppSettings);
       } else {
-        // If settings don't exist, assume database is empty and initialize it.
         console.log("No settings found, initializing database with default data...");
         try {
           const batch = writeBatch(db);
-          
-          // Set default settings
           batch.set(settingsDocRef, defaultSettings);
-
-          // Set default tasks
           defaultTasks.forEach(task => {
             const docRef = doc(db, 'tasks', task.id);
             batch.set(docRef, task);
           });
-
           await batch.commit();
-          console.log("Default data successfully written to Firestore.");
           setSettings(defaultSettings);
-          setTasks(defaultTasks);
         } catch (error) {
           console.error("Error initializing database:", error);
         }
       }
-
-      // We always set loading to false after handling settings,
-      // as task subscription will handle task state.
-      setLoading(false); 
+      setIsSettingsLoading(false);
     }, (error) => {
         console.error("Error fetching settings:", error);
-        setLoading(false);
+        setIsSettingsLoading(false);
     });
 
     const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
         const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
         setTasks(tasksData);
-        // Only set loading to false here if settings have already been processed
-        // to avoid flicker if tasks load first.
-        if (!loading) setLoading(false);
+        setIsTasksLoading(false);
     }, (error) => {
         console.error("Error fetching tasks:", error);
-        setLoading(false);
+        setIsTasksLoading(false);
     });
 
     return () => {
       unsubscribeSettings();
       unsubscribeTasks();
     };
-  }, []); // This effect should run only once on mount.
+  }, []);
 
 
   const addTask = async (task: Omit<Task, 'id'>) => {
@@ -184,16 +172,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const batch = writeBatch(db);
     const tasksCollectionRef = collection(db, 'tasks');
     
-    // Query for all existing documents in the tasks collection
     const querySnapshot = await getDocs(query(tasksCollectionRef));
     querySnapshot.forEach(doc => {
       batch.delete(doc.ref);
     });
 
-    // Add new tasks
     newTasks.forEach(task => {
       const { id, ...taskData } = task;
-      const taskDocRef = doc(tasksCollectionRef, id); // Use explicit ID
+      const taskDocRef = doc(tasksCollectionRef, id);
       batch.set(taskDocRef, taskData);
     });
 
@@ -224,10 +210,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setKanbanFilter,
   }), [tasks, settings, filters]);
 
-  if (loading) {
+  if (isSettingsLoading || isTasksLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading and initializing database...</p>
+            <p>Loading application data...</p>
         </div>
     );
   }
@@ -246,5 +232,3 @@ export function useApp() {
   }
   return context;
 }
-
-    
