@@ -1,3 +1,4 @@
+
 'use server';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -8,27 +9,71 @@ import { AppSettings, Task, WorkflowCategory, SubCategory, ImportanceLevel, BidO
 const providedData = {
   "settings": {
     "statuses": [
-      { "name": "Not Started", "background": "#ffae52" },
-      { "name": "Gathering Details / Drafting", "background": "#98c190" },
-      { "name": "For Review", "background": "#a8bfc2" },
-      { "name": "Pending Approval", "background": "#91e7fd" },
-      { "name": "Approved for Submission", "background": "#ffb3b3" }
+      {
+        "name": "Not Started",
+        "background": "#f2ea02",
+        "border": "#dee2e6"
+      },
+      {
+        "name": "Under Review",
+        "background": "#13ef0b",
+        "border": "#a5d8ff"
+      },
+      {
+        "name": "For Approval (Adnan)",
+        "background": "#2900f5",
+        "border": "#ffec99"
+      },
+      {
+        "name": "For Submission",
+        "background": "#01feae",
+        "border": "#96f2d7"
+      }
     ],
     "subStatuses": [
-      { "name": "For Payment", "parent": "Approved for Submission", "color": "#d6336c" },
-      { "name": "On-Hold", "parent": "Approved for Submission", "color": "#fd7e14" },
-      { "name": "With Bilal", "parent": "For Review", "color": "#6c757d" },
-      { "name": "With Osama", "parent": "For Review", "color": "#6c757d" },
-      { "name": "With Saed", "parent": "For Review", "color": "#6c757d" },
-      { "name": "On Tray", "parent": "For Review", "color": "#6c757d" },
-      { "name": "With Earl", "parent": "For Review", "color": "#6c757d" },
-      { "name": "With Eric", "parent": "For Review", "color": "#6c757d" },
-      { "name": "On Tray", "parent": "Approved for Submission", "color": "#00ff59" }
+      {
+        "name": "For Payment",
+        "parent": "For Submission",
+        "color": "#d6336c"
+      },
+      {
+        "name": "On-Hold",
+        "parent": "For Submission",
+        "color": "#fd7e14"
+      },
+      {
+        "name": "With Bilal",
+        "parent": "Under Review",
+        "color": "#6c757d"
+      },
+      {
+        "name": "With Osama",
+        "parent": "Under Review",
+        "color": "#6c757d"
+      },
+      {
+        "name": "With Saed",
+        "parent": "Under Review",
+        "color": "#6c757d"
+      }
     ],
     "importanceLevels": [
-      { "name": "High", "color": "#e53935" },
-      { "name": "Medium", "color": "#fdd835" },
-      { "name": "Low", "color": "#43a047" }
+      {
+        "name": "High",
+        "color": "#e53935"
+      },
+      {
+        "name": "Medium",
+        "color": "#fdd835"
+      },
+      {
+        "name": "Low",
+        "color": "#43a047"
+      },
+      {
+        "name": "None",
+        "color": "#ffffff"
+      }
     ],
     "bidOrigins": [
       { "name": "NUPCO" },
@@ -189,7 +234,6 @@ function transformData(data: any) {
     })),
   };
   
-  // Add a "Completed" status if it doesn't exist, as it's a special status in the app logic.
   if (!newSettings.workflowCategories.find(cat => cat.name.toLowerCase() === 'completed')) {
       newSettings.workflowCategories.push({
           id: uuidv4(),
@@ -198,21 +242,29 @@ function transformData(data: any) {
       });
   }
 
+  const newTasks: Task[] = data.tasks.map((t: any): Task => {
+    // Find a matching workflow category, defaulting to the first one if not found.
+    let status = t.status || '';
+    const categoryExists = newSettings.workflowCategories.some(cat => cat.name === status);
+    if (!status || !categoryExists) {
+      status = newSettings.workflowCategories[0]?.name || 'Not Started';
+    }
 
-  const newTasks: Task[] = data.tasks.map((t: any): Task => ({
-    id: t.id || uuidv4(),
-    taskid: t.taskid || '',
-    title: t.desc || 'Untitled Task',
-    date: t.date ? new Date(t.date).toISOString() : new Date().toISOString(),
-    dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : new Date().toISOString(),
-    status: t.status || newSettings.workflowCategories[0].name,
-    subStatus: t.subStatus || '',
-    importance: t.importance || newSettings.importanceLevels[1].name,
-    bidOrigin: t.bidOrigin || '',
-    desc: t.desc || '',
-    remarks: t.remarks || '',
-    completionDate: t.completionDate ? new Date(t.completionDate).toISOString() : undefined,
-  }));
+    return {
+      id: t.id || uuidv4(),
+      taskid: t.taskid || '',
+      title: t.desc || t.taskid || 'Untitled Task',
+      date: t.date ? new Date(t.date).toISOString() : new Date().toISOString(),
+      dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : new Date().toISOString(),
+      status: status,
+      subStatus: t.subStatus || '',
+      importance: t.importance || newSettings.importanceLevels[1]?.name || '',
+      bidOrigin: t.bidOrigin || '',
+      desc: t.desc || '',
+      remarks: t.remarks || '',
+      completionDate: t.completionDate ? new Date(t.completionDate).toISOString() : undefined,
+    }
+  });
 
   return { settings: newSettings, tasks: newTasks };
 }
@@ -223,18 +275,15 @@ export async function migrateData() {
 
   const batch = writeBatch(db);
 
-  // Clear existing tasks
   const tasksCollectionRef = collection(db, 'tasks');
   const existingTasksSnapshot = await getDocs(tasksCollectionRef);
   existingTasksSnapshot.forEach(doc => {
     batch.delete(doc.ref);
   });
   
-  // Set new settings
   const settingsDocRef = doc(db, 'settings', 'app-settings');
   batch.set(settingsDocRef, settings);
 
-  // Add new tasks
   tasks.forEach(task => {
     const { id, ...taskData } = task;
     const taskDocRef = doc(tasksCollectionRef, id);
@@ -243,3 +292,5 @@ export async function migrateData() {
 
   await batch.commit();
 }
+
+    
