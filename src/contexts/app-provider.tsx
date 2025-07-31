@@ -7,7 +7,7 @@ import { AppSettings, Task, AppFilters, KanbanFilter, SubCategory, WorkflowCateg
 import { defaultSettings, defaultTasks } from '@/lib/defaults';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDoc, writeBatch, getDocs, query } from 'firebase/firestore';
 
 interface AppContextType {
   tasks: Task[];
@@ -45,35 +45,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const settingsDocRef = doc(db, 'settings', 'app-settings');
     const tasksCollectionRef = collection(db, 'tasks');
 
-    const unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setSettings(docSnap.data() as AppSettings);
+    const unsubscribeSettings = onSnapshot(settingsDocRef, async (settingsSnap) => {
+      if (settingsSnap.exists()) {
+        setSettings(settingsSnap.data() as AppSettings);
       } else {
-        console.log("No settings found, creating default settings...");
-        setDoc(settingsDocRef, defaultSettings).then(() => setSettings(defaultSettings));
+        // If settings don't exist, assume database is empty and initialize it.
+        console.log("No settings found, initializing database with default data...");
+        try {
+          const batch = writeBatch(db);
+          
+          // Set default settings
+          batch.set(settingsDocRef, defaultSettings);
+
+          // Set default tasks
+          defaultTasks.forEach(task => {
+            const docRef = doc(db, 'tasks', task.id);
+            batch.set(docRef, task);
+          });
+
+          await batch.commit();
+          console.log("Default data successfully written to Firestore.");
+          setSettings(defaultSettings);
+          setTasks(defaultTasks);
+        } catch (error) {
+          console.error("Error initializing database:", error);
+        }
       }
+
+      // We always set loading to false after handling settings,
+      // as task subscription will handle task state.
+      setLoading(false); 
     }, (error) => {
         console.error("Error fetching settings:", error);
+        setLoading(false);
     });
 
-    const unsubscribeTasks = onSnapshot(tasksCollectionRef, (snapshot) => {
-        if (snapshot.empty) {
-            console.log("No tasks found, creating default tasks...");
-            const batch = writeBatch(db);
-            defaultTasks.forEach(task => {
-                const { id, ...taskData } = task;
-                const taskDocRef = doc(tasksCollectionRef, id); // Use explicit ID
-                batch.set(taskDocRef, taskData);
-            });
-            batch.commit().then(() => {
-                setTasks(defaultTasks);
-                setLoading(false);
-            });
-        } else {
-            const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-            setTasks(tasksData);
-            setLoading(false);
-        }
+    const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
+        const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
+        setTasks(tasksData);
+        // Only set loading to false here if settings have already been processed
+        // to avoid flicker if tasks load first.
+        if (!loading) setLoading(false);
     }, (error) => {
         console.error("Error fetching tasks:", error);
         setLoading(false);
@@ -83,16 +95,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubscribeSettings();
       unsubscribeTasks();
     };
-  }, []);
+  }, []); // This effect should run only once on mount.
 
 
   const addTask = async (task: Omit<Task, 'id'>) => {
-    await addDoc(collection(db, 'tasks'), task);
+    const newTask = { ...task, id: uuidv4() };
+    await setDoc(doc(db, 'tasks', newTask.id), task);
   };
 
   const updateTask = async (updatedTask: Task) => {
     const { id, ...taskData } = updatedTask;
-    await updateDoc(doc(db, 'tasks', id), taskData);
+    await setDoc(doc(db, 'tasks', id), taskData, { merge: true });
   };
   
   const deleteTask = async (taskId: string) => {
@@ -171,9 +184,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const batch = writeBatch(db);
     const tasksCollectionRef = collection(db, 'tasks');
     
-    // Clear existing tasks
-    const existingTasksSnapshot = await getDoc(tasksCollectionRef as any);
-    existingTasksSnapshot.docs.forEach((doc: any) => {
+    // Query for all existing documents in the tasks collection
+    const querySnapshot = await getDocs(query(tasksCollectionRef));
+    querySnapshot.forEach(doc => {
       batch.delete(doc.ref);
     });
 
@@ -214,7 +227,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   if (loading) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading...</p>
+            <p>Loading and initializing database...</p>
         </div>
     );
   }
@@ -233,3 +246,5 @@ export function useApp() {
   }
   return context;
 }
+
+    
