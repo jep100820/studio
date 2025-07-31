@@ -66,9 +66,9 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
       : {
           title: "",
           taskid: `PROJ-${Math.floor(100 + Math.random() * 900)}`,
-          status: settings.workflowCategories[0]?.name || "",
-          importance: settings.importanceLevels[1]?.name || "",
-          bidOrigin: settings.bidOrigins[0]?.name || "",
+          status: settings.workflowCategories?.[0]?.name || "",
+          importance: settings.importanceLevels?.[1]?.name || settings.importanceLevels?.[0]?.name || "",
+          bidOrigin: settings.bidOrigins?.[0]?.name || "",
           subStatus: "",
           date: new Date(),
           dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
@@ -76,6 +76,30 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
           remarks: "",
         },
   });
+
+  React.useEffect(() => {
+    if (isOpen && !task) {
+      form.reset({
+        title: "",
+        taskid: `PROJ-${Math.floor(100 + Math.random() * 900)}`,
+        status: settings.workflowCategories?.[0]?.name || "",
+        importance: settings.importanceLevels?.[1]?.name || settings.importanceLevels?.[0]?.name || "",
+        bidOrigin: settings.bidOrigins?.[0]?.name || "",
+        subStatus: "",
+        date: new Date(),
+        dueDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        desc: "",
+        remarks: "",
+      });
+    } else if (isOpen && task) {
+        form.reset({
+            ...task,
+            date: new Date(task.date),
+            dueDate: new Date(task.dueDate),
+        })
+    }
+  }, [isOpen, task, settings, form]);
+
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     const taskData = {
@@ -169,7 +193,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
             <div className="space-y-2">
                 <Label>Status</Label>
                 <Controller name="status" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                         <SelectContent>{settings.workflowCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -178,7 +202,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
             <div className="space-y-2">
                 <Label>Sub-Status</Label>
                 <Controller name="subStatus" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={availableSubStatuses.length === 0}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={availableSubStatuses.length === 0}>
                         <SelectTrigger><SelectValue placeholder="Sub-Status" /></SelectTrigger>
                         <SelectContent>{availableSubStatuses.map(sub => <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -187,7 +211,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
              <div className="space-y-2">
                 <Label>Importance</Label>
                 <Controller name="importance" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Importance" /></SelectTrigger>
                         <SelectContent>{settings.importanceLevels.map(level => <SelectItem key={level.id} value={level.name}>{level.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -196,7 +220,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
             <div className="space-y-2">
                 <Label>Bid Origin</Label>
                 <Controller name="bidOrigin" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Bid Origin" /></SelectTrigger>
                         <SelectContent>{settings.bidOrigins.map(origin => <SelectItem key={origin.id} value={origin.name}>{origin.name}</SelectItem>)}</SelectContent>
                     </Select>
