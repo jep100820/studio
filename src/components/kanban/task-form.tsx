@@ -196,7 +196,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
                 <Controller name="status" control={form.control} render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                        <SelectContent>{settings.workflowCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{(settings.workflowCategories || []).map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
                     </Select>
                 )}/>
             </div>
@@ -214,7 +214,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
                 <Controller name="importance" control={form.control} render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Importance" /></SelectTrigger>
-                        <SelectContent>{settings.importanceLevels.map(level => <SelectItem key={level.id} value={level.name}>{level.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{(settings.importanceLevels || []).map(level => <SelectItem key={level.id} value={level.name}>{level.name}</SelectItem>)}</SelectContent>
                     </Select>
                 )}/>
             </div>
@@ -223,7 +223,7 @@ export default function TaskForm({ task, trigger }: TaskFormProps) {
                 <Controller name="bidOrigin" control={form.control} render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Bid Origin" /></SelectTrigger>
-                        <SelectContent>{settings.bidOrigins.map(origin => <SelectItem key={origin.id} value={origin.name}>{origin.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{(settings.bidOrigins || []).map(origin => <SelectItem key={origin.id} value={origin.name}>{origin.name}</SelectItem>)}</SelectContent>
                     </Select>
                 )}/>
             </div>
