@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -29,37 +29,44 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const toDate = (timestamp) => {
-    if (!timestamp) return null;
-    let date;
-    if (timestamp?.seconds) {
-      date = new Date(timestamp.seconds * 1000);
-    } else if (timestamp instanceof Date) {
-        date = timestamp;
-    } else if (typeof timestamp === 'number') {
-        // Assuming seconds if it's a number and looks like a timestamp, otherwise treat as milliseconds
-        date = timestamp > 1000000000000 ? new Date(timestamp) : new Date(timestamp * 1000);
-    } else if (typeof timestamp === 'string') {
-        const parsedDate = parseISO(timestamp);
-        if (isValid(parsedDate)) {
-            date = parsedDate;
-        } else {
-            const genericParsedDate = new Date(timestamp);
-            if(isValid(genericParsedDate)) {
-                date = genericParsedDate;
-            } else {
-                 return null;
-            }
-        }
-    } else {
-      return null;
+// A robust, unified date parsing function
+const toDate = (dateInput) => {
+    if (!dateInput) return null;
+
+    // Firestore Timestamp
+    if (typeof dateInput === 'object' && dateInput.seconds) {
+        return new Date(dateInput.seconds * 1000);
     }
-    return isValid(date) ? date : null;
+    
+    // Javascript Date object
+    if (dateInput instanceof Date) {
+        return isValid(dateInput) ? dateInput : null;
+    }
+
+    // Number (milliseconds or seconds)
+    if (typeof dateInput === 'number') {
+        // If it's likely seconds, convert to milliseconds
+        return dateInput > 10000000000 ? new Date(dateInput) : new Date(dateInput * 1000);
+    }
+    
+    // String
+    if (typeof dateInput === 'string') {
+        let date = parseISO(dateInput); // Try ISO format first (YYYY-MM-DD)
+        if (isValid(date)) return date;
+
+        date = parse(dateInput, 'dd/MM/yyyy', new Date()); // Try "dd/MM/yyyy"
+        if (isValid(date)) return date;
+
+        date = new Date(dateInput); // General fallback
+        return isValid(date) ? date : null;
+    }
+    
+    return null; // Return null if format is unknown
 };
 
-const formatDate = (timestamp) => {
-    const date = toDate(timestamp);
-    return date ? format(date, 'MMM d, yyyy') : '';
+const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
+    const date = toDate(dateInput);
+    return date ? format(date, outputFormat) : '';
 };
 
 
@@ -71,14 +78,14 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
-            .map(task => ({...task, completionDateObj: toDate(task.completionDate)}))
+            .map(task => ({ ...task, completionDateObj: toDate(task.completionDate) }))
             .filter(task => task.completionDateObj && isValid(task.completionDateObj))
             .reduce((acc, task) => {
                 const day = format(task.completionDateObj, 'yyyy-MM-dd');
                 acc[day] = (acc[day] || 0) + 1;
                 return acc;
             }, {});
-
+            
         return last14Days.map(day => ({
             date: format(parseISO(day), 'MMM d'),
             completed: tasksPerDay[day] || 0,
@@ -231,9 +238,9 @@ function StatsDisplay({ tasks, completedTasks }) {
     const stats = useMemo(() => {
         const now = new Date();
         const overdueTasks = tasks.filter(t => {
-            if (t.status === 'Completed' || !t.dueDate) return false;
+            if (t.status === 'Completed') return false;
             const dueDate = toDate(t.dueDate);
-            return dueDate && dueDate < now;
+            return dueDate && dueDate < startOfDay(now);
         }).length;
         
         const completionTimes = completedTasks
@@ -254,7 +261,7 @@ function StatsDisplay({ tasks, completedTasks }) {
         const filterCompletedByDays = (days) => {
             return completedTasks.filter(t => {
                 const completionDate = toDate(t.completionDate);
-                return completionDate && differenceInDays(now, completionDate) <= days;
+                return completionDate && differenceInDays(now, completionDate) < days;
             }).length;
         }
 
@@ -269,34 +276,34 @@ function StatsDisplay({ tasks, completedTasks }) {
 
     return (
         <Card>
-            <CardHeader className="p-4">
-                 <CardTitle className="text-xl">Project Snapshot</CardTitle>
+            <CardHeader className="p-4 pb-2">
+                 <CardTitle className="text-lg">Project Snapshot</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-0">
+            <CardContent className="p-4 pt-2">
                  <div className="grid grid-cols-5 gap-2 text-center">
                     <div className="p-2 bg-muted/50 rounded-lg">
-                        <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-1" />
-                        <p className="text-xl font-bold">{stats.totalCompleted}</p>
+                        <CheckCircle className="h-4 w-4 mx-auto text-green-500 mb-1" />
+                        <p className="text-lg font-bold">{stats.totalCompleted}</p>
                         <p className="text-xs text-muted-foreground">Completed</p>
                     </div>
                      <div className="p-2 bg-muted/50 rounded-lg">
-                        <AlertTriangle className="h-5 w-5 mx-auto text-red-500 mb-1" />
-                        <p className="text-xl font-bold">{stats.overdue}</p>
+                        <AlertTriangle className="h-4 w-4 mx-auto text-red-500 mb-1" />
+                        <p className="text-lg font-bold">{stats.overdue}</p>
                         <p className="text-xs text-muted-foreground">Overdue</p>
                     </div>
                     <div className="p-2 bg-muted/50 rounded-lg">
-                        <Clock className="h-5 w-5 mx-auto text-blue-500 mb-1" />
-                        <p className="text-xl font-bold">{stats.avgTime}d</p>
+                        <Clock className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                        <p className="text-lg font-bold">{stats.avgTime}d</p>
                         <p className="text-xs text-muted-foreground">Avg. Time</p>
                     </div>
                     <div className="p-2 bg-muted/50 rounded-lg">
-                        <Zap className="h-5 w-5 mx-auto text-yellow-500 mb-1" />
-                        <p className="text-xl font-bold">{stats.last7}</p>
+                        <Zap className="h-4 w-4 mx-auto text-yellow-500 mb-1" />
+                        <p className="text-lg font-bold">{stats.last7}</p>
                         <p className="text-xs text-muted-foreground">Last 7d</p>
                     </div>
                     <div className="p-2 bg-muted/50 rounded-lg">
-                        <Calendar className="h-5 w-5 mx-auto text-purple-500 mb-1" />
-                        <p className="text-xl font-bold">{stats.last30}</p>
+                        <Calendar className="h-4 w-4 mx-auto text-purple-500 mb-1" />
+                        <p className="text-lg font-bold">{stats.last30}</p>
                         <p className="text-xs text-muted-foreground">Last 30d</p>
                     </div>
                  </div>
@@ -349,13 +356,13 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-hidden">
                 {/* Left Column */}
-                <div className="flex flex-col gap-6 lg:gap-8">
+                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <Card>
-                        <CardHeader className="p-4">
-                            <CardTitle className="text-xl">Analytics</CardTitle>
+                        <CardHeader className="p-4 pb-2">
+                            <CardTitle className="text-lg">Analytics</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-4 pt-0">
+                        <CardContent className="p-4 pt-2">
                             <Tabs defaultValue="productivity">
                                 <TabsList className="grid w-full grid-cols-3 h-9">
                                     <TabsTrigger value="productivity" className="text-xs">Productivity</TabsTrigger>
@@ -379,7 +386,7 @@ export default function DashboardPage() {
                     </Card>
                 </div>
                 {/* Right Column */}
-                <div className="flex flex-col min-h-0 overflow-y-auto">
+                <div className="flex flex-col min-h-0">
                     <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
