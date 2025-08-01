@@ -1,5 +1,4 @@
 
-
 // @ts-nocheck
 'use client';
 
@@ -351,7 +350,7 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-hidden">
                 {/* Left Column */}
-                <div className="flex flex-col gap-6 lg:gap-8 overflow-y-auto">
+                <div className="flex flex-col gap-6 lg:gap-8">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <Card>
                         <CardHeader>
