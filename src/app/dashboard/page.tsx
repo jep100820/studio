@@ -12,7 +12,7 @@ import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfDay } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, DonutChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -94,7 +94,7 @@ function TaskStatusChart({ tasks }) {
     return (
         <div className="h-64 w-full">
             <ResponsiveContainer>
-                <DonutChart>
+                <PieChart>
                     <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
                         {data.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -102,7 +102,7 @@ function TaskStatusChart({ tasks }) {
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                     <Legend iconSize={10} />
-                </DonutChart>
+                </PieChart>
             </ResponsiveContainer>
         </div>
     );
