@@ -90,12 +90,21 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
 
     return (
         <div ref={setNodeRef} style={style} className="p-4 rounded-lg border bg-card mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <div {...attributes} {...listeners} className="cursor-grab p-2">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-grow font-medium">{item.name}</div>
-                <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
+                {hasSubStatuses && item.subStatuses && item.subStatuses.length > 0 && !isOpen && (
+                    <div className="flex items-center gap-1 flex-wrap ml-auto mr-2">
+                        {item.subStatuses.map((sub, index) => (
+                            <span key={index} className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                                {sub.name}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className={cn(hasSubStatuses && item.subStatuses?.length > 0 ? "" : "ml-auto")}>
                      <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
                 </Button>
             </div>
