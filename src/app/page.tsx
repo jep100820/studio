@@ -64,12 +64,21 @@ const parseDateString = (dateString) => {
 
 const formatDate = (timestamp) => {
   if (!timestamp) return '';
-  // Handle Firestore Timestamp object
+
+  let date;
   if (timestamp.seconds) {
-    return new Date(timestamp.seconds * 1000).toLocaleDateString('en-GB');
+    // Firestore Timestamp object
+    date = new Date(timestamp.seconds * 1000);
+  } else if (timestamp instanceof Date) {
+    // JavaScript Date object
+    date = timestamp;
+  } else if (typeof timestamp === 'string') {
+    // Date string
+    date = new Date(timestamp);
+  } else {
+    return '';
   }
-  // Handle Date object or valid date string
-  const date = new Date(timestamp);
+
   if (isValid(date)) {
     return format(date, 'dd/MM/yyyy');
   }
@@ -207,10 +216,18 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
     };
 
     const formatDateForInput = (timestamp) => {
-        if (!timestamp || typeof timestamp.seconds !== 'number') return '';
-        const d = new Date(timestamp.seconds * 1000);
-        return d.toISOString().split('T')[0];
-    }
+        if (!timestamp) return '';
+        let date;
+        if (timestamp.seconds) {
+            date = new Date(timestamp.seconds * 1000);
+        } else {
+            date = new Date(timestamp);
+        }
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
+        }
+        return '';
+    };
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
