@@ -19,6 +19,7 @@ import isEqual from 'lodash.isequal';
 import { format, parseISO, isValid } from 'date-fns';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 
 // Your web app's Firebase configuration
@@ -352,6 +353,37 @@ function ImportExportCard() {
     );
 }
 
+function UpdateConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirm Status Renaming</DialogTitle>
+                    <DialogDescription>
+                        You have renamed the following statuses. Do you want to update all existing tasks to match?
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-2">
+                    {changes.map((change, index) => (
+                        <div key={index} className="text-sm p-2 rounded-md bg-muted">
+                            Rename "<strong>{change.from}</strong>" to "<strong>{change.to}</strong>"
+                        </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-2">
+                        This action cannot be undone. Choosing 'Cancel' will save the setting change but will not update existing tasks.
+                    </p>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button onClick={onConfirm}>Update Tasks</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null); // Local, editable settings
@@ -360,6 +392,8 @@ export default function SettingsPage() {
     const [isDirty, setIsDirty] = useState(false);
     const { theme, setTheme } = useTheme();
     const router = useRouter();
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [renameChanges, setRenameChanges] = useState([]);
 
     useEffect(() => {
         const settingsRef = doc(db, 'settings', 'workflow');
@@ -415,10 +449,76 @@ export default function SettingsPage() {
     };
 
     const handleSaveChanges = async () => {
+        if (!originalSettings || !settings) return;
+
+        const originalNames = originalSettings.workflowCategories.map(c => c.name);
+        const newNames = settings.workflowCategories.map(c => c.name);
+
+        const changes = [];
+        originalSettings.workflowCategories.forEach((origCat, index) => {
+            if (settings.workflowCategories[index] && origCat.name !== settings.workflowCategories[index].name) {
+                // This assumes order hasn't changed, which is a big assumption. A better check is needed.
+                // Let's refine this to be more robust.
+            }
+        });
+        
+        const originalMap = new Map(originalSettings.workflowCategories.map((cat, index) => [index, cat.name]));
+        const currentMap = new Map(settings.workflowCategories.map((cat, index) => [index, cat.name]));
+        const detectedChanges = [];
+
+        for (const [index, origName] of originalMap.entries()) {
+            const newName = currentMap.get(index);
+            if (newName && newName !== origName) {
+                // Check if the original name is truly gone from the new list
+                // to distinguish from reordering vs renaming
+                if (!settings.workflowCategories.some(cat => cat.name === origName)) {
+                    detectedChanges.push({ from: origName, to: newName });
+                }
+            }
+        }
+
+
+        if (detectedChanges.length > 0) {
+            setRenameChanges(detectedChanges);
+            setIsConfirmModalOpen(true);
+        } else {
+            await updateSettingsInDb();
+        }
+    };
+    
+    const updateSettingsInDb = async () => {
         const settingsRef = doc(db, 'settings', 'workflow');
         await updateDoc(settingsRef, settings);
-        // No need to setOriginalSettings here, snapshot listener will do it.
     };
+
+    const handleConfirmUpdate = async () => {
+        // 1. Update tasks in DB
+        const batch = writeBatch(db);
+        const tasksRef = collection(db, 'tasks');
+        
+        for (const change of renameChanges) {
+            const q = query(tasksRef, where("status", "==", change.from));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                batch.update(doc.ref, { status: change.to });
+            });
+        }
+        await batch.commit();
+
+        // 2. Update settings in DB
+        await updateSettingsInDb();
+        
+        // 3. Close modal
+        setIsConfirmModalOpen(false);
+        setRenameChanges([]);
+    };
+    
+    const handleCancelConfirmation = async () => {
+        // Just save the settings without updating tasks
+        await updateSettingsInDb();
+        setIsConfirmModalOpen(false);
+        setRenameChanges([]);
+    }
 
     const handleCancelChanges = () => {
         setSettings(JSON.parse(JSON.stringify(originalSettings))); // Revert to original
@@ -433,64 +533,72 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground">
-            <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
-                <h1 className="text-2xl font-bold">Settings</h1>
-                 <div className="flex items-center gap-2">
-                    <Button onClick={handleSaveChanges} disabled={!isDirty}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                    </Button>
-                    <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
-                        <Undo className="h-4 w-4 mr-2" />
-                        Cancel
-                    </Button>
-                    <Button onClick={() => handleOpenModal()} size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Task
-                    </Button>
-                    <Link href="/">
-                        <Button variant="outline">Back to Board</Button>
-                    </Link>
-                    <Link href="/dashboard">
-                      <Button variant="outline" size="sm">
-                          <LayoutDashboard className="h-4 w-4 mr-2" />
-                          Dashboard
-                      </Button>
-                    </Link>
-                    <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="outline" size="icon">
-                      <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                      <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      <span className="sr-only">Toggle theme</span>
-                    </Button>
-                </div>
-            </header>
-            <main className="flex-grow p-4 md:p-8 space-y-6 overflow-y-auto">
-                <SettingsCard
-                    title="Workflow Statuses"
-                    items={settings?.workflowCategories}
-                    onUpdate={handleSettingsUpdate}
-                    onAddItem={handleAddNewItem}
-                    fieldName="workflowCategories"
-                    hasSubStatuses={true}
-                    startOpen={true}
-                />
-                <SettingsCard
-                    title="Importance Levels"
-                    items={settings?.importanceLevels}
-                    onUpdate={handleSettingsUpdate}
-                    onAddItem={handleAddNewItem}
-                    fieldName="importanceLevels"
-                />
-                 <SettingsCard
-                    title="Bid Origins"
-                    items={settings?.bidOrigins}
-                    onUpdate={handleSettingsUpdate}
-                    onAddItem={handleAddNewItem}
-                    fieldName="bidOrigins"
-                />
-                <ImportExportCard />
-            </main>
-        </div>
+        <>
+            <div className="flex flex-col h-screen bg-background text-foreground">
+                <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
+                    <h1 className="text-2xl font-bold">Settings</h1>
+                     <div className="flex items-center gap-2">
+                        <Button onClick={handleSaveChanges} disabled={!isDirty}>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                        </Button>
+                        <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
+                            <Undo className="h-4 w-4 mr-2" />
+                            Cancel
+                        </Button>
+                        <Button onClick={() => handleOpenModal()} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Task
+                        </Button>
+                        <Link href="/">
+                            <Button variant="outline">Back to Board</Button>
+                        </Link>
+                        <Link href="/dashboard">
+                          <Button variant="outline" size="sm">
+                              <LayoutDashboard className="h-4 w-4 mr-2" />
+                              Dashboard
+                          </Button>
+                        </Link>
+                        <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="outline" size="icon">
+                          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                          <span className="sr-only">Toggle theme</span>
+                        </Button>
+                    </div>
+                </header>
+                <main className="flex-grow p-4 md:p-8 space-y-6 overflow-y-auto">
+                    <SettingsCard
+                        title="Workflow Statuses"
+                        items={settings?.workflowCategories}
+                        onUpdate={handleSettingsUpdate}
+                        onAddItem={handleAddNewItem}
+                        fieldName="workflowCategories"
+                        hasSubStatuses={true}
+                        startOpen={true}
+                    />
+                    <SettingsCard
+                        title="Importance Levels"
+                        items={settings?.importanceLevels}
+                        onUpdate={handleSettingsUpdate}
+                        onAddItem={handleAddNewItem}
+                        fieldName="importanceLevels"
+                    />
+                     <SettingsCard
+                        title="Bid Origins"
+                        items={settings?.bidOrigins}
+                        onUpdate={handleSettingsUpdate}
+                        onAddItem={handleAddNewItem}
+                        fieldName="bidOrigins"
+                    />
+                    <ImportExportCard />
+                </main>
+            </div>
+            <UpdateConfirmationDialog
+                isOpen={isConfirmModalOpen}
+                onClose={handleCancelConfirmation}
+                onConfirm={handleConfirmUpdate}
+                changes={renameChanges}
+            />
+        </>
     );
 }
