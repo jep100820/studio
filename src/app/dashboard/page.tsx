@@ -8,9 +8,10 @@ import { getFirestore, collection, onSnapshot, query, where, Timestamp } from 'f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -63,7 +64,7 @@ function TaskCompletionChart({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-64 w-full">
+        <div className="h-80 w-full">
             <ResponsiveContainer>
                 <BarChart data={data}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -92,7 +93,7 @@ function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
     return (
-        <div className="h-64 w-full">
+        <div className="h-80 w-full">
             <ResponsiveContainer>
                 <PieChart>
                     <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
@@ -103,6 +104,38 @@ function TaskStatusChart({ tasks }) {
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                     <Legend iconSize={10} />
                 </PieChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+function TaskPriorityChart({ tasks }) {
+    const data = useMemo(() => {
+        const priorityCounts = tasks
+            .filter(task => task.status === 'Completed' && task.importance)
+            .reduce((acc, task) => {
+                acc[task.importance] = (acc[task.importance] || 0) + 1;
+                return acc;
+            }, { 'High': 0, 'Medium': 0, 'Low': 0 });
+            
+        return Object.entries(priorityCounts).map(([name, count]) => ({ name, count }));
+    }, [tasks]);
+
+    return (
+        <div className="h-80 w-full">
+            <ResponsiveContainer>
+                <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30}>
+                         {data.map((entry, index) => {
+                            const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
+                            return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
+                        })}
+                    </Bar>
+                </BarChart>
             </ResponsiveContainer>
         </div>
     );
@@ -172,6 +205,69 @@ function CompletedTasksList({ tasks }) {
     );
 }
 
+function StatsDisplay({ tasks, completedTasks }) {
+    const stats = useMemo(() => {
+        const now = new Date();
+        const overdueTasks = tasks.filter(t => t.status !== 'Completed' && t.dueDate?.seconds && new Date(t.dueDate.seconds * 1000) < now).length;
+        
+        const completionTimes = completedTasks
+            .filter(t => t.date?.seconds && t.completionDate?.seconds)
+            .map(t => differenceInDays(new Date(t.completionDate.seconds * 1000), new Date(t.date.seconds * 1000)));
+        
+        const avgCompletionTime = completionTimes.length > 0
+            ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
+            : 0;
+            
+        const completedLast7Days = completedTasks.filter(t => t.completionDate?.seconds && differenceInDays(now, new Date(t.completionDate.seconds * 1000)) <= 7).length;
+        const completedLast30Days = completedTasks.filter(t => t.completionDate?.seconds && differenceInDays(now, new Date(t.completionDate.seconds * 1000)) <= 30).length;
+
+        return {
+            totalCompleted: completedTasks.length,
+            overdue: overdueTasks,
+            avgTime: avgCompletionTime,
+            last7: completedLast7Days,
+            last30: completedLast30Days
+        };
+    }, [tasks, completedTasks]);
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                 <CardTitle>Project Snapshot</CardTitle>
+                 <CardDescription>Key performance indicators for your project.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                        <CheckCircle className="h-6 w-6 mx-auto text-green-500 mb-2" />
+                        <p className="text-2xl font-bold">{stats.totalCompleted}</p>
+                        <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                    </div>
+                     <div className="p-4 bg-muted/50 rounded-lg">
+                        <AlertTriangle className="h-6 w-6 mx-auto text-red-500 mb-2" />
+                        <p className="text-2xl font-bold">{stats.overdue}</p>
+                        <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                    </div>
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                        <Clock className="h-6 w-6 mx-auto text-blue-500 mb-2" />
+                        <p className="text-2xl font-bold">{stats.avgTime}d</p>
+                        <p className="text-sm text-muted-foreground">Avg. Completion</p>
+                    </div>
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                        <Zap className="h-6 w-6 mx-auto text-yellow-500 mb-2" />
+                        <p className="text-2xl font-bold">{stats.last7}</p>
+                        <p className="text-sm text-muted-foreground">Done (Last 7d)</p>
+                    </div>
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                        <Calendar className="h-6 w-6 mx-auto text-purple-500 mb-2" />
+                        <p className="text-2xl font-bold">{stats.last30}</p>
+                        <p className="text-sm text-muted-foreground">Done (Last 30d)</p>
+                    </div>
+                 </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function DashboardPage() {
     const [tasks, setTasks] = useState([]);
@@ -199,34 +295,48 @@ export default function DashboardPage() {
     }
     
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8">
+        <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8 overflow-y-auto">
             <header className="flex-shrink-0 flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Dashboard</h1>
                 <Link href="/">
                     <Button variant="outline">Back to Board</Button>
                 </Link>
             </header>
-            <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-                <div className="lg:col-span-2">
-                     <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle>Analytics</CardTitle>
-                            <CardDescription>Visual summary of your project performance.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
-                                <TaskCompletionChart tasks={completedTasks} />
-                            </div>
-                            <div>
-                                <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
-                                <TaskStatusChart tasks={tasks} />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                <div className="lg:col-span-1 flex flex-col min-h-0">
-                    <CompletedTasksList tasks={completedTasks} />
+            <main className="flex-grow min-h-0">
+                 <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Analytics</CardTitle>
+                                <CardDescription>Visual summary of your project performance.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Tabs defaultValue="productivity">
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        <TabsTrigger value="productivity">Productivity</TabsTrigger>
+                                        <TabsTrigger value="distribution">Distribution</TabsTrigger>
+                                        <TabsTrigger value="prioritization">Prioritization</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="productivity" className="pt-4">
+                                        <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
+                                        <TaskCompletionChart tasks={completedTasks} />
+                                    </TabsContent>
+                                    <TabsContent value="distribution" className="pt-4">
+                                         <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
+                                         <TaskStatusChart tasks={tasks} />
+                                    </TabsContent>
+                                     <TabsContent value="prioritization" className="pt-4">
+                                        <h4 className="text-md font-semibold mb-4 text-center">Completed Tasks by Priority</h4>
+                                        <TaskPriorityChart tasks={completedTasks} />
+                                    </TabsContent>
+                                </Tabs>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    <div className="lg:col-span-1 flex flex-col min-h-0">
+                        <CompletedTasksList tasks={completedTasks} />
+                    </div>
                 </div>
             </main>
         </div>
