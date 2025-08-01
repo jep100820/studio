@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -38,6 +38,16 @@ const formatDate = (timestamp) => {
         date = timestamp;
     } else if (typeof timestamp === 'number') {
         date = new Date(timestamp * 1000);
+    } else if (typeof timestamp === 'string') {
+        // Handle ISO strings or other string formats that Date.parse can handle
+        const parsedDate = new Date(timestamp);
+        if (isValid(parsedDate)) {
+            date = parsedDate;
+        } else {
+            // Attempt to parse other formats if necessary, though this might not be needed
+            // For now, return empty if not a recognizable format.
+            return '';
+        }
     } else {
       return '';
     }
@@ -55,9 +65,17 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
-            .filter(task => task.completionDate && typeof task.completionDate === 'number')
+            .filter(task => task.completionDate)
             .reduce((acc, task) => {
-                const date = new Date(task.completionDate * 1000);
+                let date;
+                if(typeof task.completionDate === 'number') {
+                    date = new Date(task.completionDate * 1000);
+                } else if (typeof task.completionDate === 'string') {
+                    date = new Date(task.completionDate);
+                } else {
+                    date = task.completionDate?.toDate?.();
+                }
+
                 if (isValid(date)) {
                     const day = format(date, 'yyyy-MM-dd');
                     acc[day] = (acc[day] || 0) + 1;
@@ -217,49 +235,63 @@ function StatsDisplay({ tasks, completedTasks }) {
     const stats = useMemo(() => {
         const now = new Date();
         const overdueTasks = tasks.filter(t => {
-            if (t.status === 'Completed' || !t.dueDate || typeof t.dueDate !== 'number') return false;
-            const dueDate = new Date(t.dueDate * 1000);
+            if (t.status === 'Completed' || !t.dueDate) return false;
+            let dueDate;
+            if (typeof t.dueDate === 'number') {
+                dueDate = new Date(t.dueDate * 1000);
+            } else if (t.dueDate?.seconds) {
+                dueDate = t.dueDate.toDate();
+            } else if (typeof t.dueDate === 'string') {
+                dueDate = new Date(t.dueDate);
+            }
             return isValid(dueDate) && dueDate < now;
         }).length;
         
         const completionTimes = completedTasks
-            .filter(t => t.date && typeof t.date === 'number' && t.completionDate && typeof t.completionDate === 'number')
+            .filter(t => t.date && t.completionDate)
             .map(t => {
-                const startDate = new Date(t.date * 1000);
-                const completionDate = new Date(t.completionDate * 1000);
+                 let startDate, completionDate;
+                 if(typeof t.date === 'number') startDate = new Date(t.date * 1000);
+                 else if (t.date?.seconds) startDate = t.date.toDate();
+                 else if(typeof t.date === 'string') startDate = new Date(t.date);
+
+                 if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
+                 else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
+                 else if(typeof t.completionDate === 'string') completionDate = new Date(t.completionDate);
+
                 if (isValid(startDate) && isValid(completionDate)) {
                     return differenceInDays(completionDate, startDate);
                 }
                 return null;
-            }).filter(d => d !== null);
+            }).filter(d => d !== null && d >= 0);
         
         const avgCompletionTime = completionTimes.length > 0
             ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
             : 0;
             
-        const completedLast7Days = completedTasks.filter(t => {
-            if (!t.completionDate || typeof t.completionDate !== 'number') return false;
-            const completionDate = new Date(t.completionDate * 1000);
-            return isValid(completionDate) && differenceInDays(now, completionDate) <= 7;
-        }).length;
+        const filterCompletedByDays = (days) => {
+            return completedTasks.filter(t => {
+                if (!t.completionDate) return false;
+                let completionDate;
+                 if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
+                 else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
+                 else if(typeof t.completionDate === 'string') completionDate = new Date(t.completionDate);
 
-        const completedLast30Days = completedTasks.filter(t => {
-            if (!t.completionDate || typeof t.completionDate !== 'number') return false;
-            const completionDate = new Date(t.completionDate * 1000);
-            return isValid(completionDate) && differenceInDays(now, completionDate) <= 30;
-        }).length;
+                return isValid(completionDate) && differenceInDays(now, completionDate) <= days;
+            }).length;
+        }
 
         return {
             totalCompleted: completedTasks.length,
             overdue: overdueTasks,
             avgTime: avgCompletionTime,
-            last7: completedLast7Days,
-            last30: completedLast30Days
+            last7: filterCompletedByDays(7),
+            last30: filterCompletedByDays(30)
         };
     }, [tasks, completedTasks]);
 
     return (
-        <Card className="mb-6">
+        <Card>
             <CardHeader>
                  <CardTitle>Project Snapshot</CardTitle>
                  <CardDescription>Key performance indicators for your project.</CardDescription>
@@ -306,7 +338,6 @@ export default function DashboardPage() {
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => {
                 const data = doc.data();
-                // Serialize Timestamps
                 const serializedData = {};
                 for (const key in data) {
                     if (data[key] instanceof Timestamp) {
@@ -327,7 +358,15 @@ export default function DashboardPage() {
     const completedTasks = useMemo(() => {
         return tasks
             .filter(t => t.status === 'Completed')
-            .sort((a, b) => (b.completionDate || 0) - (a.completionDate || 0));
+            .sort((a, b) => {
+                 let dateA = a.completionDate;
+                 let dateB = b.completionDate;
+                 if(typeof dateA === 'number') dateA = new Date(dateA * 1000);
+                 if(typeof dateB === 'number') dateB = new Date(dateB * 1000);
+                 if(typeof dateA === 'string') dateA = new Date(dateA);
+                 if(typeof dateB === 'string') dateB = new Date(dateB);
+                return (dateB || 0) - (dateA || 0)
+            });
     }, [tasks]);
 
     if (isLoading) {
@@ -342,7 +381,7 @@ export default function DashboardPage() {
                     <Button variant="outline">Back to Board</Button>
                 </Link>
             </header>
-            <main className="flex-grow flex flex-col min-h-0">
+            <main className="flex-grow flex flex-col gap-6">
                 <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
                     <div className="lg:col-span-2">
@@ -382,3 +421,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+
