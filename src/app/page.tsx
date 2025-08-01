@@ -34,7 +34,7 @@ import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
 import { PlusCircle, GripVertical, Moon, Sun } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid } from 'date-fns';
+import { parse, isValid, format } from 'date-fns';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -63,8 +63,18 @@ const parseDateString = (dateString) => {
 };
 
 const formatDate = (timestamp) => {
-  if (!timestamp || typeof timestamp.seconds !== 'number') return '';
-  return new Date(timestamp.seconds * 1000).toLocaleDateString('en-GB');
+  if (!timestamp) return '';
+  if (timestamp.seconds) {
+    return new Date(timestamp.seconds * 1000).toLocaleDateString('en-GB');
+  }
+  // Handle cases where it might not be a timestamp object yet
+  if (typeof timestamp === 'string' && isValid(new Date(timestamp))) {
+     return format(new Date(timestamp), 'dd/MM/yyyy');
+  }
+  if (timestamp instanceof Date && isValid(timestamp)) {
+    return format(timestamp, 'dd/MM/yyyy');
+  }
+  return '';
 };
 
 const seedDatabase = async () => {
@@ -130,8 +140,7 @@ function TaskCard({ task, onTaskClick }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start",
-        isOverdue && "border-2 border-red-500"
+        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start"
       )}
     >
       <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
@@ -149,7 +158,7 @@ function TaskCard({ task, onTaskClick }) {
            )}
         </div>
       </div>
-      <div {...attributes} {...listeners} className="cursor-grab pl-2">
+       <div {...attributes} {...listeners} className="cursor-grab pl-2">
          <GripVertical className="h-5 w-5 text-muted-foreground" />
       </div>
     </div>
