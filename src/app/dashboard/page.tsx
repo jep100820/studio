@@ -242,9 +242,12 @@ function StatsDisplay({ tasks, completedTasks }) {
             }).length;
         }
 
+        const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
+
         return {
             totalCompleted: completedTasks.length,
             overdue: overdueTasks,
+            inProgress: inProgressTasks,
             avgTime: avgCompletionTime,
             last7: filterCompletedByDays(7),
             last30: filterCompletedByDays(30)
@@ -270,6 +273,13 @@ function StatsDisplay({ tasks, completedTasks }) {
                         <div className="flex-grow">
                            <p className="text-lg font-bold">{stats.overdue}</p>
                            <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                        </div>
+                    </div>
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <Zap className="h-6 w-6 text-blue-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                           <p className="text-lg font-bold">{stats.inProgress}</p>
+                           <p className="text-sm text-muted-foreground">Tasks In Progress</p>
                         </div>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
@@ -398,4 +408,5 @@ export default function DashboardPage() {
 }
 
 
+    
     
