@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
@@ -507,6 +507,10 @@ export default function KanbanPage() {
                 status: 'Completed',
                 completionDate: Timestamp.now(),
             };
+            await updateDoc(doc(db, 'tasks', active.id), { 
+                status: 'Completed', 
+                completionDate: Timestamp.now() 
+            });
             handleOpenModal(updatedTask);
         }
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
@@ -606,6 +610,12 @@ export default function KanbanPage() {
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
             </Button>
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm">
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  Dashboard
+              </Button>
+            </Link>
             <Link href="/settings">
               <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
@@ -620,7 +630,7 @@ export default function KanbanPage() {
           </div>
         </header>
 
-        <main className="flex-grow p-4 overflow-x-auto">
+        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full">
           <div className="flex gap-6 h-full">
             {columns.map((status) => (
               <KanbanColumn
