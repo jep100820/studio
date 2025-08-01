@@ -278,7 +278,7 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
   });
 
   return (
-    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 flex-1 min-w-[300px] flex flex-col">
+    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 flex-1 min-w-[300px] flex flex-col h-full">
       <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center flex-shrink-0">
         {title}
         <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-md flex items-center justify-center text-sm font-bold">
@@ -818,7 +818,7 @@ function KanbanPageContent() {
           </div>
         </header>
         
-        <main className="flex-grow p-4 flex flex-wrap gap-6">
+        <main className="flex-grow p-4 flex gap-6 overflow-hidden">
           {columns.map((status) => (
             <KanbanColumn
               key={status}
