@@ -823,25 +823,25 @@ function KanbanPageContent() {
           </div>
         </header>
         
-        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full flex flex-col">
-            <div className="flex-shrink-0">
-                <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
-            </div>
-            <div className="flex-grow flex gap-6 h-full overflow-x-auto">
-                {columns.map((status) => (
-                  <KanbanColumn
-                    key={status}
-                    id={status}
-                    title={status}
-                    tasks={tasks.filter((task) => task.status === status)}
-                    onEditClick={handleOpenModal}
-                    onCardClick={handleCardClick}
-                    expandedTaskId={expandedTaskId}
-                    settings={settings}
-                    highlightedTaskId={highlightedTaskId}
-                  />
-                ))}
-            </div>
+        <main className="flex-grow p-4 flex flex-col overflow-hidden">
+          <div className="flex-shrink-0">
+              <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
+          </div>
+          <div className="flex-grow flex gap-6 overflow-x-auto">
+              {columns.map((status) => (
+                <KanbanColumn
+                  key={status}
+                  id={status}
+                  title={status}
+                  tasks={tasks.filter((task) => task.status === status)}
+                  onEditClick={handleOpenModal}
+                  onCardClick={handleCardClick}
+                  expandedTaskId={expandedTaskId}
+                  settings={settings}
+                  highlightedTaskId={highlightedTaskId}
+                />
+              ))}
+          </div>
         </main>
 
         <CompletionZone isDragging={!!activeId} />
