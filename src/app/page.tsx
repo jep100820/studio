@@ -267,14 +267,21 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         }
         return '';
     };
+
+    const isEditing = !!task?.id;
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{task?.id ? 'Edit Task' : 'Add Task'}</DialogTitle>
+            <DialogTitle>{isEditing ? 'Edit Task' : 'Add Task'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+              {isEditing && (
+                  <div className="text-sm text-muted-foreground">
+                      <p>Date Started: {formatDate(task.date)}</p>
+                  </div>
+              )}
               <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="taskid" className="text-right">Task ID</Label>
                   <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="col-span-3" />
@@ -287,10 +294,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                   <Label htmlFor="remarks" className="text-right">Remarks</Label>
                   <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} className="col-span-3" />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="date" className="text-right">Date</Label>
-                  <Input id="date" name="date" type="date" value={formatDateForInput(task?.date)} onChange={handleDateChange} className="col-span-3" />
-              </div>
+              
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="dueDate" className="text-right">Due Date</Label>
                   <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} className="col-span-3" />
@@ -315,13 +319,15 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
               </div>
-               <div className="grid grid-cols-4 items-center gap-4">
+              {isEditing && task.completionDate && (
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="completionDate" className="text-right">Completion</Label>
-                  <Input id="completionDate" name="completionDate" type="date" value={formatDateForInput(task?.completionDate)} onChange={handleDateChange} className="col-span-3" />
+                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="col-span-3 bg-muted/50" />
               </div>
+              )}
           </div>
           <DialogFooter className="sm:justify-between">
-            {task?.id && (
+            {isEditing && (
                 <Button variant="destructive" onClick={() => onDelete(task.id)}>Delete</Button>
             )}
             <div>
