@@ -482,9 +482,9 @@ function DueDateWidget({ title, value, icon: Icon, color, onClick, disabled }) {
                 disabled && "cursor-not-allowed opacity-60"
             )}
         >
+            <span className="font-semibold text-base">{value}</span>
+            <span className="text-sm text-muted-foreground">{title}</span>
             <Icon className={cn("h-4 w-4", color)} />
-            <span className="text-sm font-semibold">{value}</span>
-            <span className="text-sm text-muted-foreground sr-only">{title}</span>
         </div>
     );
 }
