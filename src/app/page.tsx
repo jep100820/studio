@@ -80,7 +80,7 @@ const formatDate = (timestamp) => {
   }
 
   if (isValid(date)) {
-    return format(date, 'dd/MM/yyyy');
+    return format(date, 'MMMM d, yyyy');
   }
   return '';
 };
@@ -220,9 +220,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
         let date;
         if (timestamp.seconds) {
             date = new Date(timestamp.seconds * 1000);
-        } else {
+        } else if (timestamp instanceof Date) {
+            date = timestamp;
+        } else if (typeof timestamp === 'string') {
             date = new Date(timestamp);
+        } else {
+            return '';
         }
+
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
