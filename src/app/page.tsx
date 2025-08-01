@@ -34,9 +34,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid, format, parseISO } from 'date-fns';
+import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, endOfWeek, addDays, nextFriday, isFriday, isSaturday } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -54,6 +54,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const toDate = (dateInput) => {
+    if (!dateInput) return null;
+    if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
+    const d = new Date(dateInput);
+    return isValid(d) ? d : null;
+};
 
 const parseDateString = (dateString) => {
     if (!dateString) return null;
@@ -79,6 +86,8 @@ const formatDate = (timestamp, outputFormat = 'MMM d, yyyy') => {
       date = new Date(timestamp.seconds * 1000);
     } else if (timestamp instanceof Date) {
         date = timestamp;
+    } else if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        date = parseISO(dateString);
     } else if (typeof timestamp === 'string') {
         const parsedDate = parseISO(timestamp);
         if (isValid(parsedDate)) {
@@ -162,10 +171,18 @@ const seedDatabase = async () => {
 };
 
 
-function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
+function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHighlighted }) {
   if (!task) {
     return null;
   }
+
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+        cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isHighlighted]);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -178,7 +195,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
       }
     : undefined;
 
-  const isOverdue = task.dueDate && task.dueDate.seconds && new Date(task.dueDate.seconds * 1000) < new Date() && task.status !== 'Completed';
+  const isOverdue = task.dueDate && toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
   
   const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
@@ -187,11 +204,15 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        cardRef.current = node;
+      }}
       style={{ ...style, backgroundColor: statusColor }}
       className={cn(
-        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer`,
+        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300`,
         isOverdue && "border-2 border-red-500",
+        isHighlighted && "ring-4 ring-offset-2 ring-blue-500",
         textColor
       )}
        onClick={() => onCardClick(task.id)}
@@ -250,7 +271,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
   );
 }
 
-function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTaskId, settings }) {
+function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTaskId, settings, highlightedTaskId }) {
   const { setNodeRef } = useDroppable({
     id,
   });
@@ -272,6 +293,7 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
                 settings={settings}
                 onCardClick={onCardClick}
                 isExpanded={expandedTaskId === task.id}
+                isHighlighted={highlightedTaskId === task.id}
             />
         ))}
       </div>
@@ -449,6 +471,71 @@ function SubStatusModal({ isOpen, onClose, onSave, subStatuses }) {
     );
 }
 
+function DueDateSummary({ tasks, onTaskClick }) {
+    const [openSection, setOpenSection] = useState(null);
+
+    const toggleSection = (section) => {
+        setOpenSection(openSection === section ? null : section);
+    };
+
+    const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
+        const today = startOfToday();
+        const tomorrow = addDays(today, 1);
+        
+        // Find the next Thursday. If today is Friday or Saturday, start from next week.
+        let endOfWeekDate = nextFriday(today); // This gives us the *next* Friday
+        if(isFriday(today) || isSaturday(today)) {
+             endOfWeekDate = nextFriday(addDays(today,2));
+        }
+        endOfWeekDate = addDays(endOfWeekDate, -1); // make it Thursday
+
+
+        const pastDue = tasks.filter(t => t.dueDate && isBefore(toDate(t.dueDate), today) && t.status !== 'Completed');
+        const dueToday = tasks.filter(t => t.dueDate && isSameDay(toDate(t.dueDate), today));
+        const dueThisWeek = tasks.filter(t => {
+            if (!t.dueDate) return false;
+            const dueDate = toDate(t.dueDate);
+            return isBefore(dueDate, endOfWeekDate) && isBefore(today, dueDate);
+        });
+
+        return { pastDue, dueToday, dueThisWeek };
+    }, [tasks]);
+
+    const SummarySection = ({ title, tasks, sectionKey }) => (
+        <div className="border-b">
+            <button onClick={() => toggleSection(sectionKey)} className="w-full flex justify-between items-center p-3 text-left font-semibold hover:bg-muted/50">
+                <span>{title} <span className="text-muted-foreground font-normal">({tasks.length})</span></span>
+                 <ChevronDown className={cn("h-5 w-5 transition-transform", openSection === sectionKey && "rotate-180")} />
+            </button>
+            {openSection === sectionKey && (
+                <div className="p-3 bg-muted/20">
+                    {tasks.length > 0 ? (
+                        <ul className="space-y-2">
+                            {tasks.map(task => (
+                                <li key={task.id} onClick={() => onTaskClick(task.id)} className="text-sm p-2 rounded-md hover:bg-muted cursor-pointer">
+                                    <p className="font-medium">{task.taskid}</p>
+                                    <p className="text-xs text-muted-foreground">Status: {task.status}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">No tasks in this category.</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="mb-6 border rounded-lg bg-card">
+            <h2 className="text-lg font-bold p-3 border-b">Due Date Summary</h2>
+            <SummarySection title="Past Due" tasks={pastDue} sectionKey="pastDue" />
+            <SummarySection title="Due Today" tasks={dueToday} sectionKey="dueToday" />
+            <SummarySection title="Due this Week" tasks={dueThisWeek} sectionKey="dueThisWeek" />
+        </div>
+    );
+}
+
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
   const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [] });
@@ -458,6 +545,7 @@ function KanbanPageContent() {
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [highlightedTaskId, setHighlightedTaskId] = useState(null);
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -571,6 +659,12 @@ function KanbanPageContent() {
   const handleCardClick = (taskId) => {
     setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
   };
+  
+  const handleSummaryTaskClick = (taskId) => {
+    setHighlightedTaskId(taskId);
+    setExpandedTaskId(taskId);
+    setTimeout(() => setHighlightedTaskId(null), 2000); // Highlight for 2 seconds
+  };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
       const { task, newStatus } = subStatusData;
@@ -655,23 +749,28 @@ function KanbanPageContent() {
             </Button>
           </div>
         </header>
-
-        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full">
-          <div className="flex gap-6 h-full">
-            {columns.map((status) => (
-              <KanbanColumn
-                key={status}
-                id={status}
-                title={status}
-                tasks={tasks.filter((task) => task.status === status)}
-                onEditClick={handleOpenModal}
-                onCardClick={handleCardClick}
-                expandedTaskId={expandedTaskId}
-                settings={settings}
-              />
-            ))}
-          </div>
+        
+        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full flex flex-col">
+            <div className="flex-shrink-0">
+                <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
+            </div>
+            <div className="flex-grow flex gap-6 h-full overflow-x-auto">
+                {columns.map((status) => (
+                  <KanbanColumn
+                    key={status}
+                    id={status}
+                    title={status}
+                    tasks={tasks.filter((task) => task.status === status)}
+                    onEditClick={handleOpenModal}
+                    onCardClick={handleCardClick}
+                    expandedTaskId={expandedTaskId}
+                    settings={settings}
+                    highlightedTaskId={highlightedTaskId}
+                  />
+                ))}
+            </div>
         </main>
+
         <CompletionZone isDragging={!!activeId} />
       </div>
       <TaskModal 
@@ -711,6 +810,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-
-    
