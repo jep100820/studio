@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "KanbanFlow",
-  description: "A comprehensive task management application.",
+  description: "A dynamic and intuitive Kanban board for task management.",
 };
 
 export default function RootLayout({
@@ -17,9 +17,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
