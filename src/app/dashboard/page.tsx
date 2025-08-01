@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, DonutChart } from 'recharts';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -39,6 +40,74 @@ const formatDate = (timestamp) => {
     }
     return format(date, 'MMM d, yyyy');
 };
+
+function TaskCompletionChart({ tasks }) {
+    const data = useMemo(() => {
+        const last14Days = Array.from({ length: 14 }, (_, i) => {
+            const d = subDays(new Date(), i);
+            return format(startOfDay(d), 'yyyy-MM-dd');
+        }).reverse();
+
+        const tasksPerDay = tasks
+            .filter(task => task.completionDate?.seconds)
+            .reduce((acc, task) => {
+                const day = format(new Date(task.completionDate.seconds * 1000), 'yyyy-MM-dd');
+                acc[day] = (acc[day] || 0) + 1;
+                return acc;
+            }, {});
+
+        return last14Days.map(day => ({
+            date: format(new Date(day), 'MMM d'),
+            completed: tasksPerDay[day] || 0,
+        }));
+    }, [tasks]);
+
+    return (
+        <div className="h-64 w-full">
+            <ResponsiveContainer>
+                <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                    <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+function TaskStatusChart({ tasks }) {
+    const data = useMemo(() => {
+        const statusCounts = tasks
+            .filter(task => task.status !== 'Completed')
+            .reduce((acc, task) => {
+                acc[task.status] = (acc[task.status] || 0) + 1;
+                return acc;
+            }, {});
+        
+        return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+    }, [tasks]);
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
+
+    return (
+        <div className="h-64 w-full">
+            <ResponsiveContainer>
+                <DonutChart>
+                    <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                        {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                    <Legend iconSize={10} />
+                </DonutChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
 
 function CompletedTasksList({ tasks }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -109,17 +178,21 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const tasksQuery = query(collection(db, 'tasks'), where('status', '==', 'Completed'));
+        const tasksQuery = query(collection(db, 'tasks'));
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            // Sort by completion date, most recent first
-            fetchedTasks.sort((a, b) => (b.completionDate?.seconds || 0) - (a.completionDate?.seconds || 0));
             setTasks(fetchedTasks);
             setIsLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
+
+    const completedTasks = useMemo(() => {
+        return tasks
+            .filter(t => t.status === 'Completed')
+            .sort((a, b) => (b.completionDate?.seconds || 0) - (a.completionDate?.seconds || 0));
+    }, [tasks]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -140,15 +213,20 @@ export default function DashboardPage() {
                             <CardTitle>Analytics</CardTitle>
                             <CardDescription>Visual summary of your project performance.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                <p className="text-muted-foreground">Charts and graphs will be displayed here.</p>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
+                                <TaskCompletionChart tasks={completedTasks} />
+                            </div>
+                            <div>
+                                <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
+                                <TaskStatusChart tasks={tasks} />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
                 <div className="lg:col-span-1 flex flex-col min-h-0">
-                    <CompletedTasksList tasks={tasks} />
+                    <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
         </div>
