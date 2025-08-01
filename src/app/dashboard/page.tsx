@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -70,7 +72,7 @@ const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
 };
 
 
-function TaskCompletionChart({ tasks }) {
+function TaskCompletionTable({ tasks }) {
     const data = useMemo(() => {
         const last14Days = Array.from({ length: 14 }, (_, i) => {
             const d = subDays(new Date(), i);
@@ -93,16 +95,23 @@ function TaskCompletionChart({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-60 w-full">
-            <ResponsiveContainer>
-                <BarChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                    <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
+        <div className="h-60 w-full overflow-y-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Tasks Completed</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {data.map((row) => (
+                        <TableRow key={row.date}>
+                            <TableCell className="font-medium">{row.date}</TableCell>
+                            <TableCell className="text-right">{row.completed}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </div>
     );
 }
@@ -371,7 +380,7 @@ export default function DashboardPage() {
                                 </TabsList>
                                 <TabsContent value="productivity" className="pt-2">
                                     <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Completed Per Day (Last 14 Days)</h4>
-                                    <TaskCompletionChart tasks={completedTasks} />
+                                    <TaskCompletionTable tasks={completedTasks} />
                                 </TabsContent>
                                 <TabsContent value="distribution" className="pt-2">
                                      <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Active Task Distribution</h4>
