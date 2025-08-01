@@ -139,6 +139,7 @@ function TaskCard({ task, onTaskClick }) {
         <p className="text-xs text-muted-foreground mt-1">{task.desc}</p>
          {task.remarks && <p className="text-xs text-muted-foreground mt-1">Remarks: {task.remarks}</p>}
         <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+          <span>Date: {formatDate(task.date)}</span>
           <span>Due: {formatDate(task.dueDate)}</span>
            {task.importance && (
             <div className="flex items-center">
