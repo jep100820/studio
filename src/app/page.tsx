@@ -133,7 +133,7 @@ function TaskCard({ task, onTaskClick }) {
       }
     : undefined;
 
-  const isOverdue = task.dueDate && new Date(task.dueDate.seconds * 1000) < new Date() && task.status !== 'Completed';
+  const isOverdue = task.dueDate && task.dueDate.seconds && new Date(task.dueDate.seconds * 1000) < new Date() && task.status !== 'Completed';
 
   return (
     <div
