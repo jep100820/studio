@@ -213,7 +213,7 @@ function transformData(data: any) {
       dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : new Date().toISOString(),
       status: status,
       subStatus: t.subStatus || '',
-      importance: t.importance || newSettings.importanceLevels[1]?.name || '',
+      importance: t.importance || (newSettings.importanceLevels.find(l => l.name.toLowerCase() === 'medium')?.name || newSettings.importanceLevels[0]?.name || ''),
       bidOrigin: t.bidOrigin || '',
       desc: t.desc || '',
       remarks: t.remarks || '',
@@ -247,3 +247,5 @@ export async function migrateData() {
 
   await batch.commit();
 }
+
+    

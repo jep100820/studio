@@ -4,10 +4,11 @@
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { AppSettings, Task, AppFilters, KanbanFilter, SubCategory, WorkflowCategory, ImportanceLevel, BidOrigin } from '@/lib/types';
-import { defaultSettings, defaultTasks } from '@/lib/defaults';
+import { defaultSettings } from '@/lib/defaults';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, getDoc, writeBatch, getDocs, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, getDoc, writeBatch, getDocs, query, deleteDoc } from 'firebase/firestore';
+import { migrateData } from '@/lib/data-migration';
 
 interface AppContextType {
   tasks: Task[];
@@ -49,46 +50,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isClient) return;
 
-    const settingsDocRef = doc(db, 'settings', 'app-settings');
-    
-    const unsubscribeSettings = onSnapshot(settingsDocRef, async (settingsSnap) => {
-      if (settingsSnap.exists()) {
-        setSettings(settingsSnap.data() as AppSettings);
-      } else {
-        console.log("No settings found, initializing database with default data...");
+    const initializeAndLoadData = async () => {
+      const settingsDocRef = doc(db, 'settings', 'app-settings');
+      const settingsSnap = await getDoc(settingsDocRef);
+
+      if (!settingsSnap.exists()) {
+        console.log("No settings found, initializing database with provided data...");
         try {
-          const batch = writeBatch(db);
-          batch.set(settingsDocRef, defaultSettings);
-          defaultTasks.forEach(task => {
-            const docRef = doc(db, 'tasks', task.id);
-            batch.set(docRef, task);
-          });
-          await batch.commit();
-          setSettings(defaultSettings);
+          await migrateData();
         } catch (error) {
-          console.error("Error initializing database:", error);
+          console.error("Error migrating data:", error);
         }
       }
-    }, (error) => {
-        console.error("Error fetching settings:", error);
-    });
+      
+      const unsubscribeSettings = onSnapshot(settingsDocRef, (settingsDoc) => {
+          if (settingsDoc.exists()) {
+            setSettings(settingsDoc.data() as AppSettings);
+          }
+      }, (error) => {
+          console.error("Error fetching settings:", error);
+      });
 
-    const tasksCollectionRef = collection(db, 'tasks');
-    const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
-        const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
-        setTasks(tasksData);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching tasks:", error);
-        setIsLoading(false);
-    });
+      const tasksCollectionRef = collection(db, 'tasks');
+      const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
+          const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
+          setTasks(tasksData);
+          setIsLoading(false);
+      }, (error) => {
+          console.error("Error fetching tasks:", error);
+          setIsLoading(false);
+      });
 
-    return () => {
-      unsubscribeSettings();
-      unsubscribeTasks();
+      return () => {
+        unsubscribeSettings();
+        unsubscribeTasks();
+      };
     };
-  }, [isClient]);
 
+    initializeAndLoadData();
+
+  }, [isClient]);
 
   const addTask = async (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: uuidv4() };
@@ -183,7 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     newTasks.forEach(task => {
       const { id, ...taskData } = task;
-      const taskDocRef = doc(tasksCollectionRef, id);
+      const taskDocRef = doc(tasksCollectionRef, id || uuidv4());
       batch.set(taskDocRef, taskData);
     });
 
@@ -214,11 +215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setKanbanFilter,
   }), [tasks, settings, filters]);
 
-  if (!isClient) {
-    return null;
-  }
-  
-  if (isLoading) {
+  if (!isClient || isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading application data...</p>
@@ -240,3 +237,5 @@ export function useApp() {
   }
   return context;
 }
+
+    
