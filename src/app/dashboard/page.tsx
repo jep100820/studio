@@ -81,6 +81,20 @@ function isColorLight(hexColor) {
     return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
 }
 
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, value, fill }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const textColor = isColorLight(fill) ? '#000' : '#fff';
+
+    return (
+        <text x={x} y={y} fill={textColor} textAnchor="middle" dominantBaseline="central" className="text-sm font-bold">
+            {value}
+        </text>
+    );
+};
+
 
 function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#775DD0'];
@@ -127,6 +141,8 @@ function TaskStatusChart({ tasks }) {
                                 innerRadius="60%"
                                 outerRadius="100%"
                                 paddingAngle={2}
+                                label={renderCustomizedLabel}
+                                labelLine={false}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
