@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -17,7 +18,7 @@ import {
   updateDoc,
   Timestamp,
 } from 'firebase/firestore';
-import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, Trash2 } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
@@ -63,8 +64,8 @@ const formatDate = (timestamp) => {
   if (timestamp?.seconds) {
     date = new Date(timestamp.seconds * 1000);
   } else if (timestamp instanceof Date) {
-    date = timestamp;
-  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
     date = new Date(timestamp);
   } else {
     return '';
@@ -208,6 +209,27 @@ function KanbanColumn({ id, title, tasks, onTaskClick, settings }) {
   );
 }
 
+function CompletionZone({ isDragging }) {
+    const { setNodeRef } = useDroppable({
+        id: 'completion-zone',
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={cn(
+                'fixed top-0 right-0 h-full w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                isDragging ? 'translate-x-0' : 'translate-x-full'
+            )}
+        >
+            <div className="text-center text-green-700">
+                <Trash2 className="h-8 w-8 mx-auto" />
+                <p className="font-semibold mt-2">Complete</p>
+            </div>
+        </div>
+    );
+}
+
 function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings }) {
     if (!isOpen) return null;
 
@@ -233,13 +255,13 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         if (timestamp.seconds) {
             date = new Date(timestamp.seconds * 1000);
         } else if (timestamp instanceof Date) {
-            date = timestamp;
-        } else if (typeof timestamp === 'string') {
+            date = new Date(timestamp);
+        } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
             date = new Date(timestamp);
         } else {
             return '';
         }
-
+    
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
@@ -319,6 +341,7 @@ export default function KanbanPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const { theme, setTheme } = useTheme();
+  const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
     seedDatabase().then(() => {
@@ -342,9 +365,28 @@ export default function KanbanPage() {
     });
   }, []);
 
+  const handleDragStart = (event) => {
+      setActiveId(event.active.id);
+  };
+
   const handleDragEnd = async (event) => {
+    setActiveId(null);
     const { active, over } = event;
-    if (over && active.id !== over.id) {
+
+    if (!over) return;
+
+    if (over.id === 'completion-zone') {
+        const taskToComplete = tasks.find(t => t.id === active.id);
+        if (taskToComplete) {
+            const updatedTask = {
+                ...taskToComplete,
+                status: 'Completed',
+                completionDate: Timestamp.now(),
+            };
+            setSelectedTask(updatedTask);
+            setIsModalOpen(true);
+        }
+    } else if (active.id !== over.id) {
         const taskToUpdate = tasks.find(t => t.id === active.id);
         if (taskToUpdate && taskToUpdate.status !== over.id) {
             const taskRef = doc(db, 'tasks', active.id);
@@ -396,9 +438,10 @@ export default function KanbanPage() {
   };
 
   const columns = useMemo(() => {
-    return settings.workflowCategories?.map(cat => cat.name) || [];
+    return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
   }, [settings.workflowCategories]);
 
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
   if (isLoading) {
     return (
@@ -409,7 +452,7 @@ export default function KanbanPage() {
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-background text-foreground p-4">
         <header className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">KanbanFlow</h1>
@@ -444,6 +487,7 @@ export default function KanbanPage() {
             />
           ))}
         </main>
+        <CompletionZone isDragging={!!activeId} />
       </div>
       <TaskModal 
         isOpen={isModalOpen}
@@ -454,6 +498,9 @@ export default function KanbanPage() {
         onDelete={handleDeleteTask}
         settings={settings}
        />
+        <DragOverlay>
+            {activeTask ? <TaskCard task={activeTask} settings={settings} onTaskClick={() => {}} /> : null}
+        </DragOverlay>
     </DndContext>
   );
 }
