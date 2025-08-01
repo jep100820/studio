@@ -2,7 +2,7 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
@@ -36,6 +36,8 @@ import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, La
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -344,12 +346,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                  </div>
               </div>
               
-              <div className="space-y-2">
-                  <Label htmlFor="desc">Description</Label>
-                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} rows={1} />
-              </div>
-              
-               <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
                        <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
@@ -371,6 +368,11 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
               </div>
+
+               <div className="space-y-2">
+                  <Label htmlFor="desc">Description</Label>
+                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} rows={1} />
+              </div>
               
                <div className="space-y-2">
                   <Label htmlFor="remarks">Remarks</Label>
@@ -378,10 +380,10 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
               </div>
 
               {isEditing && task.completionDate && (
-                <div className="space-y-2">
-                  <Label htmlFor="completionDate">Completion</Label>
-                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50 w-auto" />
-              </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="completionDate">Completion</Label>
+                    <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50 w-auto" />
+                </div>
               )}
           </div>
           <DialogFooter className="sm:justify-between">
@@ -438,7 +440,7 @@ function SubStatusModal({ isOpen, onClose, onSave, subStatuses }) {
     );
 }
 
-export default function KanbanPage() {
+function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
   const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -451,6 +453,8 @@ export default function KanbanPage() {
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
   
+  const searchParams = useSearchParams();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -464,13 +468,11 @@ export default function KanbanPage() {
         const settingsUnsub = onSnapshot(doc(db, 'settings', 'workflow'), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
-                // Ensure subStatuses is an array for each category
                 if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, subStatuses: cat.subStatuses || [] }));
                 }
                 setSettings(data);
             }
-            setIsLoading(false);
         });
 
         const tasksUnsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
@@ -485,6 +487,33 @@ export default function KanbanPage() {
         };
     });
   }, []);
+  
+  const handleOpenModal = (task = null) => {
+      const defaultTask = {
+          taskid: '',
+          date: Timestamp.now(),
+          dueDate: null,
+          status: settings.workflowCategories?.[0]?.name || 'Not Started',
+          subStatus: '',
+          importance: '',
+          desc: '',
+          remarks: '',
+          completionDate: null
+      };
+      setSelectedTask(task ? { ...task } : defaultTask);
+      setIsModalOpen(true);
+  };
+  
+  useEffect(() => {
+    const editTaskId = searchParams.get('edit');
+    if (editTaskId && tasks.length > 0) {
+      const taskToEdit = tasks.find(t => t.id === editTaskId);
+      if (taskToEdit) {
+        handleOpenModal(taskToEdit);
+      }
+    }
+  }, [searchParams, tasks]);
+
 
   const handleDragStart = (event) => {
       setActiveId(event.active.id);
@@ -539,21 +568,6 @@ export default function KanbanPage() {
       setSubStatusData({ task: null, newStatus: '', subStatuses: [] });
   };
   
-  const handleOpenModal = (task = null) => {
-      const defaultTask = {
-          taskid: '',
-          date: Timestamp.now(),
-          dueDate: null,
-          status: settings.workflowCategories?.[0]?.name || 'Not Started',
-          subStatus: '',
-          importance: '',
-          desc: '',
-          remarks: '',
-          completionDate: null
-      };
-      setSelectedTask(task ? { ...task } : defaultTask);
-      setIsModalOpen(true);
-  };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -630,7 +644,7 @@ export default function KanbanPage() {
           </div>
         </header>
 
-        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full">
+        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden">
           <div className="flex gap-6 h-full">
             {columns.map((status) => (
               <KanbanColumn
@@ -677,3 +691,12 @@ export default function KanbanPage() {
     </DndContext>
   );
 }
+
+export default function KanbanPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <KanbanPageContent />
+        </Suspense>
+    );
+}
+

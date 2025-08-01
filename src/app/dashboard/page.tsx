@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -41,6 +42,7 @@ const formatDate = (timestamp) => {
 
 function CompletedTasksList({ tasks }) {
     const [searchTerm, setSearchTerm] = useState('');
+    const router = useRouter();
 
     const filteredTasks = useMemo(() => {
         if (!searchTerm) return tasks;
@@ -49,12 +51,21 @@ function CompletedTasksList({ tasks }) {
             (task.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [tasks, searchTerm]);
+    
+    const handleDoubleClick = (task) => {
+        const password = prompt('Enter password to edit task:');
+        if (password === 'abc') {
+            router.push(`/?edit=${task.id}`);
+        } else if (password !== null) {
+            alert('Incorrect password.');
+        }
+    };
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle>Completed Tasks</CardTitle>
-                <CardDescription>Search through all completed tasks.</CardDescription>
+                <CardDescription>Search or double-click to edit.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col">
                 <div className="relative mb-4">
@@ -70,7 +81,11 @@ function CompletedTasksList({ tasks }) {
                     {filteredTasks.length > 0 ? (
                         <div className="space-y-3">
                             {filteredTasks.map(task => (
-                                <div key={task.id} className="p-3 bg-muted/50 rounded-lg text-sm">
+                                <div 
+                                    key={task.id} 
+                                    className="p-3 bg-muted/50 rounded-lg text-sm cursor-pointer hover:bg-muted"
+                                    onDoubleClick={() => handleDoubleClick(task)}
+                                >
                                     <p className="font-semibold text-foreground">{task.taskid}</p>
                                     <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
                                     <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate)}</p>
