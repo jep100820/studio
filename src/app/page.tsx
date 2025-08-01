@@ -76,6 +76,16 @@ const formatDate = (timestamp) => {
   return '';
 };
 
+// Function to determine if a color is light or dark
+function isColorLight(hexColor) {
+    if (!hexColor) return true;
+    const color = hexColor.charAt(0) === '#' ? hexColor.substring(1, 7) : hexColor;
+    const r = parseInt(color.substring(0, 2), 16); // hexToR
+    const g = parseInt(color.substring(2, 4), 16); // hexToG
+    const b = parseInt(color.substring(4, 6), 16); // hexToB
+    return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
+}
+
 
 const seedDatabase = async () => {
   const settingsRef = doc(db, 'settings', 'workflow');
@@ -142,22 +152,24 @@ function TaskCard({ task, onTaskClick, settings }) {
   
   const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
+  const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
 
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, backgroundColor: statusColor }}
       className={cn(
-        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start",
-        isOverdue && "border-2 border-red-500"
+        `p-4 rounded-lg shadow-sm mb-4 flex items-start`,
+        isOverdue && "border-2 border-red-500",
+        textColor
       )}
     >
       <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
         <p className="font-bold text-sm">{task.taskid}</p>
-        <p className="text-xs text-muted-foreground mt-1">{task.desc}</p>
-         {task.remarks && <p className="text-xs text-muted-foreground mt-1">Remarks: {task.remarks}</p>}
-        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+        <p className="text-xs mt-1">{task.desc}</p>
+         {task.remarks && <p className="text-xs mt-1">Remarks: {task.remarks}</p>}
+        <div className="flex items-center justify-between mt-2 text-xs">
           <span>Date: {formatDate(task.date)}</span>
           <span>Due Date: {formatDate(task.dueDate)}</span>
            {importance && (
@@ -168,13 +180,12 @@ function TaskCard({ task, onTaskClick, settings }) {
            )}
         </div>
          <div className="mt-2 flex items-center gap-2">
-            <span style={{ backgroundColor: statusColor }} className="w-3 h-3 rounded-full"></span>
             <span className="text-xs font-semibold">{task.status}</span>
-             {task.subStatus && <span className="text-xs bg-muted px-2 py-1 rounded-full">{task.subStatus}</span>}
+             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
          </div>
       </div>
        <div {...attributes} {...listeners} className="cursor-grab pl-2">
-         <GripVertical className="h-5 w-5 text-muted-foreground" />
+         <GripVertical className="h-5 w-5" />
       </div>
     </div>
   );
