@@ -64,18 +64,18 @@ const parseDateString = (dateString) => {
 
 const formatDate = (timestamp) => {
   if (!timestamp) return '';
+  // Handle Firestore Timestamp object
   if (timestamp.seconds) {
     return new Date(timestamp.seconds * 1000).toLocaleDateString('en-GB');
   }
-  // Handle cases where it might not be a timestamp object yet
-  if (typeof timestamp === 'string' && isValid(new Date(timestamp))) {
-     return format(new Date(timestamp), 'dd/MM/yyyy');
-  }
-  if (timestamp instanceof Date && isValid(timestamp)) {
-    return format(timestamp, 'dd/MM/yyyy');
+  // Handle Date object or valid date string
+  const date = new Date(timestamp);
+  if (isValid(date)) {
+    return format(date, 'dd/MM/yyyy');
   }
   return '';
 };
+
 
 const seedDatabase = async () => {
   const settingsRef = doc(db, 'settings', 'workflow');
