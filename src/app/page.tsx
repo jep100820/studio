@@ -49,7 +49,7 @@ const defaultSettings = {
 export default function Home() {
     const [isLoading, setIsLoading] = useState(true);
     const [allTasks, setAllTasks] = useState<any[]>([]);
-    const [settings, setSettings] = useState<any>({});
+    const [settings, setSettings] = useState<any>(null);
     const [currentKanbanFilter, setCurrentKanbanFilter] = useState('active');
     const [currentView, setCurrentView] = useState('kanban'); // 'kanban', 'dashboard', 'settings'
     const [isClient, setIsClient] = useState(false);
@@ -89,13 +89,19 @@ export default function Home() {
     
     useEffect(() => {
         const loadInitialData = async () => {
+            setIsLoading(true);
             try {
+                // First, fetch or create settings
                 const settingsSnapshot = await getDoc(settingsDoc);
+                let currentSettings = defaultSettings;
                 if (!settingsSnapshot.exists()) {
                     await setDoc(settingsDoc, defaultSettings);
-                    setSettings(defaultSettings);
+                } else {
+                    currentSettings = settingsSnapshot.data() as any;
                 }
+                setSettings(currentSettings);
 
+                // Set up listeners after settings are confirmed
                 const settingsUnsubscribe = onSnapshot(settingsDoc, (doc) => {
                     setSettings(doc.data() || defaultSettings);
                 });
@@ -103,8 +109,9 @@ export default function Home() {
                 const tasksUnsubscribe = onSnapshot(query(tasksCollection), (snapshot) => {
                     const tasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                     setAllTasks(tasks);
-                    setIsLoading(false);
                 });
+                
+                setIsLoading(false);
                 
                 return () => {
                     settingsUnsubscribe();
@@ -120,9 +127,10 @@ export default function Home() {
         loadInitialData();
     }, []);
 
+
     const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    if (!isClient || isLoading) {
+    if (!isClient || isLoading || !settings) {
         return <div id="loader">Loading Application...</div>;
     }
     
@@ -181,8 +189,8 @@ export default function Home() {
         }
 
         try {
-            const docId = id || generateId();
-            await setDoc(doc(db, 'tasks', docId), taskData);
+            const docRef = id ? doc(db, 'tasks', id) : doc(tasksCollection);
+            await setDoc(docRef, taskData);
             closeTaskModal();
         } catch (error) {
             console.error("Error saving task:", error);
@@ -214,7 +222,7 @@ export default function Home() {
                 updatedTask.completionDate = new Date().toISOString();
             }
             try {
-                await setDoc(doc(db, 'tasks', taskId), updatedTask);
+                await setDoc(doc(db, 'tasks', taskId), updatedTask, { merge: true });
             } catch (error) {
                 console.error("Error updating task status:", error);
             }
