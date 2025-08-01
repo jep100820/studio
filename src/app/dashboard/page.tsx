@@ -250,7 +250,6 @@ function StatsDisplay({ tasks, completedTasks }) {
             active: activeTasks,
             avgTime: avgCompletionTime,
             last7: filterCompletedByDays(7),
-            last30: filterCompletedByDays(30)
         };
     }, [tasks, completedTasks]);
 
@@ -290,17 +289,10 @@ function StatsDisplay({ tasks, completedTasks }) {
                         </div>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <Zap className="h-6 w-6 text-yellow-500 flex-shrink-0" />
+                        <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
                         <div className="flex-grow">
                             <p className="text-lg font-bold">{stats.last7}</p>
                             <p className="text-sm text-muted-foreground">Completed Last 7d</p>
-                        </div>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                           <p className="text-lg font-bold">{stats.last30}</p>
-                           <p className="text-sm text-muted-foreground">Completed Last 30d</p>
                         </div>
                     </div>
                  </div>
