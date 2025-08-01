@@ -74,6 +74,7 @@ const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
 
 
 function TaskStatusChart({ tasks }) {
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#775DD0'];
     const data = useMemo(() => {
         const statusCounts = tasks
             .filter(task => task.status !== 'Completed')
@@ -82,28 +83,48 @@ function TaskStatusChart({ tasks }) {
                 return acc;
             }, {});
         
-        return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+        return Object.entries(statusCounts).map(([name, value], index) => ({ 
+            name, 
+            value,
+            fill: COLORS[index % COLORS.length]
+        }));
     }, [tasks]);
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
-
     return (
-       <Card className="h-full flex flex-col">
+        <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Active Task Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Legend iconSize={10} />
-                    </PieChart>
-                </ResponsiveContainer>
+            <CardContent className="flex-grow flex items-center">
+                <div className="w-full h-full flex items-center">
+                    <ResponsiveContainer width="75%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius="60%"
+                                outerRadius="100%"
+                                paddingAngle={2}
+                            >
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <div className="w-25% flex flex-col justify-center space-y-2 pl-4">
+                        {data.map((entry) => (
+                             <div key={entry.name} className="flex items-center text-sm">
+                                <div className="w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: entry.fill }} />
+                                <span>{entry.name} ({entry.value})</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
@@ -133,7 +154,7 @@ function TaskPriorityChart({ tasks }) {
                         <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
                              {data.map((entry, index) => {
                                 const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
