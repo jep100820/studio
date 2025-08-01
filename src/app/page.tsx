@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,9 +35,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, endOfWeek, addDays, nextFriday, isFriday, isSaturday } from 'date-fns';
+import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -471,16 +472,62 @@ function SubStatusModal({ isOpen, onClose, onSave, subStatuses }) {
     );
 }
 
-function DueDateSummary({ tasks, onTaskClick }) {
-    const [openSection, setOpenSection] = useState(null);
+function DueDateWidget({ title, value, icon: Icon, color, onClick }) {
+    return (
+        <div onClick={onClick} className="p-4 bg-card rounded-lg shadow-sm cursor-pointer hover:bg-muted transition-colors">
+            <div className="flex items-center">
+                <div className={`p-2 rounded-md mr-4 ${color}`}>
+                    <Icon className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                    <p className="text-sm text-muted-foreground">{title}</p>
+                    <p className="text-2xl font-bold">{value}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
-    const toggleSection = (section) => {
-        setOpenSection(openSection === section ? null : section);
-    };
+function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick }) {
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>
+                        {tasks.length} task(s) in this category. Click a task to view it on the board.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-2 max-h-80 overflow-y-auto">
+                    {tasks.length > 0 ? (
+                        <ul className="space-y-2">
+                            {tasks.map(task => (
+                                <li key={task.id} onClick={() => onTaskClick(task.id)} className="text-sm p-3 rounded-md hover:bg-muted cursor-pointer border">
+                                    <p className="font-semibold">{task.taskid}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Status: {task.status}</p>
+                                    <p className="text-xs text-muted-foreground">Due: {formatDate(task.dueDate)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No tasks in this category.</p>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button onClick={onClose}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function DueDateSummary({ tasks, onTaskClick }) {
+    const [modalData, setModalData] = useState({ isOpen: false, title: '', tasks: [] });
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
         const today = startOfToday();
-        const tomorrow = addDays(today, 1);
         
         // Find the next Thursday. If today is Friday or Saturday, start from next week.
         let endOfWeekDate = nextFriday(today); // This gives us the *next* Friday
@@ -491,9 +538,9 @@ function DueDateSummary({ tasks, onTaskClick }) {
 
 
         const pastDue = tasks.filter(t => t.dueDate && isBefore(toDate(t.dueDate), today) && t.status !== 'Completed');
-        const dueToday = tasks.filter(t => t.dueDate && isSameDay(toDate(t.dueDate), today));
+        const dueToday = tasks.filter(t => t.dueDate && isSameDay(toDate(t.dueDate), today) && t.status !== 'Completed');
         const dueThisWeek = tasks.filter(t => {
-            if (!t.dueDate) return false;
+            if (!t.dueDate || t.status === 'Completed') return false;
             const dueDate = toDate(t.dueDate);
             return isBefore(dueDate, endOfWeekDate) && isBefore(today, dueDate);
         });
@@ -501,37 +548,51 @@ function DueDateSummary({ tasks, onTaskClick }) {
         return { pastDue, dueToday, dueThisWeek };
     }, [tasks]);
 
-    const SummarySection = ({ title, tasks, sectionKey }) => (
-        <div className="border-b">
-            <button onClick={() => toggleSection(sectionKey)} className="w-full flex justify-between items-center p-3 text-left font-semibold hover:bg-muted/50">
-                <span>{title} <span className="text-muted-foreground font-normal">({tasks.length})</span></span>
-                 <ChevronDown className={cn("h-5 w-5 transition-transform", openSection === sectionKey && "rotate-180")} />
-            </button>
-            {openSection === sectionKey && (
-                <div className="p-3 bg-muted/20">
-                    {tasks.length > 0 ? (
-                        <ul className="space-y-2">
-                            {tasks.map(task => (
-                                <li key={task.id} onClick={() => onTaskClick(task.id)} className="text-sm p-2 rounded-md hover:bg-muted cursor-pointer">
-                                    <p className="font-medium">{task.taskid}</p>
-                                    <p className="text-xs text-muted-foreground">Status: {task.status}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-2">No tasks in this category.</p>
-                    )}
-                </div>
-            )}
-        </div>
-    );
+    const handleWidgetClick = (title, tasks) => {
+        setModalData({ isOpen: true, title, tasks });
+    };
+
+    const handleCloseModal = () => {
+        setModalData({ isOpen: false, title: '', tasks: [] });
+    };
+    
+    const handleTaskItemClick = (taskId) => {
+        handleCloseModal();
+        onTaskClick(taskId);
+    };
 
     return (
-        <div className="mb-6 border rounded-lg bg-card">
-            <h2 className="text-lg font-bold p-3 border-b">Due Date Summary</h2>
-            <SummarySection title="Past Due" tasks={pastDue} sectionKey="pastDue" />
-            <SummarySection title="Due Today" tasks={dueToday} sectionKey="dueToday" />
-            <SummarySection title="Due this Week" tasks={dueThisWeek} sectionKey="dueThisWeek" />
+        <div className="mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <DueDateWidget 
+                    title="Past Due" 
+                    value={pastDue.length} 
+                    icon={AlertTriangle}
+                    color="bg-red-500"
+                    onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
+                />
+                <DueDateWidget 
+                    title="Due Today" 
+                    value={dueToday.length} 
+                    icon={Clock}
+                    color="bg-amber-500"
+                    onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
+                />
+                <DueDateWidget 
+                    title="Due this Week" 
+                    value={dueThisWeek.length} 
+                    icon={Calendar}
+                    color="bg-blue-500"
+                    onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
+                />
+            </div>
+            <DueDateSummaryModal 
+                isOpen={modalData.isOpen}
+                onClose={handleCloseModal}
+                title={modalData.title}
+                tasks={modalData.tasks}
+                onTaskClick={handleTaskItemClick}
+            />
         </div>
     );
 }
@@ -810,3 +871,5 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
+    
