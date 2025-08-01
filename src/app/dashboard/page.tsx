@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -146,51 +146,55 @@ function TaskPriorityChart({ tasks }) {
     );
 }
 
-function WeeklyCompletionChart({ tasks }) {
+function DailyActivityChart({ allTasks, completedTasks }) {
     const data = useMemo(() => {
         const last7Days = eachDayOfInterval({
             start: subDays(endOfToday(), 6),
             end: endOfToday()
         });
 
-        const dailyCounts = last7Days.map(day => ({
-            date: format(day, 'MMM d'),
-            count: 0,
-        }));
+        return last7Days.map(day => {
+            const createdCount = allTasks.filter(task => {
+                const taskDate = toDate(task.date);
+                return taskDate && isSameDay(day, taskDate);
+            }).length;
 
-        tasks.forEach(task => {
-            const completionDate = toDate(task.completionDate);
-            if (completionDate) {
-                const dayString = format(completionDate, 'MMM d');
-                const dayData = dailyCounts.find(d => d.date === dayString);
-                if (dayData) {
-                    dayData.count++;
-                }
-            }
+            const completedCount = completedTasks.filter(task => {
+                const completionDate = toDate(task.completionDate);
+                return completionDate && isSameDay(day, completionDate);
+            }).length;
+
+            return {
+                date: format(day, 'MMM d'),
+                Created: createdCount,
+                Completed: completedCount,
+            };
         });
-
-        return dailyCounts;
-    }, [tasks]);
+    }, [allTasks, completedTasks]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Weekly Completion Trend</CardTitle>
+                <CardTitle className="text-lg">Daily Activity</CardTitle>
+                 <CardDescription>Tasks created vs. completed in the last 7 days.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={data}>
+                    <LineChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                        <Legend iconSize={10} />
+                        <Line type="monotone" dataKey="Created" stroke="#3b82f6" strokeWidth={2} name="Created" />
+                        <Line type="monotone" dataKey="Completed" stroke="#22c55e" strokeWidth={2} name="Completed" />
+                    </LineChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
     );
 }
+
 
 
 function CompletedTasksList({ tasks }) {
@@ -427,7 +431,7 @@ export default function DashboardPage() {
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
-                            <TabsTrigger value="trend">Weekly Trend</TabsTrigger>
+                            <TabsTrigger value="trend">Daily Activity</TabsTrigger>
                         </TabsList>
                         <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
@@ -436,7 +440,7 @@ export default function DashboardPage() {
                             <TaskPriorityChart tasks={completedTasks} />
                         </TabsContent>
                         <TabsContent value="trend" className="flex-grow">
-                            <WeeklyCompletionChart tasks={completedTasks} />
+                            <DailyActivityChart allTasks={tasks} completedTasks={completedTasks} />
                         </TabsContent>
                     </Tabs>
                 </div>
