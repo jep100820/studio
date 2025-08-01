@@ -152,6 +152,13 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+    
+    const displayedItems = useMemo(() => {
+        if (fieldName === 'workflowCategories') {
+            return items?.filter(item => item.name !== 'Completed') || [];
+        }
+        return items || [];
+    }, [items, fieldName]);
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
@@ -165,22 +172,31 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
     
     const handleItemUpdate = (index, newItem) => {
         const newItems = [...items];
-        newItems[index] = newItem;
-        onUpdate(fieldName, newItems);
+        // Find the correct index in the original array
+        const originalIndex = items.findIndex(item => item.name === displayedItems[index].name);
+        if (originalIndex !== -1) {
+            newItems[originalIndex] = newItem;
+            onUpdate(fieldName, newItems);
+        }
     }
     
     const handleSubStatusUpdate = (parentIndex, newSubStatuses) => {
         const newItems = [...items];
-        newItems[parentIndex].subStatuses = newSubStatuses;
-        onUpdate(fieldName, newItems);
+        // Find the correct index in the original array
+        const originalIndex = items.findIndex(item => item.name === displayedItems[parentIndex].name);
+        if (originalIndex !== -1) {
+            newItems[originalIndex].subStatuses = newSubStatuses;
+            onUpdate(fieldName, newItems);
+        }
     };
 
     const handleRemoveItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
+        const itemNameToRemove = displayedItems[index].name;
+        const newItems = items.filter((item) => item.name !== itemNameToRemove);
         onUpdate(fieldName, newItems);
     };
     
-    const itemIds = useMemo(() => items?.map(it => it.name) || [], [items]);
+    const itemIds = useMemo(() => displayedItems?.map(it => it.name) || [], [displayedItems]);
 
     return (
         <Card>
@@ -191,7 +207,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                         <div className="space-y-4">
-                           {items?.map((item, index) => (
+                           {displayedItems?.map((item, index) => (
                                 <SortableItem
                                     key={item.name}
                                     id={item.name}
@@ -199,7 +215,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
                                     onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
                                     onRemove={() => handleRemoveItem(index)}
                                     hasSubStatuses={hasSubStatuses}
-                                    onSubStatusUpdate={handleSubStatusUpdate}
+                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
                                 />
                             ))}
                         </div>
@@ -335,4 +351,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
