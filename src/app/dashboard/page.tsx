@@ -99,13 +99,23 @@ function TaskStatusChart({ tasks }) {
         }));
     }, [tasks]);
 
+    const totalValue = useMemo(() => data.reduce((sum, entry) => sum + entry.value, 0), [data]);
+
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Active Task Distribution</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow flex items-center">
-                <div className="w-full h-full flex items-center">
+                <div className="w-full h-full flex items-center relative">
+                    {totalValue > 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center w-3/4">
+                             <div className="text-center">
+                                <p className="text-4xl font-bold text-foreground">{totalValue}</p>
+                                <p className="text-sm text-muted-foreground">Active Tasks</p>
+                            </div>
+                        </div>
+                    )}
                     <ResponsiveContainer width="75%" height="100%">
                         <PieChart>
                             <Pie
@@ -135,7 +145,7 @@ function TaskStatusChart({ tasks }) {
                                     color: isColorLight(entry.fill) ? '#000' : '#fff'
                                 }}
                             >
-                                {entry.name} ({entry.value})
+                                {entry.name}
                             </div>
                         ))}
                     </div>
@@ -488,4 +498,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
