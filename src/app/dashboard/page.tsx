@@ -126,8 +126,8 @@ export default function DashboardPage() {
     }
     
     return (
-        <div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col">
-            <header className="flex justify-between items-center mb-6">
+        <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8">
+            <header className="flex-shrink-0 flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Dashboard</h1>
                 <Link href="/">
                     <Button variant="outline">Back to Board</Button>
