@@ -4,17 +4,18 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import isEqual from 'lodash.isequal';
 
 
 // Your web app's Firebase configuration
@@ -215,8 +216,10 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
 
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState(null);
+    const [settings, setSettings] = useState(null); // Local, editable settings
+    const [originalSettings, setOriginalSettings] = useState(null); // Settings from Firestore
     const [isLoading, setIsLoading] = useState(true);
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const settingsRef = doc(db, 'settings', 'workflow');
@@ -226,25 +229,25 @@ export default function SettingsPage() {
                  if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, subStatuses: cat.subStatuses || [] }));
                 }
-                setSettings(data);
+                setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
+                setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
             }
             setIsLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
+    
+    useEffect(() => {
+        setIsDirty(!isEqual(settings, originalSettings));
+    }, [settings, originalSettings]);
 
-    const handleSettingsUpdate = async (fieldName, updatedItems) => {
+    const handleSettingsUpdate = (fieldName, updatedItems) => {
         if (!settings) return;
-        const settingsRef = doc(db, 'settings', 'workflow');
-        // Ensure subStatuses are clean before update
-        if (fieldName === 'workflowCategories') {
-             updatedItems = updatedItems.map(item => ({ ...item, subStatuses: item.subStatuses || [] }));
-        }
-
-        await updateDoc(settingsRef, {
+        setSettings(prev => ({
+            ...prev,
             [fieldName]: updatedItems,
-        });
+        }));
     };
     
     const handleAddNewItem = (fieldName) => {
@@ -271,6 +274,16 @@ export default function SettingsPage() {
         handleSettingsUpdate(fieldName, newItems);
     };
 
+    const handleSaveChanges = async () => {
+        const settingsRef = doc(db, 'settings', 'workflow');
+        await updateDoc(settingsRef, settings);
+        // No need to setOriginalSettings here, snapshot listener will do it.
+    };
+
+    const handleCancelChanges = () => {
+        setSettings(JSON.parse(JSON.stringify(originalSettings))); // Revert to original
+    };
+
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading settings...</div>;
     }
@@ -279,9 +292,19 @@ export default function SettingsPage() {
         <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
             <header className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Settings</h1>
-                <Link href="/">
-                    <Button variant="outline">Back to Kanban Board</Button>
-                </Link>
+                 <div className="flex items-center gap-2">
+                    <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
+                        <Undo className="h-4 w-4 mr-2" />
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSaveChanges} disabled={!isDirty}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                    </Button>
+                    <Link href="/">
+                        <Button variant="outline">Back to Board</Button>
+                    </Link>
+                </div>
             </header>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SettingsCard
@@ -312,3 +335,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+
