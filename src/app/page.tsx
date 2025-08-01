@@ -122,6 +122,10 @@ const seedDatabase = async () => {
 
 
 function TaskCard({ task, onTaskClick }) {
+  if (!task) {
+    return null; 
+  }
+
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
     data: task,
@@ -140,7 +144,8 @@ function TaskCard({ task, onTaskClick }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start"
+        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start",
+        isOverdue && "border-2 border-red-500"
       )}
     >
       <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
