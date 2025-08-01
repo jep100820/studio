@@ -86,7 +86,7 @@ function TaskCompletionChart({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-80 w-full">
+        <div className="h-60 w-full">
             <ResponsiveContainer>
                 <BarChart data={data}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -115,10 +115,10 @@ function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
     return (
-        <div className="h-80 w-full">
+        <div className="h-60 w-full">
             <ResponsiveContainer>
                 <PieChart>
-                    <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                    <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
                         {data.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -144,14 +144,14 @@ function TaskPriorityChart({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-80 w-full">
+        <div className="h-60 w-full">
             <ResponsiveContainer>
                 <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30}>
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20}>
                          {data.map((entry, index) => {
                             const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
                             return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
@@ -269,36 +269,35 @@ function StatsDisplay({ tasks, completedTasks }) {
 
     return (
         <Card>
-            <CardHeader>
-                 <CardTitle>Project Snapshot</CardTitle>
-                 <CardDescription>Key performance indicators for your project.</CardDescription>
+            <CardHeader className="p-4">
+                 <CardTitle className="text-xl">Project Snapshot</CardTitle>
             </CardHeader>
-            <CardContent>
-                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-center">
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <CheckCircle className="h-6 w-6 mx-auto text-green-500 mb-2" />
-                        <p className="text-2xl font-bold">{stats.totalCompleted}</p>
-                        <p className="text-sm text-muted-foreground">Tasks Completed</p>
+            <CardContent className="p-4 pt-0">
+                 <div className="grid grid-cols-5 gap-2 text-center">
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                        <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-1" />
+                        <p className="text-xl font-bold">{stats.totalCompleted}</p>
+                        <p className="text-xs text-muted-foreground">Completed</p>
                     </div>
-                     <div className="p-4 bg-muted/50 rounded-lg">
-                        <AlertTriangle className="h-6 w-6 mx-auto text-red-500 mb-2" />
-                        <p className="text-2xl font-bold">{stats.overdue}</p>
-                        <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                     <div className="p-2 bg-muted/50 rounded-lg">
+                        <AlertTriangle className="h-5 w-5 mx-auto text-red-500 mb-1" />
+                        <p className="text-xl font-bold">{stats.overdue}</p>
+                        <p className="text-xs text-muted-foreground">Overdue</p>
                     </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <Clock className="h-6 w-6 mx-auto text-blue-500 mb-2" />
-                        <p className="text-2xl font-bold">{stats.avgTime}d</p>
-                        <p className="text-sm text-muted-foreground">Avg. Completion</p>
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                        <Clock className="h-5 w-5 mx-auto text-blue-500 mb-1" />
+                        <p className="text-xl font-bold">{stats.avgTime}d</p>
+                        <p className="text-xs text-muted-foreground">Avg. Time</p>
                     </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <Zap className="h-6 w-6 mx-auto text-yellow-500 mb-2" />
-                        <p className="text-2xl font-bold">{stats.last7}</p>
-                        <p className="text-sm text-muted-foreground">Done (Last 7d)</p>
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                        <Zap className="h-5 w-5 mx-auto text-yellow-500 mb-1" />
+                        <p className="text-xl font-bold">{stats.last7}</p>
+                        <p className="text-xs text-muted-foreground">Last 7d</p>
                     </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <Calendar className="h-6 w-6 mx-auto text-purple-500 mb-2" />
-                        <p className="text-2xl font-bold">{stats.last30}</p>
-                        <p className="text-sm text-muted-foreground">Done (Last 30d)</p>
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                        <Calendar className="h-5 w-5 mx-auto text-purple-500 mb-1" />
+                        <p className="text-xl font-bold">{stats.last30}</p>
+                        <p className="text-xs text-muted-foreground">Last 30d</p>
                     </div>
                  </div>
             </CardContent>
@@ -350,30 +349,29 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-hidden">
                 {/* Left Column */}
-                <div className="flex flex-col gap-6 lg:gap-8 overflow-y-auto">
+                <div className="flex flex-col gap-6 lg:gap-8">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Analytics</CardTitle>
-                            <CardDescription>Visual summary of your project performance.</CardDescription>
+                        <CardHeader className="p-4">
+                            <CardTitle className="text-xl">Analytics</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-4 pt-0">
                             <Tabs defaultValue="productivity">
-                                <TabsList className="grid w-full grid-cols-3">
-                                    <TabsTrigger value="productivity">Productivity</TabsTrigger>
-                                    <TabsTrigger value="distribution">Distribution</TabsTrigger>
-                                    <TabsTrigger value="prioritization">Prioritization</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-3 h-9">
+                                    <TabsTrigger value="productivity" className="text-xs">Productivity</TabsTrigger>
+                                    <TabsTrigger value="distribution" className="text-xs">Distribution</TabsTrigger>
+                                    <TabsTrigger value="prioritization" className="text-xs">Prioritization</TabsTrigger>
                                 </TabsList>
-                                <TabsContent value="productivity" className="pt-4">
-                                    <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
+                                <TabsContent value="productivity" className="pt-2">
+                                    <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Completed Per Day (Last 14 Days)</h4>
                                     <TaskCompletionChart tasks={completedTasks} />
                                 </TabsContent>
-                                <TabsContent value="distribution" className="pt-4">
-                                     <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
+                                <TabsContent value="distribution" className="pt-2">
+                                     <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Active Task Distribution</h4>
                                      <TaskStatusChart tasks={tasks} />
                                 </TabsContent>
-                                 <TabsContent value="prioritization" className="pt-4">
-                                    <h4 className="text-md font-semibold mb-4 text-center">Completed Tasks by Priority</h4>
+                                 <TabsContent value="prioritization" className="pt-2">
+                                    <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Completed by Priority</h4>
                                     <TaskPriorityChart tasks={completedTasks} />
                                 </TabsContent>
                             </Tabs>
