@@ -80,7 +80,7 @@ const formatDate = (timestamp) => {
   }
 
   if (isValid(date)) {
-    return format(date, 'MMMM d, yyyy');
+    return format(date, 'MMM d, yyyy');
   }
   return '';
 };
