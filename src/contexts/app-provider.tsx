@@ -50,8 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isClient) return;
 
     const settingsDocRef = doc(db, 'settings', 'app-settings');
-    const tasksCollectionRef = collection(db, 'tasks');
-
+    
     const unsubscribeSettings = onSnapshot(settingsDocRef, async (settingsSnap) => {
       if (settingsSnap.exists()) {
         setSettings(settingsSnap.data() as AppSettings);
@@ -74,6 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Error fetching settings:", error);
     });
 
+    const tasksCollectionRef = collection(db, 'tasks');
     const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
         const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
         setTasks(tasksData);
@@ -92,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTask = async (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: uuidv4() };
-    await setDoc(doc(db, 'tasks', newTask.id), task);
+    await setDoc(doc(db, 'tasks', newTask.id), newTask);
   };
 
   const updateTask = async (updatedTask: Task) => {
@@ -214,7 +214,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setKanbanFilter,
   }), [tasks, settings, filters]);
 
-  if (!isClient || isLoading) {
+  if (!isClient) {
+    return null;
+  }
+  
+  if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Loading application data...</p>
