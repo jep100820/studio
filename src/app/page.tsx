@@ -149,7 +149,7 @@ function TaskCard({ task, onTaskClick }) {
          {task.remarks && <p className="text-xs text-muted-foreground mt-1">Remarks: {task.remarks}</p>}
         <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
           <span>Date: {formatDate(task.date)}</span>
-          <span>Due: {formatDate(task.dueDate)}</span>
+          <span>Due Date: {formatDate(task.dueDate)}</span>
            {task.importance && (
             <div className="flex items-center">
                <span className={cn("w-3 h-3 rounded-full mr-1", importanceColors[task.importance])}></span>
