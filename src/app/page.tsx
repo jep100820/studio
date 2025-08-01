@@ -477,20 +477,14 @@ function DueDateWidget({ title, value, icon: Icon, color, onClick, disabled }) {
         <div
             onClick={!disabled ? onClick : undefined}
             className={cn(
-                "p-4 bg-card rounded-lg shadow-sm transition-colors",
+                "flex items-center gap-2 p-2 rounded-md transition-colors",
                 !disabled && "cursor-pointer hover:bg-muted",
                 disabled && "cursor-not-allowed opacity-60"
             )}
         >
-            <div className="flex items-center">
-                <div className={cn("p-2 rounded-md mr-4", color)}>
-                    <Icon className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <p className="text-2xl font-bold">{value}</p>
-                </div>
-            </div>
+            <Icon className={cn("h-4 w-4", color)} />
+            <span className="text-sm font-semibold">{value}</span>
+            <span className="text-sm text-muted-foreground sr-only">{title}</span>
         </div>
     );
 }
@@ -571,33 +565,31 @@ function DueDateSummary({ tasks, onTaskClick }) {
     };
 
     return (
-        <div className="mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DueDateWidget
-                    title="Past Due"
-                    value={pastDue.length}
-                    icon={AlertTriangle}
-                    color="bg-red-500"
-                    onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
-                    disabled={pastDue.length === 0}
-                />
-                <DueDateWidget
-                    title="Due Today"
-                    value={dueToday.length}
-                    icon={Clock}
-                    color="bg-amber-500"
-                    onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
-                    disabled={dueToday.length === 0}
-                />
-                <DueDateWidget
-                    title="Due this Week"
-                    value={dueThisWeek.length}
-                    icon={Calendar}
-                    color="bg-blue-500"
-                    onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
-                    disabled={dueThisWeek.length === 0}
-                />
-            </div>
+        <div className="flex items-center gap-4">
+            <DueDateWidget
+                title="Past Due"
+                value={pastDue.length}
+                icon={AlertTriangle}
+                color="text-red-500"
+                onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
+                disabled={pastDue.length === 0}
+            />
+            <DueDateWidget
+                title="Due Today"
+                value={dueToday.length}
+                icon={Clock}
+                color="text-amber-500"
+                onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
+                disabled={dueToday.length === 0}
+            />
+            <DueDateWidget
+                title="Due this Week"
+                value={dueThisWeek.length}
+                icon={Calendar}
+                color="text-blue-500"
+                onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
+                disabled={dueThisWeek.length === 0}
+            />
             <DueDateSummaryModal 
                 isOpen={modalData.isOpen}
                 onClose={handleCloseModal}
@@ -796,8 +788,11 @@ function KanbanPageContent() {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
-          <h1 className="text-2xl font-bold">KanbanFlow</h1>
+        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">KanbanFlow</h1>
+            <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
+          </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -823,25 +818,20 @@ function KanbanPageContent() {
           </div>
         </header>
         
-        <main className="flex-grow p-4 flex flex-col overflow-hidden">
-          <div className="flex-shrink-0">
-              <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
-          </div>
-          <div className="flex-grow flex gap-6 overflow-x-auto pt-4">
-              {columns.map((status) => (
-                <KanbanColumn
-                  key={status}
-                  id={status}
-                  title={status}
-                  tasks={tasks.filter((task) => task.status === status)}
-                  onEditClick={handleOpenModal}
-                  onCardClick={handleCardClick}
-                  expandedTaskId={expandedTaskId}
-                  settings={settings}
-                  highlightedTaskId={highlightedTaskId}
-                />
-              ))}
-          </div>
+        <main className="flex-grow p-4 flex gap-6 overflow-x-auto pt-4">
+          {columns.map((status) => (
+            <KanbanColumn
+              key={status}
+              id={status}
+              title={status}
+              tasks={tasks.filter((task) => task.status === status)}
+              onEditClick={handleOpenModal}
+              onCardClick={handleCardClick}
+              expandedTaskId={expandedTaskId}
+              settings={settings}
+              highlightedTaskId={highlightedTaskId}
+            />
+          ))}
         </main>
 
         <CompletionZone isDragging={!!activeId} />
@@ -883,5 +873,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    
