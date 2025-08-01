@@ -269,60 +269,69 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     };
 
     const isEditing = !!task?.id;
+    const isSaveDisabled = !task?.taskid;
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Task' : 'Add Task'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="py-4 space-y-4">
               {isEditing && (
                   <div className="text-sm text-muted-foreground">
                       <p>Date Started: {formatDate(task.date)}</p>
                   </div>
               )}
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="taskid" className="text-right">Task ID</Label>
-                  <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="desc" className="text-right">Description</Label>
-                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="remarks" className="text-right">Remarks</Label>
-                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} className="col-span-3" />
+              
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="taskid">Task ID</Label>
+                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="dueDate">Due Date</Label>
+                    <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} />
+                 </div>
               </div>
               
-               <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dueDate" className="text-right">Due Date</Label>
-                  <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} className="col-span-3" />
+              <div className="space-y-2">
+                  <Label htmlFor="desc">Description</Label>
+                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="status" className="text-right">Status</Label>
-                   <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
-                       {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-                   </select>
+
+              <div className="space-y-2">
+                  <Label htmlFor="remarks">Remarks</Label>
+                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} />
               </div>
-               <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="subStatus" className="text-right">Sub-Status</Label>
-                  <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
-                        <option value="">None</option>
-                       {settings.subStatuses?.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
-                   </select>
+              
+               <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                       <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
+                           {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
+                       </select>
+                    </div>
+                   <div className="space-y-2">
+                      <Label htmlFor="subStatus">Sub-Status</Label>
+                      <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
+                            <option value="">None</option>
+                           {settings.subStatuses?.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
+                       </select>
+                   </div>
               </div>
-               <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="importance" className="text-right">Importance</Label>
-                   <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
+               <div className="space-y-2">
+                  <Label htmlFor="importance">Importance</Label>
+                   <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
                         <option value="">None</option>
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
               </div>
+
               {isEditing && task.completionDate && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="completionDate" className="text-right">Completion</Label>
-                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="col-span-3 bg-muted/50" />
+                <div className="space-y-2">
+                  <Label htmlFor="completionDate">Completion</Label>
+                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50" />
               </div>
               )}
           </div>
@@ -330,9 +339,10 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
             {isEditing && (
                 <Button variant="destructive" onClick={() => onDelete(task.id)}>Delete</Button>
             )}
+            {!isEditing && <div />}
             <div>
               <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button onClick={onSave}>Save changes</Button>
+              <Button onClick={onSave} disabled={isSaveDisabled}>Save changes</Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -423,7 +433,7 @@ export default function KanbanPage() {
   };
   
   const handleSaveTask = async () => {
-      if (!selectedTask) return;
+      if (!selectedTask || !selectedTask.taskid) return;
       const taskToSave = { ...selectedTask };
 
       if (taskToSave.id) {
