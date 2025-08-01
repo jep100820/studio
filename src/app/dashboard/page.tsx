@@ -96,13 +96,13 @@ function TaskCompletionTable({ tasks }) {
     }, [tasks]);
 
     return (
-        <Card>
+        <Card className="flex-grow flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Productivity</CardTitle>
                 <CardDescription>Tasks completed per day (last 14 days).</CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="h-96 w-full overflow-y-auto">
+            <CardContent className="flex-grow flex flex-col min-h-0">
+                <div className="flex-grow w-full overflow-y-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -140,24 +140,22 @@ function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
     return (
-       <Card>
+       <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Active Task Distribution</CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className="h-48 w-full">
-                    <ResponsiveContainer>
-                        <PieChart>
-                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={60} fill="#8884d8" paddingAngle={5}>
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend iconSize={10} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend iconSize={10} />
+                    </PieChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     );
@@ -176,27 +174,25 @@ function TaskPriorityChart({ tasks }) {
     }, [tasks]);
 
     return (
-         <Card>
+         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Completed by Priority</CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className="h-48 w-full">
-                    <ResponsiveContainer>
-                        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                            <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
-                                 {data.map((entry, index) => {
-                                    const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
-                                    return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
-                                })}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
+                             {data.map((entry, index) => {
+                                const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
+                                return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
+                            })}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     );
@@ -422,15 +418,15 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
-                    <Tabs defaultValue="status">
+                    <Tabs defaultValue="status" className="h-full flex flex-col">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="status">
+                        <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
                         </TabsContent>
-                        <TabsContent value="priority">
+                        <TabsContent value="priority" className="flex-grow">
                             <TaskPriorityChart tasks={completedTasks} />
                         </TabsContent>
                     </Tabs>
