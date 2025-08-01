@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -38,10 +38,12 @@ const formatDate = (timestamp) => {
         date = timestamp;
     } else if (typeof timestamp === 'number') {
         date = new Date(timestamp * 1000);
-    }
-     else {
+    } else {
       return '';
     }
+    
+    if (!isValid(date)) return '';
+    
     return format(date, 'MMM d, yyyy');
 };
 
@@ -53,10 +55,13 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
-            .filter(task => task.completionDate)
+            .filter(task => task.completionDate && typeof task.completionDate === 'number')
             .reduce((acc, task) => {
-                const day = format(new Date(task.completionDate * 1000), 'yyyy-MM-dd');
-                acc[day] = (acc[day] || 0) + 1;
+                const date = new Date(task.completionDate * 1000);
+                if (isValid(date)) {
+                    const day = format(date, 'yyyy-MM-dd');
+                    acc[day] = (acc[day] || 0) + 1;
+                }
                 return acc;
             }, {});
 
@@ -211,18 +216,38 @@ function CompletedTasksList({ tasks }) {
 function StatsDisplay({ tasks, completedTasks }) {
     const stats = useMemo(() => {
         const now = new Date();
-        const overdueTasks = tasks.filter(t => t.status !== 'Completed' && t.dueDate && new Date(t.dueDate * 1000) < now).length;
+        const overdueTasks = tasks.filter(t => {
+            if (t.status === 'Completed' || !t.dueDate || typeof t.dueDate !== 'number') return false;
+            const dueDate = new Date(t.dueDate * 1000);
+            return isValid(dueDate) && dueDate < now;
+        }).length;
         
         const completionTimes = completedTasks
-            .filter(t => t.date && t.completionDate)
-            .map(t => differenceInDays(new Date(t.completionDate * 1000), new Date(t.date * 1000)));
+            .filter(t => t.date && typeof t.date === 'number' && t.completionDate && typeof t.completionDate === 'number')
+            .map(t => {
+                const startDate = new Date(t.date * 1000);
+                const completionDate = new Date(t.completionDate * 1000);
+                if (isValid(startDate) && isValid(completionDate)) {
+                    return differenceInDays(completionDate, startDate);
+                }
+                return null;
+            }).filter(d => d !== null);
         
         const avgCompletionTime = completionTimes.length > 0
             ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
             : 0;
             
-        const completedLast7Days = completedTasks.filter(t => t.completionDate && differenceInDays(now, new Date(t.completionDate * 1000)) <= 7).length;
-        const completedLast30Days = completedTasks.filter(t => t.completionDate && differenceInDays(now, new Date(t.completionDate * 1000)) <= 30).length;
+        const completedLast7Days = completedTasks.filter(t => {
+            if (!t.completionDate || typeof t.completionDate !== 'number') return false;
+            const completionDate = new Date(t.completionDate * 1000);
+            return isValid(completionDate) && differenceInDays(now, completionDate) <= 7;
+        }).length;
+
+        const completedLast30Days = completedTasks.filter(t => {
+            if (!t.completionDate || typeof t.completionDate !== 'number') return false;
+            const completionDate = new Date(t.completionDate * 1000);
+            return isValid(completionDate) && differenceInDays(now, completionDate) <= 30;
+        }).length;
 
         return {
             totalCompleted: completedTasks.length,
