@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, writeBatch, query } from "firebase/firestore";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, writeBatch, query, addDoc } from "firebase/firestore";
 import { startOfDay, startOfWeek, endOfWeek, isSameDay, format as formatDateFns } from 'date-fns';
 
 // --- Your Firebase Configuration ---
@@ -91,17 +91,11 @@ export default function Home() {
         const loadInitialData = async () => {
             setIsLoading(true);
             try {
-                // First, fetch or create settings
                 const settingsSnapshot = await getDoc(settingsDoc);
-                let currentSettings = defaultSettings;
                 if (!settingsSnapshot.exists()) {
                     await setDoc(settingsDoc, defaultSettings);
-                } else {
-                    currentSettings = settingsSnapshot.data() as any;
                 }
-                setSettings(currentSettings);
-
-                // Set up listeners after settings are confirmed
+                
                 const settingsUnsubscribe = onSnapshot(settingsDoc, (doc) => {
                     setSettings(doc.data() || defaultSettings);
                 });
@@ -109,9 +103,8 @@ export default function Home() {
                 const tasksUnsubscribe = onSnapshot(query(tasksCollection), (snapshot) => {
                     const tasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                     setAllTasks(tasks);
+                    setIsLoading(false);
                 });
-                
-                setIsLoading(false);
                 
                 return () => {
                     settingsUnsubscribe();
@@ -126,9 +119,6 @@ export default function Home() {
 
         loadInitialData();
     }, []);
-
-
-    const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     if (!isClient || isLoading || !settings) {
         return <div id="loader">Loading Application...</div>;
@@ -189,8 +179,13 @@ export default function Home() {
         }
 
         try {
-            const docRef = id ? doc(db, 'tasks', id) : doc(tasksCollection);
-            await setDoc(docRef, taskData);
+            if (id) {
+                const docRef = doc(db, 'tasks', id);
+                await setDoc(docRef, taskData, { merge: true });
+            } else {
+                const docRef = await addDoc(tasksCollection, taskData);
+                await setDoc(docRef, { id: docRef.id }, { merge: true }); // Add the ID to the document itself
+            }
             closeTaskModal();
         } catch (error) {
             console.error("Error saving task:", error);
@@ -217,7 +212,7 @@ export default function Home() {
         const task = allTasks.find(t => t.id === taskId);
         
         if (task && task.status !== newStatus) {
-            const updatedTask: any = { ...task, status: newStatus };
+            const updatedTask: any = { status: newStatus };
             if (newStatus.toLowerCase() === 'done' && !task.completionDate) {
                 updatedTask.completionDate = new Date().toISOString();
             }
