@@ -421,9 +421,19 @@ export default function DashboardPage() {
                     <TaskCompletionTable tasks={completedTasks} />
                 </div>
                 
-                <div className="lg:col-span-5 flex flex-col gap-6 lg:gap-8 min-h-0">
-                    <TaskStatusChart tasks={tasks} />
-                    <TaskPriorityChart tasks={completedTasks} />
+                <div className="lg:col-span-5 flex flex-col min-h-0">
+                    <Tabs defaultValue="status">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="status">Task Status</TabsTrigger>
+                            <TabsTrigger value="priority">Task Priority</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="status">
+                            <TaskStatusChart tasks={tasks} />
+                        </TabsContent>
+                        <TabsContent value="priority">
+                            <TaskPriorityChart tasks={completedTasks} />
+                        </TabsContent>
+                    </Tabs>
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
