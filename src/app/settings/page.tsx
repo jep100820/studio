@@ -157,7 +157,8 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
     );
 }
 
-function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
+function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, startOpen = false }) {
+    const [isOpen, setIsOpen] = useState(startOpen);
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -212,38 +213,42 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
                 <CardTitle>{title}</CardTitle>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
             </CardHeader>
-            <CardContent>
-                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-4">
-                           {displayedItems?.map((item, index) => (
-                                <SortableItem
-                                    key={item.name}
-                                    id={item.name}
-                                    item={item}
-                                    onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
-                                    onRemove={() => handleRemoveItem(index)}
-                                    hasSubStatuses={hasSubStatuses}
-                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                </DndContext>
-                <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New
-                </Button>
-            </CardContent>
+            {isOpen && (
+                <CardContent>
+                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-4">
+                               {displayedItems?.map((item, index) => (
+                                    <SortableItem
+                                        key={item.name}
+                                        id={item.name}
+                                        item={item}
+                                        onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
+                                        onRemove={() => handleRemoveItem(index)}
+                                        hasSubStatuses={hasSubStatuses}
+                                        onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                    <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New
+                    </Button>
+                </CardContent>
+            )}
         </Card>
     );
 }
 
 function ImportExportCard() {
     const importFileRef = useRef(null);
+    const [isOpen, setIsOpen] = useState(false);
 
     const handleExport = async () => {
         const tasksQuery = query(collection(db, 'tasks'));
@@ -324,20 +329,23 @@ function ImportExportCard() {
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
                 <CardTitle>Data Management</CardTitle>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
             </CardHeader>
-            <CardContent className="flex items-center gap-4">
-                 <input type="file" ref={importFileRef} onChange={handleImport} accept=".json" style={{ display: 'none' }} />
-                <Button onClick={() => importFileRef.current?.click()} variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import JSON
-                </Button>
-                <Button onClick={handleExport} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export JSON
-                </Button>
-            </CardContent>
+            {isOpen && (
+                <CardContent className="flex items-center gap-4">
+                     <input type="file" ref={importFileRef} onChange={handleImport} accept=".json" style={{ display: 'none' }} />
+                    <Button onClick={() => importFileRef.current?.click()} variant="outline">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import JSON
+                    </Button>
+                    <Button onClick={handleExport} variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export JSON
+                    </Button>
+                </CardContent>
+            )}
         </Card>
     );
 }
@@ -434,7 +442,7 @@ export default function SettingsPage() {
                     </Link>
                 </div>
             </header>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
                 <SettingsCard
                     title="Workflow Statuses"
                     items={settings?.workflowCategories}
@@ -442,24 +450,23 @@ export default function SettingsPage() {
                     onAddItem={handleAddNewItem}
                     fieldName="workflowCategories"
                     hasSubStatuses={true}
+                    startOpen={true}
                 />
-                <div className="space-y-6">
-                    <SettingsCard
-                        title="Importance Levels"
-                        items={settings?.importanceLevels}
-                        onUpdate={handleSettingsUpdate}
-                        onAddItem={handleAddNewItem}
-                        fieldName="importanceLevels"
-                    />
-                     <SettingsCard
-                        title="Bid Origins"
-                        items={settings?.bidOrigins}
-                        onUpdate={handleSettingsUpdate}
-                        onAddItem={handleAddNewItem}
-                        fieldName="bidOrigins"
-                    />
-                    <ImportExportCard />
-                </div>
+                <SettingsCard
+                    title="Importance Levels"
+                    items={settings?.importanceLevels}
+                    onUpdate={handleSettingsUpdate}
+                    onAddItem={handleAddNewItem}
+                    fieldName="importanceLevels"
+                />
+                 <SettingsCard
+                    title="Bid Origins"
+                    items={settings?.bidOrigins}
+                    onUpdate={handleSettingsUpdate}
+                    onAddItem={handleAddNewItem}
+                    fieldName="bidOrigins"
+                />
+                <ImportExportCard />
             </div>
         </div>
     );
