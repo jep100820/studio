@@ -405,8 +405,9 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 overflow-y-auto">
                 {/* Left Column (1/3 width) */}
-                <div className="flex flex-col min-h-0">
-                    <CompletedTasksList tasks={completedTasks} />
+                 <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
+                    <TaskCompletionTable tasks={completedTasks} />
                 </div>
                 
                 {/* Middle Column (1/3 width) */}
@@ -416,9 +417,8 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Right Column (1/3 width) */}
-                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
-                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
-                    <TaskCompletionTable tasks={completedTasks} />
+                <div className="flex flex-col min-h-0">
+                    <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
         </div>
