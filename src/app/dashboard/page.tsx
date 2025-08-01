@@ -316,8 +316,6 @@ export default function DashboardPage() {
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => {
                 const data = doc.data();
-                // Firestore Timestamps are already serializable when using onSnapshot with Next.js app router.
-                // No special handling needed here anymore.
                 return { ...data, id: doc.id };
             });
             setTasks(fetchedTasks);
@@ -344,48 +342,48 @@ export default function DashboardPage() {
     }
     
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8 overflow-y-auto">
-            <header className="flex-shrink-0 flex justify-between items-center mb-6">
+        <div className="flex flex-col h-screen bg-background text-foreground">
+            <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
                 <h1 className="text-2xl font-bold">Dashboard</h1>
                 <Link href="/">
                     <Button variant="outline">Back to Board</Button>
                 </Link>
             </header>
-            <main className="flex-grow flex flex-col gap-6">
-                <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
-                    <div className="lg:col-span-2">
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Analytics</CardTitle>
-                                <CardDescription>Visual summary of your project performance.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Tabs defaultValue="productivity">
-                                    <TabsList className="grid w-full grid-cols-3">
-                                        <TabsTrigger value="productivity">Productivity</TabsTrigger>
-                                        <TabsTrigger value="distribution">Distribution</TabsTrigger>
-                                        <TabsTrigger value="prioritization">Prioritization</TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="productivity" className="pt-4">
-                                        <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
-                                        <TaskCompletionChart tasks={completedTasks} />
-                                    </TabsContent>
-                                    <TabsContent value="distribution" className="pt-4">
-                                         <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
-                                         <TaskStatusChart tasks={tasks} />
-                                    </TabsContent>
-                                     <TabsContent value="prioritization" className="pt-4">
-                                        <h4 className="text-md font-semibold mb-4 text-center">Completed Tasks by Priority</h4>
-                                        <TaskPriorityChart tasks={completedTasks} />
-                                    </TabsContent>
-                                </Tabs>
-                            </CardContent>
-                        </Card>
-                    </div>
-                    <div className="lg:col-span-1 flex flex-col min-h-0">
-                        <CompletedTasksList tasks={completedTasks} />
-                    </div>
+            <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-hidden">
+                {/* Left Column */}
+                <div className="flex flex-col gap-6 lg:gap-8 overflow-y-auto">
+                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Analytics</CardTitle>
+                            <CardDescription>Visual summary of your project performance.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Tabs defaultValue="productivity">
+                                <TabsList className="grid w-full grid-cols-3">
+                                    <TabsTrigger value="productivity">Productivity</TabsTrigger>
+                                    <TabsTrigger value="distribution">Distribution</TabsTrigger>
+                                    <TabsTrigger value="prioritization">Prioritization</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="productivity" className="pt-4">
+                                    <h4 className="text-md font-semibold mb-4 text-center">Tasks Completed Per Day (Last 14 Days)</h4>
+                                    <TaskCompletionChart tasks={completedTasks} />
+                                </TabsContent>
+                                <TabsContent value="distribution" className="pt-4">
+                                     <h4 className="text-md font-semibold mb-4 text-center">Active Task Distribution</h4>
+                                     <TaskStatusChart tasks={tasks} />
+                                </TabsContent>
+                                 <TabsContent value="prioritization" className="pt-4">
+                                    <h4 className="text-md font-semibold mb-4 text-center">Completed Tasks by Priority</h4>
+                                    <TaskPriorityChart tasks={completedTasks} />
+                                </TabsContent>
+                            </Tabs>
+                        </CardContent>
+                    </Card>
+                </div>
+                {/* Right Column */}
+                <div className="flex flex-col min-h-0">
+                    <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
         </div>
