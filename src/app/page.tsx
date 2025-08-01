@@ -34,12 +34,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, Upload, Download } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Papa from 'papaparse';
 
 
 // Your web app's Firebase configuration
@@ -459,7 +458,6 @@ function KanbanPageContent() {
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const importFileRef = useRef(null);
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -614,79 +612,6 @@ function KanbanPageContent() {
       }
   };
 
-    const handleExport = async () => {
-        const tasksQuery = query(collection(db, 'tasks'));
-        const querySnapshot = await getDocs(tasksQuery);
-        const tasksToExport = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            // Ensure dates are formatted consistently for export
-            return {
-                ...data,
-                date: formatDate(data.date, 'yyyy-MM-dd'),
-                dueDate: formatDate(data.dueDate, 'yyyy-MM-dd'),
-                completionDate: formatDate(data.completionDate, 'yyyy-MM-dd'),
-            };
-        });
-
-        const csv = Papa.unparse(tasksToExport);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.setAttribute('download', 'tasks.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const handleImport = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: async (results) => {
-                const importedTasks = results.data;
-                const batch = writeBatch(db);
-
-                for (const task of importedTasks) {
-                    const taskData = {
-                        ...task,
-                        date: parseDateString(task.date),
-                        dueDate: parseDateString(task.dueDate),
-                        completionDate: parseDateString(task.completionDate),
-                    };
-
-                    // Check if a task with this taskid already exists
-                    const tasksRef = collection(db, 'tasks');
-                    const q = query(tasksRef, where("taskid", "==", task.taskid));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        // Update existing task
-                        const existingDoc = querySnapshot.docs[0];
-                        batch.update(existingDoc.ref, taskData);
-                    } else {
-                        // Add new task
-                        const newDocRef = doc(collection(db, 'tasks'));
-                        batch.set(newDocRef, taskData);
-                    }
-                }
-
-                await batch.commit();
-                alert('Import complete!');
-                // Reset file input
-                if(importFileRef.current) {
-                    importFileRef.current.value = '';
-                }
-            },
-            error: (error) => {
-                console.error('Error parsing CSV:', error);
-                alert('Error importing file. Please check the console for details.');
-            }
-        });
-    };
-
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
   }, [settings.workflowCategories]);
@@ -707,15 +632,6 @@ function KanbanPageContent() {
         <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
           <h1 className="text-2xl font-bold">KanbanFlow</h1>
           <div className="flex items-center gap-2">
-            <input type="file" ref={importFileRef} onChange={handleImport} accept=".csv" style={{ display: 'none' }} />
-            <Button onClick={() => importFileRef.current?.click()} variant="outline" size="sm">
-                <Upload className="h-4 w-4 mr-2" />
-                Import CSV
-            </Button>
-            <Button onClick={handleExport} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-            </Button>
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task

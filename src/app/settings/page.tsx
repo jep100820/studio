@@ -2,20 +2,21 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, updateDoc, getDoc, collection, getDocs, writeBatch, query, where, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import isEqual from 'lodash.isequal';
+import { format, parseISO, isValid } from 'date-fns';
 
 
 // Your web app's Firebase configuration
@@ -31,6 +32,17 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// A more robust date parser for import
+const parseDateString = (dateString) => {
+    if (!dateString) return null;
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const date = parseISO(dateString);
+        return isValid(date) ? Timestamp.fromDate(date) : null;
+    }
+    const date = new Date(dateString); // General fallback
+    return isValid(date) ? Timestamp.fromDate(date) : null;
+};
 
 
 function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
@@ -230,6 +242,106 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
     );
 }
 
+function ImportExportCard() {
+    const importFileRef = useRef(null);
+
+    const handleExport = async () => {
+        const tasksQuery = query(collection(db, 'tasks'));
+        const querySnapshot = await getDocs(tasksQuery);
+        const tasksToExport = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Convert Timestamps to ISO strings for JSON
+            const convertedData = { ...data };
+            for (const key in convertedData) {
+                if (convertedData[key] instanceof Timestamp) {
+                    convertedData[key] = format(convertedData[key].toDate(), 'yyyy-MM-dd');
+                }
+            }
+            delete convertedData.id; // Don't export the Firestore document ID
+            return convertedData;
+        });
+
+        const jsonString = JSON.stringify(tasksToExport, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', 'tasks.json');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleImport = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const importedTasks = JSON.parse(e.target.result);
+                if (!Array.isArray(importedTasks)) {
+                    alert('Error: JSON file should contain an array of tasks.');
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                for (const task of importedTasks) {
+                    if (!task.taskid) continue; // Skip tasks without a taskid
+
+                    const taskData = {
+                        ...task,
+                        date: parseDateString(task.date),
+                        dueDate: parseDateString(task.dueDate),
+                        completionDate: parseDateString(task.completionDate),
+                    };
+
+                    const tasksRef = collection(db, 'tasks');
+                    const q = query(tasksRef, where("taskid", "==", task.taskid));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        const existingDoc = querySnapshot.docs[0];
+                        batch.update(existingDoc.ref, taskData);
+                    } else {
+                        const newDocRef = doc(collection(db, 'tasks'));
+                        batch.set(newDocRef, taskData);
+                    }
+                }
+
+                await batch.commit();
+                alert('Import complete!');
+            } catch (error) {
+                console.error("Error parsing or importing JSON:", error);
+                alert('Error importing file. Please ensure it is a valid JSON file. Check console for details.');
+            } finally {
+                if(importFileRef.current) {
+                    importFileRef.current.value = '';
+                }
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Data Management</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center gap-4">
+                 <input type="file" ref={importFileRef} onChange={handleImport} accept=".json" style={{ display: 'none' }} />
+                <Button onClick={() => importFileRef.current?.click()} variant="outline">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import JSON
+                </Button>
+                <Button onClick={handleExport} variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export JSON
+                </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null); // Local, editable settings
@@ -346,6 +458,7 @@ export default function SettingsPage() {
                         onAddItem={handleAddNewItem}
                         fieldName="bidOrigins"
                     />
+                    <ImportExportCard />
                 </div>
             </div>
         </div>
