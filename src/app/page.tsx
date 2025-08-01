@@ -501,12 +501,14 @@ export default function KanbanPage() {
     if (!taskToUpdate) return;
 
     if (over.id === 'completion-zone') {
-        const updatedTask = {
-            ...taskToUpdate,
-            status: 'Completed',
-            completionDate: Timestamp.now(),
-        };
-        handleOpenModal(updatedTask);
+        if (window.confirm('Are you sure you want to complete this task?')) {
+            const updatedTask = {
+                ...taskToUpdate,
+                status: 'Completed',
+                completionDate: Timestamp.now(),
+            };
+            handleOpenModal(updatedTask);
+        }
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
         const newStatus = over.id;
         const targetCategory = settings.workflowCategories.find(cat => cat.name === newStatus);
@@ -618,19 +620,21 @@ export default function KanbanPage() {
           </div>
         </header>
 
-        <main className="flex-grow flex gap-6 overflow-x-auto p-4 w-full">
-          {columns.map((status) => (
-            <KanbanColumn
-              key={status}
-              id={status}
-              title={status}
-              tasks={tasks.filter((task) => task.status === status)}
-              onEditClick={handleOpenModal}
-              onCardClick={handleCardClick}
-              expandedTaskId={expandedTaskId}
-              settings={settings}
-            />
-          ))}
+        <main className="flex-grow p-4 overflow-x-auto">
+          <div className="flex gap-6 h-full">
+            {columns.map((status) => (
+              <KanbanColumn
+                key={status}
+                id={status}
+                title={status}
+                tasks={tasks.filter((task) => task.status === status)}
+                onEditClick={handleOpenModal}
+                onCardClick={handleCardClick}
+                expandedTaskId={expandedTaskId}
+                settings={settings}
+              />
+            ))}
+          </div>
         </main>
         <CompletionZone isDragging={!!activeId} />
       </div>
