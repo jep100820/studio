@@ -2,16 +2,20 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, ChevronDown } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -27,9 +31,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
-    const [isOpen, setIsOpen] = useState(false);
 
+function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     const handleAdd = () => {
         const newSubStatuses = [...subStatuses, { name: 'New Sub-Status' }];
         onUpdate(parentIndex, newSubStatuses);
@@ -47,69 +50,127 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     };
 
     return (
-        <div className="mt-4 pt-4 border-t">
-            <Button 
-                onClick={() => setIsOpen(!isOpen)} 
-                variant="ghost" 
-                className="w-full justify-between"
-            >
-                Manage Sub-Statuses ({subStatuses?.length || 0})
-                <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
-            </Button>
-            {isOpen && (
-                <div className="p-2 mt-2 space-y-3 bg-muted/50 rounded-lg">
-                    <div className="space-y-2">
-                        {subStatuses?.map((sub, subIndex) => (
-                            <div key={subIndex} className="flex items-center gap-2 p-2 bg-background rounded-md shadow-sm">
-                                <Input
-                                    value={sub.name}
-                                    onChange={(e) => handleChange(subIndex, e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
+        <div className="p-2 mt-2 space-y-3 bg-muted/50 rounded-lg">
+            <div className="space-y-2">
+                {subStatuses?.map((sub, subIndex) => (
+                    <div key={subIndex} className="flex items-center gap-2 p-2 bg-background rounded-md shadow-sm">
+                        <Input
+                            value={sub.name}
+                            onChange={(e) => handleChange(subIndex, e.target.value)}
+                            className="flex-grow"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)}>
+                            <X className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button onClick={handleAdd} variant="outline" size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Sub-Status
-                    </Button>
-                </div>
-            )}
+                ))}
+            </div>
+            <Button onClick={handleAdd} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sub-Status
+            </Button>
         </div>
     );
 }
 
 
-function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
-    const handleItemChange = (index, value) => {
-        const newItems = [...items];
-        newItems[index].name = value;
-        onUpdate(fieldName, newItems);
+function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses, onSubStatusUpdate }) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const [isOpen, setIsOpen] = useState(false);
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
     };
 
-    const handleColorChange = (index, value) => {
+    const handleItemChange = (path, value) => {
+        const newItem = { ...item, [path]: value };
+        onUpdate(id, newItem);
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="p-4 rounded-lg border bg-card mb-4">
+            <div className="flex items-center gap-2">
+                <div {...attributes} {...listeners} className="cursor-grab p-2">
+                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-grow font-medium">{item.name}</div>
+                <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
+                     <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+                </Button>
+            </div>
+             {isOpen && (
+                <div className="mt-4 pt-4 border-t space-y-4">
+                     <div className="flex items-center gap-2">
+                        <Input
+                            value={item.name}
+                            onChange={(e) => handleItemChange('name', e.target.value)}
+                            className="flex-grow"
+                        />
+                        {item.hasOwnProperty('color') && (
+                            <div className="relative">
+                                <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="color"
+                                    value={item.color}
+                                    onChange={(e) => handleItemChange('color', e.target.value)}
+                                    className="w-16 pl-8 p-1"
+                                />
+                            </div>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    {hasSubStatuses && (
+                         <SubStatusManager
+                            parentIndex={id} // The ID here is the index in the original array
+                            subStatuses={item.subStatuses || []}
+                            onUpdate={onSubStatusUpdate}
+                        />
+                    )}
+                </div>
+             )}
+        </div>
+    );
+}
+
+function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const oldIndex = items.findIndex(item => item.name === active.id);
+            const newIndex = items.findIndex(item => item.name === over.id);
+            const newItems = arrayMove(items, oldIndex, newIndex);
+            onUpdate(fieldName, newItems);
+        }
+    };
+    
+    const handleItemUpdate = (index, newItem) => {
         const newItems = [...items];
-        newItems[index].color = value;
+        newItems[index] = newItem;
         onUpdate(fieldName, newItems);
     }
-
-    const handleRemoveItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
-        onUpdate(fieldName, newItems);
-    };
-
-    const handleAddItem = () => {
-        onAddItem(fieldName);
-    };
-
+    
     const handleSubStatusUpdate = (parentIndex, newSubStatuses) => {
         const newItems = [...items];
         newItems[parentIndex].subStatuses = newSubStatuses;
         onUpdate(fieldName, newItems);
     };
+
+    const handleRemoveItem = (index) => {
+        const newItems = items.filter((_, i) => i !== index);
+        onUpdate(fieldName, newItems);
+    };
+    
+    const itemIds = useMemo(() => items?.map(it => it.name) || [], [items]);
 
     return (
         <Card>
@@ -117,48 +178,32 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
                 <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {items?.map((item, index) => (
-                        <div key={index} className={cn("p-4 rounded-lg", hasSubStatuses ? "border bg-card" : "bg-card border")}>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    value={item.name}
-                                    onChange={(e) => handleItemChange(index, e.target.value)}
-                                    className="flex-grow"
+                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-4">
+                           {items?.map((item, index) => (
+                                <SortableItem
+                                    key={item.name}
+                                    id={item.name}
+                                    item={item}
+                                    onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
+                                    onRemove={() => handleRemoveItem(index)}
+                                    hasSubStatuses={hasSubStatuses}
+                                    onSubStatusUpdate={handleSubStatusUpdate}
                                 />
-                                {item.hasOwnProperty('color') && (
-                                    <div className="relative">
-                                         <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                         <Input
-                                            type="color"
-                                            value={item.color}
-                                            onChange={(e) => handleColorChange(index, e.target.value)}
-                                            className="w-16 pl-8 p-1"
-                                        />
-                                    </div>
-                                )}
-                                <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            {hasSubStatuses && (
-                                <SubStatusManager
-                                    parentIndex={index}
-                                    subStatuses={item.subStatuses || []}
-                                    onUpdate={handleSubStatusUpdate}
-                                />
-                            )}
+                            ))}
                         </div>
-                    ))}
-                </div>
-                <Button onClick={handleAddItem} variant="outline" size="sm" className="mt-4">
+                    </SortableContext>
+                </DndContext>
+                <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
                     Add New
                 </Button>
             </CardContent>
         </Card>
-    )
+    );
 }
+
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null);
@@ -183,6 +228,11 @@ export default function SettingsPage() {
     const handleSettingsUpdate = async (fieldName, updatedItems) => {
         if (!settings) return;
         const settingsRef = doc(db, 'settings', 'workflow');
+        // Ensure subStatuses are clean before update
+        if (fieldName === 'workflowCategories') {
+             updatedItems = updatedItems.map(item => ({ ...item, subStatuses: item.subStatuses || [] }));
+        }
+
         await updateDoc(settingsRef, {
             [fieldName]: updatedItems,
         });
@@ -190,7 +240,15 @@ export default function SettingsPage() {
     
     const handleAddNewItem = (fieldName) => {
         const currentItems = settings[fieldName] || [];
-        const newItem = { name: 'New Item' };
+        // Prevent adding new item with duplicate name
+        let i = 1;
+        let newItemName = 'New Item';
+        while (currentItems.some(item => item.name === newItemName)) {
+            newItemName = `New Item ${i}`;
+            i++;
+        }
+        
+        const newItem = { name: newItemName };
 
         if(fieldName === 'workflowCategories') {
             newItem.color = '#cccccc';

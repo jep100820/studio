@@ -18,7 +18,7 @@ import {
   updateDoc,
   Timestamp,
 } from 'firebase/firestore';
-import { DndContext, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core';
+import { DndContext, useDraggable, useDroppable, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
   Dialog,
   DialogContent,
@@ -173,7 +173,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
       <div className="flex-grow">
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
-              <span>Due: {formatDate(task.dueDate)}</span>
+              <span>Due Date: {formatDate(task.dueDate)}</span>
           </div>
 
           <div className="mt-2 flex items-center gap-2">
@@ -230,14 +230,14 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
   });
 
   return (
-    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 w-full md:w-1/4 flex-shrink-0">
-      <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center">
+    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 w-full md:w-80 flex-shrink-0 flex flex-col">
+      <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center flex-shrink-0">
         {title}
         <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-md flex items-center justify-center text-sm font-bold">
           {tasks.length}
         </span>
       </h2>
-      <div className="space-y-4">
+      <div className="flex-grow overflow-y-auto -mr-2 pr-2">
         {tasks.map((task) => (
             <TaskCard 
                 key={task.id} 
@@ -450,6 +450,14 @@ export default function KanbanPage() {
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   useEffect(() => {
     seedDatabase().then(() => {
@@ -587,9 +595,9 @@ export default function KanbanPage() {
   }
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-background text-foreground p-4">
-        <header className="flex justify-between items-center mb-6">
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex flex-col h-screen bg-background text-foreground">
+        <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
           <h1 className="text-2xl font-bold">KanbanFlow</h1>
           <div className="flex items-center gap-4">
             <Button onClick={() => handleOpenModal()} size="sm">
@@ -610,7 +618,7 @@ export default function KanbanPage() {
           </div>
         </header>
 
-        <main className="flex gap-6 overflow-x-auto pb-4">
+        <main className="flex-grow flex gap-6 overflow-x-auto p-4">
           {columns.map((status) => (
             <KanbanColumn
               key={status}
