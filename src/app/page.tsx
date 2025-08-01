@@ -94,20 +94,23 @@ const seedDatabase = async () => {
 
   if (!settingsSnap.exists()) {
     console.log('Settings not found, creating default settings...');
-    const workflowCategories = ['Not Started', 'In Progress', 'For Review', 'Approved for Submission', 'Completed'];
+    const workflowCategories = [
+      { name: 'Not Started', color: '#d1d5db', subStatuses: [] },
+      { name: 'In Progress', color: '#60a5fa', subStatuses: [] },
+      { name: 'For Review', color: '#facc15', subStatuses: [{ name: 'With Earl' }, { name: 'Pending Approval'}] },
+      { name: 'Approved for Submission', color: '#4ade80', subStatuses: [{name: 'On-Hold'}, {name: 'On Tray'}] },
+      { name: 'Completed', color: '#a78bfa', subStatuses: [] }
+    ];
     await setDoc(settingsRef, {
-      workflowCategories: workflowCategories.map(name => ({ name, color: '#d1d5db' })),
+      workflowCategories: workflowCategories,
       importanceLevels: [
         { name: 'High', color: '#ef4444' },
         { name: 'Medium', color: '#f59e0b' },
         { name: 'Low', color: '#10b981' },
       ],
       bidOrigins: [],
-      subStatuses: [],
     });
     console.log('Default settings created.');
-  } else {
-    console.log('Settings already exist.');
   }
 
   const tasksCollectionRef = collection(db, 'tasks');
@@ -199,7 +202,12 @@ function KanbanColumn({ id, title, tasks, onTaskClick, settings }) {
 
   return (
     <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 w-full md:w-1/4 flex-shrink-0">
-      <h2 className="text-lg font-semibold mb-4 text-foreground">{title} ({tasks.length})</h2>
+      <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center">
+        {title}
+        <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-md flex items-center justify-center text-sm font-bold">
+          {tasks.length}
+        </span>
+      </h2>
       <div className="space-y-4">
         {tasks.map((task) => (
             <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} settings={settings} />
@@ -268,6 +276,11 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         return '';
     };
 
+    const currentSubStatuses = useMemo(() => {
+        const category = settings.workflowCategories?.find(cat => cat.name === task?.status);
+        return category?.subStatuses || [];
+    }, [task?.status, settings.workflowCategories]);
+
     const isEditing = !!task?.id;
     const isSaveDisabled = !task?.taskid;
   
@@ -309,9 +322,9 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                     </div>
                    <div className="space-y-2">
                       <Label htmlFor="subStatus">Sub-Status</Label>
-                      <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
+                      <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input" disabled={currentSubStatuses.length === 0}>
                             <option value="">None</option>
-                           {settings.subStatuses?.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
+                           {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
                        </select>
                    </div>
               </div>
@@ -350,20 +363,67 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     );
 }
 
+function SubStatusModal({ isOpen, onClose, onSave, subStatuses }) {
+    const [selectedSubStatus, setSelectedSubStatus] = useState('');
+
+    useEffect(() => {
+        if (subStatuses.length > 0) {
+            setSelectedSubStatus(subStatuses[0].name);
+        }
+    }, [subStatuses]);
+
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Select Sub-Status</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="subStatusSelect">Sub-Status</Label>
+                    <select
+                        id="subStatusSelect"
+                        value={selectedSubStatus}
+                        onChange={(e) => setSelectedSubStatus(e.target.value)}
+                        className="w-full border rounded px-2 py-2 bg-input mt-2"
+                    >
+                        {subStatuses.map(sub => (
+                            <option key={sub.name} value={sub.name}>{sub.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button onClick={() => onSave(selectedSubStatus)}>Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function KanbanPage() {
   const [tasks, setTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], subStatuses: [] });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
 
+  const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
+  const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
+
   useEffect(() => {
     seedDatabase().then(() => {
         const settingsUnsub = onSnapshot(doc(db, 'settings', 'workflow'), (doc) => {
             if (doc.exists()) {
-                setSettings(doc.data());
+                const data = doc.data();
+                // Ensure subStatuses is an array for each category
+                if (data.workflowCategories) {
+                    data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, subStatuses: cat.subStatuses || [] }));
+                }
+                setSettings(data);
             }
             setIsLoading(false);
         });
@@ -391,24 +451,37 @@ export default function KanbanPage() {
 
     if (!over) return;
 
+    const taskToUpdate = tasks.find(t => t.id === active.id);
+    if (!taskToUpdate) return;
+
     if (over.id === 'completion-zone') {
-        const taskToComplete = tasks.find(t => t.id === active.id);
-        if (taskToComplete) {
-            const updatedTask = {
-                ...taskToComplete,
-                status: 'Completed',
-                completionDate: Timestamp.now(),
-            };
-            setSelectedTask(updatedTask);
-            setIsModalOpen(true);
-        }
-    } else if (active.id !== over.id) {
-        const taskToUpdate = tasks.find(t => t.id === active.id);
-        if (taskToUpdate && taskToUpdate.status !== over.id) {
+        const updatedTask = {
+            ...taskToUpdate,
+            status: 'Completed',
+            completionDate: Timestamp.now(),
+        };
+        setSelectedTask(updatedTask);
+        setIsModalOpen(true);
+    } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
+        const newStatus = over.id;
+        const targetCategory = settings.workflowCategories.find(cat => cat.name === newStatus);
+        
+        if (targetCategory?.subStatuses && targetCategory.subStatuses.length > 0) {
+            setSubStatusData({ task: taskToUpdate, newStatus, subStatuses: targetCategory.subStatuses });
+            setIsSubStatusModalOpen(true);
+        } else {
             const taskRef = doc(db, 'tasks', active.id);
-            await updateDoc(taskRef, { status: over.id });
+            await updateDoc(taskRef, { status: newStatus, subStatus: '' });
         }
     }
+  };
+
+  const handleSubStatusSave = async (selectedSubStatus) => {
+      const { task, newStatus } = subStatusData;
+      const taskRef = doc(db, 'tasks', task.id);
+      await updateDoc(taskRef, { status: newStatus, subStatus: selectedSubStatus });
+      setIsSubStatusModalOpen(false);
+      setSubStatusData({ task: null, newStatus: '', subStatuses: [] });
   };
   
   const handleOpenModal = (task = null) => {
@@ -435,6 +508,11 @@ export default function KanbanPage() {
   const handleSaveTask = async () => {
       if (!selectedTask || !selectedTask.taskid) return;
       const taskToSave = { ...selectedTask };
+      
+      const currentCategory = settings.workflowCategories.find(cat => cat.name === taskToSave.status);
+      if (!currentCategory?.subStatuses?.some(sub => sub.name === taskToSave.subStatus)) {
+          taskToSave.subStatus = '';
+      }
 
       if (taskToSave.id) {
           const docRef = doc(db, 'tasks', taskToSave.id);
@@ -514,6 +592,12 @@ export default function KanbanPage() {
         onDelete={handleDeleteTask}
         settings={settings}
        />
+        <SubStatusModal 
+            isOpen={isSubStatusModalOpen}
+            onClose={() => setIsSubStatusModalOpen(false)}
+            onSave={handleSubStatusSave}
+            subStatuses={subStatusData.subStatuses}
+        />
         <DragOverlay>
             {activeTask ? <TaskCard task={activeTask} settings={settings} onTaskClick={() => {}} /> : null}
         </DragOverlay>
