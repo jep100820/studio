@@ -130,11 +130,11 @@ function TaskCard({ task, onTaskClick }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 cursor-pointer flex items-start",
+        "bg-card text-card-foreground p-4 rounded-lg shadow-sm mb-4 flex items-start",
         isOverdue && "border-2 border-red-500"
       )}
     >
-      <div className="flex-grow" onClick={() => onTaskClick(task)} {...attributes} {...listeners} >
+      <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
         <p className="font-bold text-sm">{task.taskid}</p>
         <p className="text-xs text-muted-foreground mt-1">{task.desc}</p>
          {task.remarks && <p className="text-xs text-muted-foreground mt-1">Remarks: {task.remarks}</p>}
