@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays } from 'date-fns';
 import Link from 'next/link';
@@ -211,9 +211,9 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       }}
       style={{ ...style, backgroundColor: statusColor }}
       className={cn(
-        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300`,
+        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300 relative`,
         isOverdue && "border-2 border-red-500",
-        isHighlighted && "bg-accent",
+        isHighlighted && "ring-2 ring-offset-2 ring-primary ring-offset-background",
         textColor
       )}
        onClick={() => onCardClick(task.id)}
@@ -617,6 +617,7 @@ function KanbanPageContent() {
   const [activeId, setActiveId] = useState(null);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -734,7 +735,7 @@ function KanbanPageContent() {
   const handleSummaryTaskClick = (taskId) => {
     setHighlightedTaskId(taskId);
     setExpandedTaskId(taskId);
-    setTimeout(() => setHighlightedTaskId(null), 1500); // Highlight for 1.5 seconds
+    setTimeout(() => setHighlightedTaskId(null), 2500); // Highlight for 2.5 seconds
   };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
@@ -777,10 +778,23 @@ function KanbanPageContent() {
       }
   };
 
+    const filteredTasks = useMemo(() => {
+        if (!searchTerm) {
+            return tasks;
+        }
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return tasks.filter(task => 
+            (task.taskid?.toLowerCase().includes(lowercasedTerm)) ||
+            (task.desc?.toLowerCase().includes(lowercasedTerm)) ||
+            (task.remarks?.toLowerCase().includes(lowercasedTerm))
+        );
+    }, [tasks, searchTerm]);
+
+
   const sortedTasks = useMemo(() => {
         const importanceOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
         
-        return tasks.slice().sort((a, b) => {
+        return filteredTasks.slice().sort((a, b) => {
             // Sort by due date (ascending, nulls last)
             const dateA = toDate(a.dueDate);
             const dateB = toDate(b.dueDate);
@@ -799,7 +813,7 @@ function KanbanPageContent() {
             
             return 0;
         });
-    }, [tasks]);
+    }, [filteredTasks]);
 
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
@@ -818,12 +832,23 @@ function KanbanPageContent() {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-4">
+        <header className="flex-shrink-0 flex items-center justify-between p-4 border-b gap-4">
+          <div className="flex items-center gap-4 flex-shrink-0">
             <h1 className="text-2xl font-bold">KanbanFlow</h1>
             <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
           </div>
-          <div className="flex items-center gap-2">
+           <div className="flex-grow min-w-0 flex justify-center">
+                <div className="relative w-full max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by Task ID, Description, Remarks..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
@@ -904,3 +929,5 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
+    
