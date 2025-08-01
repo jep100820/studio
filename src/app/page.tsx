@@ -472,11 +472,18 @@ function SubStatusModal({ isOpen, onClose, onSave, subStatuses }) {
     );
 }
 
-function DueDateWidget({ title, value, icon: Icon, color, onClick }) {
+function DueDateWidget({ title, value, icon: Icon, color, onClick, disabled }) {
     return (
-        <div onClick={onClick} className="p-4 bg-card rounded-lg shadow-sm cursor-pointer hover:bg-muted transition-colors">
+        <div
+            onClick={!disabled ? onClick : undefined}
+            className={cn(
+                "p-4 bg-card rounded-lg shadow-sm transition-colors",
+                !disabled && "cursor-pointer hover:bg-muted",
+                disabled && "cursor-not-allowed opacity-60"
+            )}
+        >
             <div className="flex items-center">
-                <div className={`p-2 rounded-md mr-4 ${color}`}>
+                <div className={cn("p-2 rounded-md mr-4", color)}>
                     <Icon className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -549,7 +556,9 @@ function DueDateSummary({ tasks, onTaskClick }) {
     }, [tasks]);
 
     const handleWidgetClick = (title, tasks) => {
-        setModalData({ isOpen: true, title, tasks });
+        if (tasks.length > 0) {
+            setModalData({ isOpen: true, title, tasks });
+        }
     };
 
     const handleCloseModal = () => {
@@ -564,26 +573,29 @@ function DueDateSummary({ tasks, onTaskClick }) {
     return (
         <div className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DueDateWidget 
-                    title="Past Due" 
-                    value={pastDue.length} 
+                <DueDateWidget
+                    title="Past Due"
+                    value={pastDue.length}
                     icon={AlertTriangle}
                     color="bg-red-500"
                     onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
+                    disabled={pastDue.length === 0}
                 />
-                <DueDateWidget 
-                    title="Due Today" 
-                    value={dueToday.length} 
+                <DueDateWidget
+                    title="Due Today"
+                    value={dueToday.length}
                     icon={Clock}
                     color="bg-amber-500"
                     onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
+                    disabled={dueToday.length === 0}
                 />
-                <DueDateWidget 
-                    title="Due this Week" 
-                    value={dueThisWeek.length} 
+                <DueDateWidget
+                    title="Due this Week"
+                    value={dueThisWeek.length}
                     icon={Calendar}
                     color="bg-blue-500"
                     onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
+                    disabled={dueThisWeek.length === 0}
                 />
             </div>
             <DueDateSummaryModal 
