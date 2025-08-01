@@ -39,14 +39,17 @@ const formatDate = (timestamp) => {
     } else if (typeof timestamp === 'number') {
         date = new Date(timestamp * 1000);
     } else if (typeof timestamp === 'string') {
-        // Handle ISO strings or other string formats that Date.parse can handle
-        const parsedDate = new Date(timestamp);
+        const parsedDate = parseISO(timestamp);
         if (isValid(parsedDate)) {
             date = parsedDate;
         } else {
-            // Attempt to parse other formats if necessary, though this might not be needed
-            // For now, return empty if not a recognizable format.
-            return '';
+            // Fallback for other string formats if needed
+            const genericParsedDate = new Date(timestamp);
+            if(isValid(genericParsedDate)) {
+                date = genericParsedDate;
+            } else {
+                 return '';
+            }
         }
     } else {
       return '';
@@ -71,7 +74,7 @@ function TaskCompletionChart({ tasks }) {
                 if(typeof task.completionDate === 'number') {
                     date = new Date(task.completionDate * 1000);
                 } else if (typeof task.completionDate === 'string') {
-                    date = new Date(task.completionDate);
+                    date = parseISO(task.completionDate);
                 } else if (task.completionDate?.seconds) {
                     date = task.completionDate.toDate();
                 }
@@ -84,7 +87,7 @@ function TaskCompletionChart({ tasks }) {
             }, {});
 
         return last14Days.map(day => ({
-            date: format(new Date(day), 'MMM d'),
+            date: format(parseISO(day), 'MMM d'),
             completed: tasksPerDay[day] || 0,
         }));
     }, [tasks]);
@@ -242,7 +245,7 @@ function StatsDisplay({ tasks, completedTasks }) {
             } else if (t.dueDate?.seconds) {
                 dueDate = t.dueDate.toDate();
             } else if (typeof t.dueDate === 'string') {
-                dueDate = new Date(t.dueDate);
+                dueDate = parseISO(t.dueDate);
             }
             return isValid(dueDate) && dueDate < now;
         }).length;
@@ -253,11 +256,11 @@ function StatsDisplay({ tasks, completedTasks }) {
                  let startDate, completionDate;
                  if(typeof t.date === 'number') startDate = new Date(t.date * 1000);
                  else if (t.date?.seconds) startDate = t.date.toDate();
-                 else if(typeof t.date === 'string') startDate = new Date(t.date);
+                 else if(typeof t.date === 'string') startDate = parseISO(t.date);
 
                  if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
                  else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
-                 else if(typeof t.completionDate === 'string') completionDate = new Date(t.completionDate);
+                 else if(typeof t.completionDate === 'string') completionDate = parseISO(t.completionDate);
 
                 if (isValid(startDate) && isValid(completionDate)) {
                     return differenceInDays(completionDate, startDate);
@@ -275,7 +278,7 @@ function StatsDisplay({ tasks, completedTasks }) {
                 let completionDate;
                  if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
                  else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
-                 else if(typeof t.completionDate === 'string') completionDate = new Date(t.completionDate);
+                 else if(typeof t.completionDate === 'string') completionDate = parseISO(t.completionDate);
 
                 return isValid(completionDate) && differenceInDays(now, completionDate) <= days;
             }).length;
@@ -363,12 +366,12 @@ export default function DashboardPage() {
                  
                  if(typeof a.completionDate === 'number') dateA = new Date(a.completionDate * 1000);
                  else if (a.completionDate?.seconds) dateA = a.completionDate.toDate();
-                 else if(typeof a.completionDate === 'string') dateA = new Date(a.completionDate);
+                 else if(typeof a.completionDate === 'string') dateA = parseISO(a.completionDate);
                  else dateA = null;
 
                  if(typeof b.completionDate === 'number') dateB = new Date(b.completionDate * 1000);
                  else if (b.completionDate?.seconds) dateB = b.completionDate.toDate();
-                 else if(typeof b.completionDate === 'string') dateB = new Date(b.completionDate);
+                 else if(typeof b.completionDate === 'string') dateB = parseISO(b.completionDate);
                  else dateB = null;
 
                 if (!isValid(dateA)) return 1;
