@@ -120,17 +120,17 @@ function TaskStatusChart({ tasks }) {
             <CardHeader>
                 <CardTitle className="text-lg">Active Task Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow flex items-center">
-                <div className="w-full h-full flex items-center relative">
+            <CardContent className="flex-grow">
+                <div className="w-full h-full relative">
                     {totalValue > 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center w-3/4">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                              <div className="text-center">
                                 <p className="text-4xl font-bold text-foreground">{totalValue}</p>
                                 <p className="text-sm text-muted-foreground">Active Tasks</p>
                             </div>
                         </div>
                     )}
-                    <ResponsiveContainer width="75%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
@@ -151,11 +151,11 @@ function TaskStatusChart({ tasks }) {
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         </PieChart>
                     </ResponsiveContainer>
-                    <div className="w-25% flex flex-col justify-center space-y-2 pl-4">
+                    <div className="absolute top-0 right-0 p-2 space-y-2 bg-background/80 rounded-bl-lg">
                         {data.map((entry) => (
                              <div 
                                 key={entry.name}
-                                className="text-sm px-2 py-1 rounded-md"
+                                className="text-xs px-2 py-1 rounded-md"
                                 style={{ 
                                     backgroundColor: entry.fill,
                                     color: isColorLight(entry.fill) ? '#000' : '#fff'
