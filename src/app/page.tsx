@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -32,9 +31,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
+import Link from 'next/link';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -50,12 +50,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const importanceColors = {
-  High: 'bg-red-500',
-  Medium: 'bg-yellow-500',
-  Low: 'bg-green-500',
-};
-
 const parseDateString = (dateString) => {
   if (!dateString) return null;
   const parsedDate = parse(dateString, 'dd/MM/yyyy', new Date());
@@ -66,14 +60,11 @@ const formatDate = (timestamp) => {
   if (!timestamp) return '';
 
   let date;
-  if (timestamp.seconds) {
-    // Firestore Timestamp object
+  if (timestamp?.seconds) {
     date = new Date(timestamp.seconds * 1000);
   } else if (timestamp instanceof Date) {
-    // JavaScript Date object
     date = timestamp;
   } else if (typeof timestamp === 'string') {
-    // Date string
     date = new Date(timestamp);
   } else {
     return '';
@@ -101,6 +92,7 @@ const seedDatabase = async () => {
         { name: 'Low', color: '#10b981' },
       ],
       bidOrigins: [],
+      subStatuses: [],
     });
     console.log('Default settings created.');
   } else {
@@ -130,9 +122,9 @@ const seedDatabase = async () => {
 };
 
 
-function TaskCard({ task, onTaskClick }) {
+function TaskCard({ task, onTaskClick, settings }) {
   if (!task) {
-    return null; 
+    return null;
   }
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -147,6 +139,10 @@ function TaskCard({ task, onTaskClick }) {
     : undefined;
 
   const isOverdue = task.dueDate && task.dueDate.seconds && new Date(task.dueDate.seconds * 1000) < new Date() && task.status !== 'Completed';
+  
+  const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
+  const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
+
 
   return (
     <div
@@ -164,13 +160,18 @@ function TaskCard({ task, onTaskClick }) {
         <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
           <span>Date: {formatDate(task.date)}</span>
           <span>Due Date: {formatDate(task.dueDate)}</span>
-           {task.importance && (
+           {importance && (
             <div className="flex items-center">
-               <span className={cn("w-3 h-3 rounded-full mr-1", importanceColors[task.importance])}></span>
+               <span style={{ backgroundColor: importance.color }} className="w-3 h-3 rounded-full mr-1"></span>
                {task.importance}
             </div>
            )}
         </div>
+         <div className="mt-2 flex items-center gap-2">
+            <span style={{ backgroundColor: statusColor }} className="w-3 h-3 rounded-full"></span>
+            <span className="text-xs font-semibold">{task.status}</span>
+             {task.subStatus && <span className="text-xs bg-muted px-2 py-1 rounded-full">{task.subStatus}</span>}
+         </div>
       </div>
        <div {...attributes} {...listeners} className="cursor-grab pl-2">
          <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -179,7 +180,7 @@ function TaskCard({ task, onTaskClick }) {
   );
 }
 
-function KanbanColumn({ id, title, tasks, onTaskClick }) {
+function KanbanColumn({ id, title, tasks, onTaskClick, settings }) {
   const { setNodeRef } = useDroppable({
     id,
   });
@@ -189,14 +190,14 @@ function KanbanColumn({ id, title, tasks, onTaskClick }) {
       <h2 className="text-lg font-semibold mb-4 text-foreground">{title} ({tasks.length})</h2>
       <div className="space-y-4">
         {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} />
+            <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} settings={settings} />
         ))}
       </div>
     </div>
   );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings }) {
     if (!isOpen) return null;
 
     const handleChange = (e) => {
@@ -264,24 +265,21 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
               <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="status" className="text-right">Status</Label>
                    <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
-                       <option>Not Started</option>
-                       <option>In Progress</option>
-                       <option>For Review</option>
-                       <option>Approved for Submission</option>
-                       <option>Completed</option>
+                       {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
                    </select>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="subStatus" className="text-right">Sub-Status</Label>
-                  <Input id="subStatus" name="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="col-span-3" />
+                  <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
+                        <option value="">None</option>
+                       {settings.subStatuses?.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
+                   </select>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="importance" className="text-right">Importance</Label>
                    <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="col-span-3 border rounded px-2 py-1 bg-input">
                         <option value="">None</option>
-                       <option>Low</option>
-                       <option>Medium</option>
-                       <option>High</option>
+                       {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
@@ -305,7 +303,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
 
 export default function KanbanPage() {
   const [tasks, setTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [] });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], subStatuses: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -349,7 +347,7 @@ export default function KanbanPage() {
           taskid: '',
           date: Timestamp.now(),
           dueDate: null,
-          status: 'Not Started',
+          status: settings.workflowCategories?.[0]?.name || 'Not Started',
           subStatus: '',
           importance: '',
           desc: '',
@@ -387,7 +385,7 @@ export default function KanbanPage() {
   };
 
   const columns = useMemo(() => {
-    return settings.workflowCategories.map(cat => cat.name);
+    return settings.workflowCategories?.map(cat => cat.name) || [];
   }, [settings.workflowCategories]);
 
 
@@ -409,6 +407,12 @@ export default function KanbanPage() {
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
             </Button>
+            <Link href="/settings">
+              <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+              </Button>
+            </Link>
             <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="outline" size="icon">
               <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -425,6 +429,7 @@ export default function KanbanPage() {
               title={status}
               tasks={tasks.filter((task) => task.status === status)}
               onTaskClick={handleOpenModal}
+              settings={settings}
             />
           ))}
         </main>
@@ -436,6 +441,7 @@ export default function KanbanPage() {
         setTask={setSelectedTask}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        settings={settings}
        />
     </DndContext>
   );
