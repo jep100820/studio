@@ -72,6 +72,15 @@ const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
     return date ? format(date, outputFormat) : '';
 };
 
+function isColorLight(hexColor) {
+    if (!hexColor) return true;
+    const color = hexColor.charAt(0) === '#' ? hexColor.substring(1, 7) : hexColor;
+    const r = parseInt(color.substring(0, 2), 16);
+    const g = parseInt(color.substring(2, 4), 16);
+    const b = parseInt(color.substring(4, 6), 16);
+    return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
+}
+
 
 function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#775DD0'];
@@ -118,9 +127,15 @@ function TaskStatusChart({ tasks }) {
                     </ResponsiveContainer>
                     <div className="w-25% flex flex-col justify-center space-y-2 pl-4">
                         {data.map((entry) => (
-                             <div key={entry.name} className="flex items-center text-sm">
-                                <div className="w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: entry.fill }} />
-                                <span>{entry.name} ({entry.value})</span>
+                             <div 
+                                key={entry.name}
+                                className="text-sm px-2 py-1 rounded-md"
+                                style={{ 
+                                    backgroundColor: entry.fill,
+                                    color: isColorLight(entry.fill) ? '#000' : '#fff'
+                                }}
+                            >
+                                {entry.name} ({entry.value})
                             </div>
                         ))}
                     </div>
