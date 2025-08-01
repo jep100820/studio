@@ -272,7 +272,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   );
 }
 
-function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTaskId, settings, highlightedTaskId }) {
+function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTaskId, settings, highlightedTaskId, activeId }) {
   const { setNodeRef } = useDroppable({
     id,
   });
@@ -286,17 +286,23 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
         </span>
       </h2>
       <div className="flex-grow overflow-y-auto -mr-2 pr-2">
-        {tasks.map((task) => (
-            <TaskCard 
-                key={task.id} 
-                task={task} 
-                onEditClick={onEditClick} 
-                settings={settings}
-                onCardClick={onCardClick}
-                isExpanded={expandedTaskId === task.id}
-                isHighlighted={highlightedTaskId === task.id}
-            />
-        ))}
+        {tasks.map((task) => {
+            // Hide the original card while dragging
+            if (activeId === task.id) {
+                return null;
+            }
+            return (
+                <TaskCard 
+                    key={task.id} 
+                    task={task} 
+                    onEditClick={onEditClick} 
+                    settings={settings}
+                    onCardClick={onCardClick}
+                    isExpanded={expandedTaskId === task.id}
+                    isHighlighted={highlightedTaskId === task.id}
+                />
+            );
+        })}
       </div>
     </div>
   );
@@ -830,6 +836,7 @@ function KanbanPageContent() {
               expandedTaskId={expandedTaskId}
               settings={settings}
               highlightedTaskId={highlightedTaskId}
+              activeId={activeId}
             />
           ))}
         </main>
