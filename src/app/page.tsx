@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, writeBatch, query } from "firebase/firestore";
+import { startOfDay, startOfWeek, endOfWeek, isSameDay, format as formatDateFns } from 'date-fns';
 
 // --- Your Firebase Configuration ---
 const firebaseConfig = {
@@ -129,9 +130,9 @@ export default function Home() {
     const getFilteredTasks = () => {
         if (!allTasks) return [];
         const now = new Date();
-        const today = window.dateFns.startOfDay(now);
-        const startOfWeek = window.dateFns.startOfWeek(today);
-        const endOfWeek = window.dateFns.endOfWeek(today);
+        const today = startOfDay(now);
+        const startOfWeekValue = startOfWeek(today);
+        const endOfWeekValue = endOfWeek(today);
 
         switch (currentKanbanFilter) {
             case "active":
@@ -139,11 +140,11 @@ export default function Home() {
             case "overdue":
                 return allTasks.filter(task => new Date(task.dueDate) < today && task.status?.toLowerCase() !== "done");
             case "due-today":
-                return allTasks.filter(task => window.dateFns.isSameDay(new Date(task.dueDate), today));
+                return allTasks.filter(task => isSameDay(new Date(task.dueDate), today));
             case "due-this-week":
                 return allTasks.filter(task => {
                     const dueDate = new Date(task.dueDate);
-                    return dueDate >= startOfWeek && dueDate <= endOfWeek;
+                    return dueDate >= startOfWeekValue && dueDate <= endOfWeekValue;
                 });
             default:
                 return allTasks;
@@ -225,16 +226,16 @@ export default function Home() {
     const HeaderStats = () => {
         if (!allTasks) return null;
         const now = new Date();
-        const today = window.dateFns.startOfDay(now);
-        const startOfWeek = window.dateFns.startOfWeek(today);
-        const endOfWeek = window.dateFns.endOfWeek(today);
+        const today = startOfDay(now);
+        const startOfWeekValue = startOfWeek(today);
+        const endOfWeekValue = endOfWeek(today);
 
         const activeCount = allTasks.filter(t => t.status?.toLowerCase() !== 'done').length;
         const overdueCount = allTasks.filter(t => new Date(t.dueDate) < today && t.status?.toLowerCase() !== 'done').length;
-        const dueTodayCount = allTasks.filter(t => window.dateFns.isSameDay(new Date(t.dueDate), today)).length;
+        const dueTodayCount = allTasks.filter(t => isSameDay(new Date(t.dueDate), today)).length;
         const dueThisWeekCount = allTasks.filter(t => {
             const d = new Date(t.dueDate);
-            return d >= startOfWeek && d <= endOfWeek;
+            return d >= startOfWeekValue && d <= endOfWeekValue;
         }).length;
 
         return (
@@ -344,7 +345,7 @@ function TaskCard({ task, settings, onDragStart, onClick }: any) {
 
     const formatDate = (isoString: string) => {
         if (!isoString) return 'N/A';
-        return window.dateFns.format(new Date(isoString), 'MMM d, yyyy');
+        return formatDateFns(new Date(isoString), 'MMM d, yyyy');
     }
 
     return (
@@ -379,6 +380,8 @@ function DashboardView({ tasks, settings } : any) {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
+        if (typeof window === 'undefined' || !window.Chart) return;
+
         const createChart = (ctx: any, type: string, data: any, options = {}) => {
             if (!ctx) return null;
             return new window.Chart(ctx, { type, data, options });
@@ -391,13 +394,13 @@ function DashboardView({ tasks, settings } : any) {
         if (weeklyChartRef.current) {
              const completed = tasks.filter((t:any) => t.completionDate);
              const weeklyData = completed.reduce((acc:any, task:any) => {
-                const weekStart = window.dateFns.format(window.dateFns.startOfWeek(new Date(task.completionDate)), 'yyyy-MM-dd');
+                const weekStart = formatDateFns(startOfWeek(new Date(task.completionDate)), 'yyyy-MM-dd');
                 acc[weekStart] = (acc[weekStart] || 0) + 1;
                 return acc;
             }, {});
 
             const sortedWeeks = Object.keys(weeklyData).sort();
-            const labels = sortedWeeks.map(w => window.dateFns.format(new Date(w), 'MMM d'));
+            const labels = sortedWeeks.map(w => formatDateFns(new Date(w), 'MMM d'));
             const data = sortedWeeks.map(w => weeklyData[w]);
 
             charts.current.weekly = createChart(weeklyChartRef.current, 'bar', {
@@ -495,7 +498,7 @@ function DashboardView({ tasks, settings } : any) {
 
     const formatDate = (isoString: string) => {
         if (!isoString) return 'N/A';
-        return window.dateFns.format(new Date(isoString), 'MMM d, yyyy');
+        return formatDateFns(new Date(isoString), 'MMM d, yyyy');
     }
 
     return (
@@ -747,7 +750,7 @@ function SettingsView({ settings, onSave, onClearTasks, onResetSettings, tasks }
     );
 }
 
-function TaskModal({ task, settings, onClose, onSave, onDelete } : any) {
+function TaskModal({ task, settings, onClose, onSave, onDelete }: any) {
     const [currentStatus, setCurrentStatus] = useState(task?.status || settings.workflowCategories[0]?.name);
 
     const relevantSubStatuses = settings.subCategories?.filter((sc:any) => sc.parentCategory === currentStatus).map((sc:any) => sc.name) || [];
@@ -884,6 +887,5 @@ function SettingsModal({ config, settings, onClose, onSave, onDelete }: any) {
 declare global {
   interface Window {
     Chart: any;
-    dateFns: any;
   }
 }

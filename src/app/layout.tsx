@@ -19,7 +19,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/cdn.min.js" defer></script>
       </head>
       <body className={inter.className}>
         <ThemeProvider
