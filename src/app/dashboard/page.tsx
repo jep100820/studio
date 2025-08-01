@@ -256,32 +256,42 @@ function StatsDisplay({ tasks, completedTasks }) {
             <CardHeader className="p-4 pb-2">
                  <CardTitle className="text-lg">Project Snapshot</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-2 flex-grow flex flex-col justify-center">
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-2 text-center">
-                    <div className="p-2 bg-muted/50 rounded-lg">
-                        <CheckCircle className="h-4 w-4 mx-auto text-green-500 mb-1" />
-                        <p className="text-lg font-bold">{stats.totalCompleted}</p>
-                        <p className="text-xs text-muted-foreground">Completed</p>
+            <CardContent className="p-4 pt-2 flex-grow overflow-y-auto">
+                 <div className="grid grid-cols-1 gap-4">
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                           <p className="text-lg font-bold">{stats.totalCompleted}</p>
+                           <p className="text-sm text-muted-foreground">Total Completed</p>
+                        </div>
                     </div>
-                     <div className="p-2 bg-muted/50 rounded-lg">
-                        <AlertTriangle className="h-4 w-4 mx-auto text-red-500 mb-1" />
-                        <p className="text-lg font-bold">{stats.overdue}</p>
-                        <p className="text-xs text-muted-foreground">Overdue</p>
+                     <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                           <p className="text-lg font-bold">{stats.overdue}</p>
+                           <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                        </div>
                     </div>
-                    <div className="p-2 bg-muted/50 rounded-lg">
-                        <Clock className="h-4 w-4 mx-auto text-blue-500 mb-1" />
-                        <p className="text-lg font-bold">{stats.avgTime}d</p>
-                        <p className="text-xs text-muted-foreground">Avg. Time</p>
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <Clock className="h-6 w-6 text-blue-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                            <p className="text-lg font-bold">{stats.avgTime}d</p>
+                            <p className="text-sm text-muted-foreground">Avg. Completion Time</p>
+                        </div>
                     </div>
-                    <div className="p-2 bg-muted/50 rounded-lg">
-                        <Zap className="h-4 w-4 mx-auto text-yellow-500 mb-1" />
-                        <p className="text-lg font-bold">{stats.last7}</p>
-                        <p className="text-xs text-muted-foreground">Last 7d</p>
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <Zap className="h-6 w-6 text-yellow-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                            <p className="text-lg font-bold">{stats.last7}</p>
+                            <p className="text-sm text-muted-foreground">Completed Last 7d</p>
+                        </div>
                     </div>
-                    <div className="p-2 bg-muted/50 rounded-lg">
-                        <Calendar className="h-4 w-4 mx-auto text-purple-500 mb-1" />
-                        <p className="text-lg font-bold">{stats.last30}</p>
-                        <p className="text-xs text-muted-foreground">Last 30d</p>
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                        <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
+                        <div className="flex-grow">
+                           <p className="text-lg font-bold">{stats.last30}</p>
+                           <p className="text-sm text-muted-foreground">Completed Last 30d</p>
+                        </div>
                     </div>
                  </div>
             </CardContent>
@@ -386,3 +396,6 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+
+    
