@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -358,6 +358,7 @@ export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
     const { theme, setTheme } = useTheme();
+    const router = useRouter();
 
     useEffect(() => {
         const settingsRef = doc(db, 'settings', 'workflow');
@@ -422,22 +423,30 @@ export default function SettingsPage() {
         setSettings(JSON.parse(JSON.stringify(originalSettings))); // Revert to original
     };
 
+    const handleOpenModal = () => {
+        router.push('/');
+    };
+
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading settings...</div>;
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <header className="flex justify-between items-center p-4 border-b">
+        <div className="flex flex-col h-screen bg-background text-foreground">
+            <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
                 <h1 className="text-2xl font-bold">Settings</h1>
                  <div className="flex items-center gap-2">
+                    <Button onClick={handleSaveChanges} disabled={!isDirty}>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                    </Button>
                     <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
                         <Undo className="h-4 w-4 mr-2" />
                         Cancel
                     </Button>
-                    <Button onClick={handleSaveChanges} disabled={!isDirty}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
+                    <Button onClick={() => handleOpenModal()} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Task
                     </Button>
                     <Link href="/">
                         <Button variant="outline">Back to Board</Button>
@@ -455,7 +464,7 @@ export default function SettingsPage() {
                     </Button>
                 </div>
             </header>
-            <main className="p-4 md:p-8 space-y-6">
+            <main className="flex-grow p-4 md:p-8 space-y-6 overflow-y-auto">
                 <SettingsCard
                     title="Workflow Statuses"
                     items={settings?.workflowCategories}

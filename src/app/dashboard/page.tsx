@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun } from 'lucide-react';
+import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -145,10 +145,10 @@ function TaskStatusChart({ tasks }) {
                 <CardTitle className="text-lg">Active Task Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-60 w-full">
+                <div className="h-48 w-full">
                     <ResponsiveContainer>
                         <PieChart>
-                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={60} fill="#8884d8" paddingAngle={5}>
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
@@ -181,14 +181,14 @@ function TaskPriorityChart({ tasks }) {
                 <CardTitle className="text-lg">Completed by Priority</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-60 w-full">
+                <div className="h-48 w-full">
                     <ResponsiveContainer>
                         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                             <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20}>
+                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={16}>
                                  {data.map((entry, index) => {
                                     const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
                                     return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
@@ -349,6 +349,7 @@ export default function DashboardPage() {
     const [tasks, setTasks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const { theme, setTheme } = useTheme();
+    const router = useRouter();
 
     useEffect(() => {
         const tasksQuery = query(collection(db, 'tasks'));
@@ -375,6 +376,12 @@ export default function DashboardPage() {
                 return dateB.getTime() - dateA.getTime();
             });
     }, [tasks]);
+    
+    const handleOpenModal = () => {
+        // This is a placeholder for a potential "Add Task" modal on the dashboard
+        // For now, it will navigate to the main page to add a task.
+        router.push('/');
+    };
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -385,8 +392,13 @@ export default function DashboardPage() {
             <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
                 <h1 className="text-2xl font-bold">Dashboard</h1>
                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button onClick={() => handleOpenModal()} size="sm">
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
                     <Link href="/">
                         <Button variant="outline" size="sm">
+                             <LayoutDashboard className="h-4 w-4 mr-2" />
                             Back to Board
                         </Button>
                     </Link>
@@ -404,19 +416,16 @@ export default function DashboardPage() {
                 </div>
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 overflow-y-auto">
-                {/* Left Column (1/3 width) */}
                  <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <TaskCompletionTable tasks={completedTasks} />
                 </div>
                 
-                {/* Middle Column (1/3 width) */}
                 <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
                     <TaskStatusChart tasks={tasks} />
                     <TaskPriorityChart tasks={completedTasks} />
                 </div>
 
-                {/* Right Column (1/3 width) */}
                 <div className="flex flex-col min-h-0">
                     <CompletedTasksList tasks={completedTasks} />
                 </div>
