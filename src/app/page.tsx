@@ -209,16 +209,19 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
         setNodeRef(node);
         cardRef.current = node;
       }}
-      style={{ ...style, backgroundColor: statusColor }}
+      style={{ backgroundColor: statusColor }}
       className={cn(
-        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300 relative`,
+        `p-4 rounded-lg shadow-sm mb-4 flex items-start transition-all duration-300 relative`,
         isOverdue && "border-2 border-red-500",
         isHighlighted && "ring-4 ring-offset-2 ring-primary ring-offset-background animate-pulse",
-        textColor
+        textColor,
+        "cursor-grab"
       )}
        onClick={() => onCardClick(task.id)}
+       {...attributes} 
+       {...listeners}
     >
-      <div className="flex-grow">
+      <div className="flex-grow" style={{ pointerEvents: 'none' }}>
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
               <span>Due Date: {formatDate(task.dueDate)}</span>
@@ -257,6 +260,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                         onClick={(e) => { e.stopPropagation(); onEditClick(task); }} 
                         size="sm" 
                         className="bg-black/20 hover:bg-black/40"
+                        style={{ pointerEvents: 'auto' }}
                     >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit Task
@@ -265,7 +269,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
             </div>
         )}
       </div>
-       <div {...attributes} {...listeners} className="cursor-grab pl-2 self-start">
+       <div className="pl-2 self-start" style={{ pointerEvents: 'none' }}>
          <GripVertical className="h-5 w-5" />
       </div>
     </div>
@@ -907,15 +911,17 @@ function KanbanPageContent() {
             onSave={handleSubStatusSave}
             subStatuses={subStatusData.subStatuses}
         />
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
             {activeTask ? (
-                <TaskCard 
-                    task={activeTask} 
-                    settings={settings} 
-                    onEditClick={() => {}} 
-                    onCardClick={() => {}}
-                    isExpanded={false}
-                />
+                <div style={{ transform: 'rotate(0deg)' }}>
+                  <TaskCard 
+                      task={activeTask} 
+                      settings={settings} 
+                      onEditClick={() => {}} 
+                      onCardClick={() => {}}
+                      isExpanded={false}
+                  />
+                </div>
             ) : null}
         </DragOverlay>
     </DndContext>
