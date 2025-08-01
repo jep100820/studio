@@ -268,9 +268,10 @@ function StatsDisplay({ tasks, completedTasks }) {
             : 0;
             
         const filterCompletedByDays = (days) => {
+            const dateLimit = subDays(now, days);
             return completedTasks.filter(t => {
                 const completionDate = toDate(t.completionDate);
-                return completionDate && differenceInDays(now, completionDate) < days;
+                return completionDate && completionDate >= dateLimit;
             }).length;
         }
 
@@ -365,7 +366,7 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-hidden">
                 {/* Left Column */}
-                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+                <div className="flex flex-col gap-6 lg:gap-8 min-h-0 overflow-y-auto">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <Card>
                         <CardHeader className="p-4 pb-2">
@@ -395,7 +396,7 @@ export default function DashboardPage() {
                     </Card>
                 </div>
                 {/* Right Column */}
-                <div className="flex flex-col min-h-0">
+                <div className="flex flex-col min-h-0 overflow-y-auto">
                     <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
