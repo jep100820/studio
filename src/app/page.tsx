@@ -2,7 +2,7 @@
 // @ts-nocheck
 'use client';
 
-import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useEffect, useState, useMemo, Suspense, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
@@ -17,6 +17,8 @@ import {
   deleteDoc,
   updateDoc,
   Timestamp,
+  query,
+  where,
 } from 'firebase/firestore';
 import { DndContext, useDraggable, useDroppable, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
@@ -32,11 +34,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, Upload, Download } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid, format } from 'date-fns';
+import { parse, isValid, format, parseISO } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Papa from 'papaparse';
 
 
 // Your web app's Firebase configuration
@@ -54,12 +57,22 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const parseDateString = (dateString) => {
-  if (!dateString) return null;
-  const parsedDate = parse(dateString, 'dd/MM/yyyy', new Date());
-  return isValid(parsedDate) ? Timestamp.fromDate(parsedDate) : null;
+    if (!dateString) return null;
+
+    let date;
+    // Try parsing as YYYY-MM-DD first
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        date = parseISO(dateString);
+    } else {
+        // Fallback to other formats
+        date = parse(dateString, 'dd/MM/yyyy', new Date());
+    }
+    
+    return isValid(date) ? Timestamp.fromDate(date) : null;
 };
 
-const formatDate = (timestamp) => {
+
+const formatDate = (timestamp, outputFormat = 'MMM d, yyyy') => {
     if (!timestamp) return '';
   
     let date;
@@ -67,14 +80,26 @@ const formatDate = (timestamp) => {
       date = new Date(timestamp.seconds * 1000);
     } else if (timestamp instanceof Date) {
         date = timestamp;
-    } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+    } else if (typeof timestamp === 'string') {
+        const parsedDate = parseISO(timestamp);
+        if (isValid(parsedDate)) {
+            date = parsedDate;
+        } else {
+            const genericParsedDate = new Date(timestamp);
+            if(isValid(genericParsedDate)) {
+                date = genericParsedDate;
+            } else {
+                 return '';
+            }
+        }
+    } else if (typeof timestamp === 'number') {
       date = new Date(timestamp);
     } else {
       return '';
     }
   
     if (isValid(date)) {
-      return format(date, 'MMM d, yyyy');
+      return format(date, outputFormat);
     }
     return '';
 };
@@ -287,31 +312,16 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     const handleDateChange = (e) => {
         const { name, value } = e.target;
         if (value) {
-            const [year, month, day] = value.split('-');
-            const dateString = `${day}/${month}/${year}`;
-            setTask(prev => ({ ...prev, [name]: parseDateString(dateString) }));
+            // The input type="date" provides value in "YYYY-MM-DD" format
+            const date = parseISO(value);
+            setTask(prev => ({ ...prev, [name]: isValid(date) ? Timestamp.fromDate(date) : null }));
         } else {
             setTask(prev => ({ ...prev, [name]: null }));
         }
     };
 
     const formatDateForInput = (timestamp) => {
-        if (!timestamp) return '';
-        let date;
-        if (timestamp.seconds) {
-            date = new Date(timestamp.seconds * 1000);
-        } else if (timestamp instanceof Date) {
-            date = timestamp;
-        } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
-            date = new Date(timestamp);
-        } else {
-            return '';
-        }
-    
-        if (isValid(date)) {
-            return format(date, 'yyyy-MM-dd');
-        }
-        return '';
+        return formatDate(timestamp, 'yyyy-MM-dd');
     };
 
     const currentSubStatuses = useMemo(() => {
@@ -379,7 +389,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                   <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} rows={1}/>
               </div>
 
-              {isEditing && task.status === 'Completed' && (
+              {isEditing && (
                  <div className="space-y-2">
                     <Label htmlFor="completionDate">Completion Date</Label>
                     <Input id="completionDate" name="completionDate" type="date" value={formatDateForInput(task?.completionDate)} onChange={handleDateChange} className="w-full" />
@@ -449,6 +459,7 @@ function KanbanPageContent() {
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const importFileRef = useRef(null);
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -603,6 +614,79 @@ function KanbanPageContent() {
       }
   };
 
+    const handleExport = async () => {
+        const tasksQuery = query(collection(db, 'tasks'));
+        const querySnapshot = await getDocs(tasksQuery);
+        const tasksToExport = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Ensure dates are formatted consistently for export
+            return {
+                ...data,
+                date: formatDate(data.date, 'yyyy-MM-dd'),
+                dueDate: formatDate(data.dueDate, 'yyyy-MM-dd'),
+                completionDate: formatDate(data.completionDate, 'yyyy-MM-dd'),
+            };
+        });
+
+        const csv = Papa.unparse(tasksToExport);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', 'tasks.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleImport = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const importedTasks = results.data;
+                const batch = writeBatch(db);
+
+                for (const task of importedTasks) {
+                    const taskData = {
+                        ...task,
+                        date: parseDateString(task.date),
+                        dueDate: parseDateString(task.dueDate),
+                        completionDate: parseDateString(task.completionDate),
+                    };
+
+                    // Check if a task with this taskid already exists
+                    const tasksRef = collection(db, 'tasks');
+                    const q = query(tasksRef, where("taskid", "==", task.taskid));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        // Update existing task
+                        const existingDoc = querySnapshot.docs[0];
+                        batch.update(existingDoc.ref, taskData);
+                    } else {
+                        // Add new task
+                        const newDocRef = doc(collection(db, 'tasks'));
+                        batch.set(newDocRef, taskData);
+                    }
+                }
+
+                await batch.commit();
+                alert('Import complete!');
+                // Reset file input
+                if(importFileRef.current) {
+                    importFileRef.current.value = '';
+                }
+            },
+            error: (error) => {
+                console.error('Error parsing CSV:', error);
+                alert('Error importing file. Please check the console for details.');
+            }
+        });
+    };
+
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
   }, [settings.workflowCategories]);
@@ -622,7 +706,16 @@ function KanbanPageContent() {
       <div className="flex flex-col h-screen bg-background text-foreground">
         <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
           <h1 className="text-2xl font-bold">KanbanFlow</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <input type="file" ref={importFileRef} onChange={handleImport} accept=".csv" style={{ display: 'none' }} />
+            <Button onClick={() => importFileRef.current?.click()} variant="outline" size="sm">
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+            </Button>
+            <Button onClick={handleExport} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+            </Button>
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
