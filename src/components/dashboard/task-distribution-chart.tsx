@@ -11,6 +11,8 @@ interface TaskDistributionChartProps {
 
 export default function TaskDistributionChart({ tasks, settings }: TaskDistributionChartProps) {
   const chartData = useMemo(() => {
+    if (!settings?.workflowCategories) return [];
+    
     const activeTasks = tasks.filter((task) => task.status.toLowerCase() !== 'done');
     const distribution = settings.workflowCategories
       .filter(cat => cat.name.toLowerCase() !== 'done')
