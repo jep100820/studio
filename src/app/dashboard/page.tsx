@@ -415,18 +415,18 @@ export default function DashboardPage() {
                     </Button>
                 </div>
             </header>
-            <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 overflow-y-auto">
-                 <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+            <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
+                 <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
                     <TaskCompletionTable tasks={completedTasks} />
                 </div>
                 
-                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+                <div className="lg:col-span-5 flex flex-col gap-6 lg:gap-8 min-h-0">
                     <TaskStatusChart tasks={tasks} />
                     <TaskPriorityChart tasks={completedTasks} />
                 </div>
 
-                <div className="flex flex-col min-h-0">
+                <div className="lg:col-span-2 flex flex-col min-h-0">
                     <CompletedTasksList tasks={completedTasks} />
                 </div>
             </main>
