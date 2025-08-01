@@ -183,13 +183,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete }) {
     
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        const [year, month, day] = value.split('-');
-        const dateString = `${day}/${month}/${year}`;
-        setTask(prev => ({ ...prev, [name]: parseDateString(dateString) }));
+        if (value) {
+            const [year, month, day] = value.split('-');
+            const dateString = `${day}/${month}/${year}`;
+            setTask(prev => ({ ...prev, [name]: parseDateString(dateString) }));
+        } else {
+            setTask(prev => ({ ...prev, [name]: null }));
+        }
     };
 
     const formatDateForInput = (timestamp) => {
-        if (!timestamp) return '';
+        if (!timestamp || typeof timestamp.seconds !== 'number') return '';
         const d = new Date(timestamp.seconds * 1000);
         return d.toISOString().split('T')[0];
     }
