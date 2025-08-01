@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
@@ -136,7 +136,7 @@ const seedDatabase = async () => {
 };
 
 
-function TaskCard({ task, onTaskClick, settings }) {
+function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings }) {
   if (!task) {
     return null;
   }
@@ -164,38 +164,67 @@ function TaskCard({ task, onTaskClick, settings }) {
       ref={setNodeRef}
       style={{ ...style, backgroundColor: statusColor }}
       className={cn(
-        `p-4 rounded-lg shadow-sm mb-4 flex items-start`,
+        `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer`,
         isOverdue && "border-2 border-red-500",
         textColor
       )}
+       onClick={() => onCardClick(task.id)}
     >
-      <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
-        <p className="font-bold text-sm">{task.taskid}</p>
-        <p className="text-xs mt-1">{task.desc}</p>
-         {task.remarks && <p className="text-xs mt-1">Remarks: {task.remarks}</p>}
-        <div className="flex items-center justify-between mt-2 text-xs">
-          <span>Date: {formatDate(task.date)}</span>
-          <span>Due Date: {formatDate(task.dueDate)}</span>
-           {importance && (
-            <div className="flex items-center">
-               <span style={{ backgroundColor: importance.color }} className="w-3 h-3 rounded-full mr-1"></span>
-               {task.importance}
+      <div className="flex-grow">
+          <p className="font-bold text-sm">{task.taskid}</p>
+          <div className="text-xs mt-1">
+              <span>Due: {formatDate(task.dueDate)}</span>
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
+            {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
+            {importance && (
+              <div className="flex items-center text-xs">
+                 <span style={{ backgroundColor: importance.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
+                 {task.importance}
+              </div>
+             )}
+          </div>
+        
+         {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-black/20">
+                <p className="text-sm font-semibold">Description:</p>
+                <p className="text-sm mt-1">{task.desc || 'No description'}</p>
+                
+                <p className="text-sm font-semibold mt-2">Remarks:</p>
+                <p className="text-sm mt-1">{task.remarks || 'No remarks'}</p>
+                
+                <p className="text-sm font-semibold mt-2">Date Started:</p>
+                <p className="text-sm mt-1">{formatDate(task.date)}</p>
+
+                {task.completionDate && (
+                    <>
+                        <p className="text-sm font-semibold mt-2">Completed:</p>
+                        <p className="text-sm mt-1">{formatDate(task.completionDate)}</p>
+                    </>
+                )}
+                
+                <div className="mt-4 flex justify-end">
+                    <Button 
+                        onClick={(e) => { e.stopPropagation(); onEditClick(task); }} 
+                        size="sm" 
+                        className="bg-black/20 hover:bg-black/40"
+                    >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit Task
+                    </Button>
+                </div>
             </div>
-           )}
-        </div>
-         <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs font-semibold">{task.status}</span>
-             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
-         </div>
+        )}
       </div>
-       <div {...attributes} {...listeners} className="cursor-grab pl-2">
+       <div {...attributes} {...listeners} className="cursor-grab pl-2 self-start">
          <GripVertical className="h-5 w-5" />
       </div>
     </div>
   );
 }
 
-function KanbanColumn({ id, title, tasks, onTaskClick, settings }) {
+function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTaskId, settings }) {
   const { setNodeRef } = useDroppable({
     id,
   });
@@ -210,7 +239,14 @@ function KanbanColumn({ id, title, tasks, onTaskClick, settings }) {
       </h2>
       <div className="space-y-4">
         {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} settings={settings} />
+            <TaskCard 
+                key={task.id} 
+                task={task} 
+                onEditClick={onEditClick} 
+                settings={settings}
+                onCardClick={onCardClick}
+                isExpanded={expandedTaskId === task.id}
+            />
         ))}
       </div>
     </div>
@@ -410,6 +446,7 @@ export default function KanbanPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -443,6 +480,7 @@ export default function KanbanPage() {
 
   const handleDragStart = (event) => {
       setActiveId(event.active.id);
+      setExpandedTaskId(null);
   };
 
   const handleDragEnd = async (event) => {
@@ -460,8 +498,7 @@ export default function KanbanPage() {
             status: 'Completed',
             completionDate: Timestamp.now(),
         };
-        setSelectedTask(updatedTask);
-        setIsModalOpen(true);
+        handleOpenModal(updatedTask);
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
         const newStatus = over.id;
         const targetCategory = settings.workflowCategories.find(cat => cat.name === newStatus);
@@ -474,6 +511,10 @@ export default function KanbanPage() {
             await updateDoc(taskRef, { status: newStatus, subStatus: '' });
         }
     }
+  };
+  
+  const handleCardClick = (taskId) => {
+    setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
   };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
@@ -576,7 +617,9 @@ export default function KanbanPage() {
               id={status}
               title={status}
               tasks={tasks.filter((task) => task.status === status)}
-              onTaskClick={handleOpenModal}
+              onEditClick={handleOpenModal}
+              onCardClick={handleCardClick}
+              expandedTaskId={expandedTaskId}
               settings={settings}
             />
           ))}
@@ -599,10 +642,16 @@ export default function KanbanPage() {
             subStatuses={subStatusData.subStatuses}
         />
         <DragOverlay>
-            {activeTask ? <TaskCard task={activeTask} settings={settings} onTaskClick={() => {}} /> : null}
+            {activeTask ? (
+                <TaskCard 
+                    task={activeTask} 
+                    settings={settings} 
+                    onEditClick={() => {}} 
+                    onCardClick={() => {}}
+                    isExpanded={false}
+                />
+            ) : null}
         </DragOverlay>
     </DndContext>
   );
 }
-
-    

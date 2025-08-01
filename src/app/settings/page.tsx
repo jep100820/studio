@@ -8,8 +8,8 @@ import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { X, Plus, Paintbrush, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +28,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
+    const [isOpen, setIsOpen] = useState(false);
+
     const handleAdd = () => {
         const newSubStatuses = [...subStatuses, { name: 'New Sub-Status' }];
         onUpdate(parentIndex, newSubStatuses);
@@ -45,24 +47,37 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     };
 
     return (
-        <div className="mt-4 pt-4 border-t space-y-2">
-            <h4 className="text-sm font-semibold text-muted-foreground">Sub-Statuses</h4>
-            {subStatuses?.map((sub, subIndex) => (
-                <div key={subIndex} className="flex items-center gap-2">
-                    <Input
-                        value={sub.name}
-                        onChange={(e) => handleChange(subIndex, e.target.value)}
-                        className="flex-grow"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)}>
-                        <X className="h-4 w-4" />
+        <div className="mt-4 pt-4 border-t">
+            <Button 
+                onClick={() => setIsOpen(!isOpen)} 
+                variant="ghost" 
+                className="w-full justify-between"
+            >
+                Manage Sub-Statuses ({subStatuses?.length || 0})
+                <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+            </Button>
+            {isOpen && (
+                <div className="p-2 mt-2 space-y-3 bg-muted/50 rounded-lg">
+                    <div className="space-y-2">
+                        {subStatuses?.map((sub, subIndex) => (
+                            <div key={subIndex} className="flex items-center gap-2 p-2 bg-background rounded-md shadow-sm">
+                                <Input
+                                    value={sub.name}
+                                    onChange={(e) => handleChange(subIndex, e.target.value)}
+                                    className="flex-grow"
+                                />
+                                <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                    <Button onClick={handleAdd} variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Sub-Status
                     </Button>
                 </div>
-            ))}
-            <Button onClick={handleAdd} variant="outline" size="sm" className="mt-2">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Sub-Status
-            </Button>
+            )}
         </div>
     );
 }
@@ -104,7 +119,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
             <CardContent>
                 <div className="space-y-4">
                     {items?.map((item, index) => (
-                        <div key={index} className={cn("p-4 rounded-lg", hasSubStatuses && "border")}>
+                        <div key={index} className={cn("p-4 rounded-lg", hasSubStatuses ? "border bg-card" : "bg-card border")}>
                             <div className="flex items-center gap-2">
                                 <Input
                                     value={item.name}
@@ -230,4 +245,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
