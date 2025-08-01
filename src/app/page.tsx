@@ -36,7 +36,7 @@ import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, La
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 
 // Your web app's Firebase configuration
@@ -379,10 +379,10 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                   <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} rows={1}/>
               </div>
 
-              {isEditing && task.completionDate && (
+              {isEditing && task.status === 'Completed' && (
                  <div className="space-y-2">
-                    <Label htmlFor="completionDate">Completion</Label>
-                    <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50 w-auto" />
+                    <Label htmlFor="completionDate">Completion Date</Label>
+                    <Input id="completionDate" name="completionDate" type="date" value={formatDateForInput(task?.completionDate)} onChange={handleDateChange} className="w-full" />
                 </div>
               )}
           </div>
@@ -454,6 +454,7 @@ function KanbanPageContent() {
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
   
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -510,9 +511,11 @@ function KanbanPageContent() {
       const taskToEdit = tasks.find(t => t.id === editTaskId);
       if (taskToEdit) {
         handleOpenModal(taskToEdit);
+        // Clean up URL
+        router.replace('/', {scroll: false});
       }
     }
-  }, [searchParams, tasks]);
+  }, [searchParams, tasks, router]);
 
 
   const handleDragStart = (event) => {
@@ -534,11 +537,11 @@ function KanbanPageContent() {
             const updatedTask = {
                 ...taskToUpdate,
                 status: 'Completed',
-                completionDate: Timestamp.now(),
+                completionDate: taskToUpdate.completionDate || Timestamp.now(),
             };
             await updateDoc(doc(db, 'tasks', active.id), { 
                 status: 'Completed', 
-                completionDate: Timestamp.now() 
+                completionDate: updatedTask.completionDate
             });
             handleOpenModal(updatedTask);
         }
@@ -644,7 +647,7 @@ function KanbanPageContent() {
           </div>
         </header>
 
-        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden">
+        <main className="flex-grow p-4 overflow-x-auto overflow-y-hidden w-full">
           <div className="flex gap-6 h-full">
             {columns.map((status) => (
               <KanbanColumn
@@ -700,3 +703,5 @@ export default function KanbanPage() {
     );
 }
 
+
+    
