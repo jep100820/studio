@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -62,7 +63,7 @@ const parseDateString = (dateString) => {
 };
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return '';
+  if (!timestamp || typeof timestamp.seconds !== 'number') return '';
   return new Date(timestamp.seconds * 1000).toLocaleDateString('en-GB');
 };
 
@@ -110,7 +111,7 @@ const seedDatabase = async () => {
 };
 
 
-function TaskCard({ task }) {
+function TaskCard({ task, onTaskClick }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
     data: task,
@@ -133,7 +134,7 @@ function TaskCard({ task }) {
         isOverdue && "border-2 border-red-500"
       )}
     >
-      <div className="flex-grow" {...attributes} {...listeners} >
+      <div className="flex-grow" onClick={() => onTaskClick(task)} {...attributes} {...listeners} >
         <p className="font-bold text-sm">{task.taskid}</p>
         <p className="text-xs text-muted-foreground mt-1">{task.desc}</p>
          {task.remarks && <p className="text-xs text-muted-foreground mt-1">Remarks: {task.remarks}</p>}
@@ -164,9 +165,7 @@ function KanbanColumn({ id, title, tasks, onTaskClick }) {
       <h2 className="text-lg font-semibold mb-4 text-foreground">{title} ({tasks.length})</h2>
       <div className="space-y-4">
         {tasks.map((task) => (
-           <div key={task.id} onClick={() => onTaskClick(task)}>
-            <TaskCard task={task} />
-           </div>
+            <TaskCard key={task.id} task={task} onTaskClick={onTaskClick} />
         ))}
       </div>
     </div>
