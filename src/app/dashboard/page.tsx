@@ -133,7 +133,7 @@ export default function DashboardPage() {
                     <Button variant="outline">Back to Board</Button>
                 </Link>
             </header>
-            <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <main className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
                 <div className="lg:col-span-2">
                      <Card className="h-full">
                         <CardHeader>
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="lg:col-span-1 flex flex-col">
+                <div className="lg:col-span-1 flex flex-col min-h-0">
                     <CompletedTasksList tasks={tasks} />
                 </div>
             </main>
