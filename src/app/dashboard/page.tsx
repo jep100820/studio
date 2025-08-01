@@ -67,7 +67,7 @@ function CompletedTasksList({ tasks }) {
                 <CardTitle>Completed Tasks</CardTitle>
                 <CardDescription>Search or double-click to edit.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col">
+            <CardContent className="flex-grow flex flex-col min-h-0">
                 <div className="relative mb-4">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 flex flex-col">
                     <CompletedTasksList tasks={tasks} />
                 </div>
             </main>
