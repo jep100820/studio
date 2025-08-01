@@ -618,7 +618,7 @@ export default function KanbanPage() {
           </div>
         </header>
 
-        <main className="flex-grow flex gap-6 overflow-x-auto p-4">
+        <main className="flex-grow flex gap-6 overflow-x-auto p-4 w-full">
           {columns.map((status) => (
             <KanbanColumn
               key={status}
