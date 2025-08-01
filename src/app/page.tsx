@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, Trash2 } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2 } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format } from 'date-fns';
 import Link from 'next/link';
@@ -223,7 +223,7 @@ function CompletionZone({ isDragging }) {
             )}
         >
             <div className="text-center text-green-700">
-                <Trash2 className="h-8 w-8 mx-auto" />
+                <CheckCircle2 className="h-8 w-8 mx-auto" />
                 <p className="font-semibold mt-2">Complete</p>
             </div>
         </div>
