@@ -9,10 +9,9 @@ import { startOfDay, startOfWeek, endOfWeek, isSameDay, format as formatDateFns 
 const firebaseConfig = {
     "projectId": "kanbanflow-6cvc6",
     "appId": "1:674602332508:web:d5676390127c3e0b131199",
-    "storageBucket": "kanbanflow-6cvc6.firebasestorage.app",
+    "storageBucket": "kanbanflow-6cvc6.appspot.com",
     "apiKey": "AIzaSyCX81iJOmn0Dn9lH5EkYZBdSYNXqlpDU1c",
     "authDomain": "kanbanflow-6cvc6.firebaseapp.com",
-    "measurementId": "",
     "messagingSenderId": "674602332508"
 };
 

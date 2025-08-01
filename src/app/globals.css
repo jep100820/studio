@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --background: 200 20% 98%;
+    --foreground: 200 10% 3.9%;
+    --card: 200 20% 98%;
+    --card-foreground: 200 10% 3.9%;
+    --popover: 200 20% 98%;
+    --popover-foreground: 200 10% 3.9%;
+    --primary: 202.1 90.4% 48.4%;
+    --primary-foreground: 200 20% 98%;
+    --secondary: 200 14.3% 93.3%;
+    --secondary-foreground: 200 10% 3.9%;
+    --muted: 200 14.3% 93.3%;
+    --muted-foreground: 200 8% 40%;
+    --accent: 172.1 63.6% 45.1%;
+    --accent-foreground: 200 20% 98%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 200 15% 89%;
+    --input: 200 15% 89%;
+    --ring: 202.1 90.4% 48.4%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 200 10% 3.9%;
+    --foreground: 200 20% 98%;
+    --card: 200 10% 3.9%;
+    --card-foreground: 200 20% 98%;
+    --popover: 200 10% 3.9%;
+    --popover-foreground: 200 20% 98%;
+    --primary: 202.1 90.4% 48.4%;
+    --primary-foreground: 200 20% 98%;
+    --secondary: 200 10% 15.7%;
+    --secondary-foreground: 200 20% 98%;
+    --muted: 200 10% 15.7%;
+    --muted-foreground: 200 8% 60%;
+    --accent: 172.1 63.6% 45.1%;
+    --accent-foreground: 200 20% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 200 10% 15.7%;
+    --input: 200 10% 15.7%;
+    --ring: 202.1 90.4% 48.4%;
   }
 }
 
@@ -56,4 +56,253 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom Styles */
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#main-content {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#kanban-board {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    overflow-x: auto;
+    height: 100%;
+}
+
+.kanban-column {
+    min-width: 300px;
+    width: 300px;
+    background-color: hsl(var(--card));
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+}
+
+.kanban-column-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    font-weight: 600;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.kanban-column-color {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+}
+
+.kanban-tasks {
+    flex-grow: 1;
+    padding: 0.75rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-card {
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.task-card.overdue {
+    border-left: 4px solid hsl(var(--destructive));
+}
+
+.task-card:hover {
+    background-color: hsl(var(--muted));
+}
+
+.task-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.task-card-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.importance-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+}
+
+.task-id {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 0.5rem;
+}
+
+.sub-status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    margin-bottom: 0.5rem;
+}
+
+.task-card-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.5rem;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: hsl(var(--card));
+    margin: auto;
+    padding: 1.5rem;
+    border: 1px solid hsl(var(--border));
+    width: 90%;
+    max-width: 800px;
+    border-radius: var(--radius);
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.close-button {
+    font-size: 1.5rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: hsl(var(--foreground));
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--input));
+    color: hsl(var(--foreground));
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid hsl(var(--border));
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+.btn-destructive {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border-color: hsl(var(--destructive));
+}
+
+.btn.active {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+#loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.5rem;
+}
+
+#dashboard-view, #settings-view {
+    padding: 1rem;
 }
