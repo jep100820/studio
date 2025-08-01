@@ -30,36 +30,39 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const formatDate = (timestamp) => {
-    if (!timestamp) return '';
+const toDate = (timestamp) => {
+    if (!timestamp) return null;
     let date;
     if (timestamp?.seconds) {
       date = new Date(timestamp.seconds * 1000);
     } else if (timestamp instanceof Date) {
         date = timestamp;
     } else if (typeof timestamp === 'number') {
-        date = new Date(timestamp * 1000);
+        // Assuming seconds if it's a number and looks like a timestamp, otherwise treat as milliseconds
+        date = timestamp > 1000000000000 ? new Date(timestamp) : new Date(timestamp * 1000);
     } else if (typeof timestamp === 'string') {
         const parsedDate = parseISO(timestamp);
         if (isValid(parsedDate)) {
             date = parsedDate;
         } else {
-            // Fallback for other string formats if needed
             const genericParsedDate = new Date(timestamp);
             if(isValid(genericParsedDate)) {
                 date = genericParsedDate;
             } else {
-                 return '';
+                 return null;
             }
         }
     } else {
-      return '';
+      return null;
     }
-    
-    if (!isValid(date)) return '';
-    
-    return format(date, 'MMM d, yyyy');
+    return isValid(date) ? date : null;
 };
+
+const formatDate = (timestamp) => {
+    const date = toDate(timestamp);
+    return date ? format(date, 'MMM d, yyyy') : '';
+};
+
 
 function TaskCompletionChart({ tasks }) {
     const data = useMemo(() => {
@@ -69,21 +72,11 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
+            .map(task => ({...task, completionDate: toDate(task.completionDate)}))
             .filter(task => task.completionDate)
             .reduce((acc, task) => {
-                let date;
-                if(typeof task.completionDate === 'number') {
-                    date = new Date(task.completionDate * 1000);
-                } else if (typeof task.completionDate === 'string') {
-                    date = parseISO(task.completionDate);
-                } else if (task.completionDate?.seconds) {
-                    date = task.completionDate.toDate();
-                }
-
-                if (isValid(date)) {
-                    const day = format(date, 'yyyy-MM-dd');
-                    acc[day] = (acc[day] || 0) + 1;
-                }
+                const day = format(task.completionDate, 'yyyy-MM-dd');
+                acc[day] = (acc[day] || 0) + 1;
                 return acc;
             }, {});
 
@@ -240,34 +233,20 @@ function StatsDisplay({ tasks, completedTasks }) {
         const now = new Date();
         const overdueTasks = tasks.filter(t => {
             if (t.status === 'Completed' || !t.dueDate) return false;
-            let dueDate;
-            if (typeof t.dueDate === 'number') {
-                dueDate = new Date(t.dueDate * 1000);
-            } else if (t.dueDate?.seconds) {
-                dueDate = t.dueDate.toDate();
-            } else if (typeof t.dueDate === 'string') {
-                dueDate = parseISO(t.dueDate);
-            }
-            return isValid(dueDate) && dueDate < now;
+            const dueDate = toDate(t.dueDate);
+            return dueDate && dueDate < now;
         }).length;
         
         const completionTimes = completedTasks
-            .filter(t => t.date && t.completionDate)
             .map(t => {
-                 let startDate, completionDate;
-                 if(typeof t.date === 'number') startDate = new Date(t.date * 1000);
-                 else if (t.date?.seconds) startDate = t.date.toDate();
-                 else if(typeof t.date === 'string') startDate = parseISO(t.date);
-
-                 if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
-                 else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
-                 else if(typeof t.completionDate === 'string') completionDate = parseISO(t.completionDate);
-
-                if (isValid(startDate) && isValid(completionDate)) {
+                const startDate = toDate(t.date);
+                const completionDate = toDate(t.completionDate);
+                if (startDate && completionDate) {
                     return differenceInDays(completionDate, startDate);
                 }
                 return null;
-            }).filter(d => d !== null && d >= 0);
+            })
+            .filter(d => d !== null && d >= 0);
         
         const avgCompletionTime = completionTimes.length > 0
             ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
@@ -275,13 +254,8 @@ function StatsDisplay({ tasks, completedTasks }) {
             
         const filterCompletedByDays = (days) => {
             return completedTasks.filter(t => {
-                if (!t.completionDate) return false;
-                let completionDate;
-                 if(typeof t.completionDate === 'number') completionDate = new Date(t.completionDate * 1000);
-                 else if (t.completionDate?.seconds) completionDate = t.completionDate.toDate();
-                 else if(typeof t.completionDate === 'string') completionDate = parseISO(t.completionDate);
-
-                return isValid(completionDate) && differenceInDays(now, completionDate) <= days;
+                const completionDate = toDate(t.completionDate);
+                return completionDate && differenceInDays(now, completionDate) <= days;
             }).length;
         }
 
@@ -342,15 +316,9 @@ export default function DashboardPage() {
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => {
                 const data = doc.data();
-                const serializedData = {};
-                for (const key in data) {
-                    if (data[key] instanceof Timestamp) {
-                        serializedData[key] = data[key].seconds;
-                    } else {
-                        serializedData[key] = data[key];
-                    }
-                }
-                return { ...serializedData, id: doc.id };
+                // Firestore Timestamps are already serializable when using onSnapshot with Next.js app router.
+                // No special handling needed here anymore.
+                return { ...data, id: doc.id };
             });
             setTasks(fetchedTasks);
             setIsLoading(false);
@@ -361,23 +329,12 @@ export default function DashboardPage() {
 
     const completedTasks = useMemo(() => {
         return tasks
-            .filter(t => t.status === 'Completed')
+            .filter(t => t.status === 'Completed' && t.completionDate)
             .sort((a, b) => {
-                 let dateA, dateB;
-                 
-                 if(typeof a.completionDate === 'number') dateA = new Date(a.completionDate * 1000);
-                 else if (a.completionDate?.seconds) dateA = a.completionDate.toDate();
-                 else if(typeof a.completionDate === 'string') dateA = parseISO(a.completionDate);
-                 else dateA = null;
-
-                 if(typeof b.completionDate === 'number') dateB = new Date(b.completionDate * 1000);
-                 else if (b.completionDate?.seconds) dateB = b.completionDate.toDate();
-                 else if(typeof b.completionDate === 'string') dateB = parseISO(b.completionDate);
-                 else dateB = null;
-
-                if (!isValid(dateA)) return 1;
-                if (!isValid(dateB)) return -1;
-
+                const dateA = toDate(a.completionDate);
+                const dateB = toDate(b.completionDate);
+                if (!dateA) return 1;
+                if (!dateB) return -1;
                 return dateB.getTime() - dateA.getTime();
             });
     }, [tasks]);
