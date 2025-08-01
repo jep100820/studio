@@ -213,7 +213,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       className={cn(
         `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300`,
         isOverdue && "border-2 border-red-500",
-        isHighlighted && "ring-4 ring-offset-2 ring-blue-500",
+        isHighlighted && "bg-accent",
         textColor
       )}
        onClick={() => onCardClick(task.id)}
@@ -734,7 +734,7 @@ function KanbanPageContent() {
   const handleSummaryTaskClick = (taskId) => {
     setHighlightedTaskId(taskId);
     setExpandedTaskId(taskId);
-    setTimeout(() => setHighlightedTaskId(null), 2000); // Highlight for 2 seconds
+    setTimeout(() => setHighlightedTaskId(null), 1500); // Highlight for 1.5 seconds
   };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
@@ -776,6 +776,30 @@ function KanbanPageContent() {
           handleCloseModal();
       }
   };
+
+  const sortedTasks = useMemo(() => {
+        const importanceOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+        
+        return tasks.slice().sort((a, b) => {
+            // Sort by due date (ascending, nulls last)
+            const dateA = toDate(a.dueDate);
+            const dateB = toDate(b.dueDate);
+            if (dateA && !dateB) return -1;
+            if (!dateA && dateB) return 1;
+            if (dateA && dateB) {
+                if (dateA < dateB) return -1;
+                if (dateA > dateB) return 1;
+            }
+
+            // If due dates are same, sort by importance (descending)
+            const importanceA = importanceOrder[a.importance] || 4;
+            const importanceB = importanceOrder[b.importance] || 4;
+            if (importanceA < importanceB) return -1;
+            if (importanceA > importanceB) return 1;
+            
+            return 0;
+        });
+    }, [tasks]);
 
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
@@ -830,7 +854,7 @@ function KanbanPageContent() {
               key={status}
               id={status}
               title={status}
-              tasks={tasks.filter((task) => task.status === status)}
+              tasks={sortedTasks.filter((task) => task.status === status)}
               onEditClick={handleOpenModal}
               onCardClick={handleCardClick}
               expandedTaskId={expandedTaskId}
