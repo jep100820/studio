@@ -213,7 +213,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       className={cn(
         `p-4 rounded-lg shadow-sm mb-4 flex items-start cursor-pointer transition-all duration-300 relative`,
         isOverdue && "border-2 border-red-500",
-        isHighlighted && "ring-2 ring-offset-2 ring-primary ring-offset-background",
+        isHighlighted && "ring-4 ring-offset-2 ring-primary ring-offset-background animate-pulse",
         textColor
       )}
        onClick={() => onCardClick(task.id)}
@@ -278,7 +278,7 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
   });
 
   return (
-    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 flex-1 min-w-[300px] flex flex-col h-full">
+    <div ref={setNodeRef} className="bg-muted/50 rounded-lg p-4 min-w-[300px] flex-1 flex flex-col h-full">
       <h2 className="text-lg font-semibold mb-4 text-foreground flex items-center flex-shrink-0">
         {title}
         <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-md flex items-center justify-center text-sm font-bold">
@@ -287,7 +287,6 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
       </h2>
       <div className="flex-grow overflow-y-auto -mr-2 pr-2">
         {tasks.map((task) => {
-            // Hide the original card while dragging
             if (activeId === task.id) {
                 return null;
             }
@@ -735,7 +734,10 @@ function KanbanPageContent() {
   const handleSummaryTaskClick = (taskId) => {
     setHighlightedTaskId(taskId);
     setExpandedTaskId(taskId);
-    setTimeout(() => setHighlightedTaskId(null), 2500); // Highlight for 2.5 seconds
+    // Use a timer to remove the highlight class after the animation
+    setTimeout(() => {
+        setHighlightedTaskId(null);
+    }, 2000); // The duration of your pulse/highlight effect
   };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
@@ -791,11 +793,10 @@ function KanbanPageContent() {
     }, [tasks, searchTerm]);
 
 
-  const sortedTasks = useMemo(() => {
+    const sortedTasks = useMemo(() => {
         const importanceOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
         
         return filteredTasks.slice().sort((a, b) => {
-            // Sort by due date (ascending, nulls last)
             const dateA = toDate(a.dueDate);
             const dateB = toDate(b.dueDate);
             if (dateA && !dateB) return -1;
@@ -804,8 +805,6 @@ function KanbanPageContent() {
                 if (dateA < dateB) return -1;
                 if (dateA > dateB) return 1;
             }
-
-            // If due dates are same, sort by importance (descending)
             const importanceA = importanceOrder[a.importance] || 4;
             const importanceB = importanceOrder[b.importance] || 4;
             if (importanceA < importanceB) return -1;
@@ -837,17 +836,6 @@ function KanbanPageContent() {
             <h1 className="text-2xl font-bold">KanbanFlow</h1>
             <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
           </div>
-           <div className="flex-grow min-w-0 flex justify-center">
-                <div className="relative w-full max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by Task ID, Description, Remarks..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -872,6 +860,18 @@ function KanbanPageContent() {
             </Button>
           </div>
         </header>
+
+        <div className="p-4 border-b">
+            <div className="relative w-full max-w-md mx-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by Task ID, Description, Remarks..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+        </div>
         
         <main className="flex-grow p-4 flex gap-6 overflow-hidden">
           {columns.map((status) => (
@@ -929,5 +929,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    
