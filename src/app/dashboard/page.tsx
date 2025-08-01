@@ -36,7 +36,10 @@ const formatDate = (timestamp) => {
       date = new Date(timestamp.seconds * 1000);
     } else if (timestamp instanceof Date) {
         date = timestamp;
-    } else {
+    } else if (typeof timestamp === 'number') {
+        date = new Date(timestamp * 1000);
+    }
+     else {
       return '';
     }
     return format(date, 'MMM d, yyyy');
@@ -50,9 +53,9 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
-            .filter(task => task.completionDate?.seconds)
+            .filter(task => task.completionDate)
             .reduce((acc, task) => {
-                const day = format(new Date(task.completionDate.seconds * 1000), 'yyyy-MM-dd');
+                const day = format(new Date(task.completionDate * 1000), 'yyyy-MM-dd');
                 acc[day] = (acc[day] || 0) + 1;
                 return acc;
             }, {});
@@ -190,7 +193,7 @@ function CompletedTasksList({ tasks }) {
                                 >
                                     <p className="font-semibold text-foreground">{task.taskid}</p>
                                     <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
-                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate)}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate({ seconds: task.completionDate})}</p>
                                 </div>
                             ))}
                         </div>
@@ -208,18 +211,18 @@ function CompletedTasksList({ tasks }) {
 function StatsDisplay({ tasks, completedTasks }) {
     const stats = useMemo(() => {
         const now = new Date();
-        const overdueTasks = tasks.filter(t => t.status !== 'Completed' && t.dueDate?.seconds && new Date(t.dueDate.seconds * 1000) < now).length;
+        const overdueTasks = tasks.filter(t => t.status !== 'Completed' && t.dueDate && new Date(t.dueDate * 1000) < now).length;
         
         const completionTimes = completedTasks
-            .filter(t => t.date?.seconds && t.completionDate?.seconds)
-            .map(t => differenceInDays(new Date(t.completionDate.seconds * 1000), new Date(t.date.seconds * 1000)));
+            .filter(t => t.date && t.completionDate)
+            .map(t => differenceInDays(new Date(t.completionDate * 1000), new Date(t.date * 1000)));
         
         const avgCompletionTime = completionTimes.length > 0
             ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
             : 0;
             
-        const completedLast7Days = completedTasks.filter(t => t.completionDate?.seconds && differenceInDays(now, new Date(t.completionDate.seconds * 1000)) <= 7).length;
-        const completedLast30Days = completedTasks.filter(t => t.completionDate?.seconds && differenceInDays(now, new Date(t.completionDate.seconds * 1000)) <= 30).length;
+        const completedLast7Days = completedTasks.filter(t => t.completionDate && differenceInDays(now, new Date(t.completionDate * 1000)) <= 7).length;
+        const completedLast30Days = completedTasks.filter(t => t.completionDate && differenceInDays(now, new Date(t.completionDate * 1000)) <= 30).length;
 
         return {
             totalCompleted: completedTasks.length,
@@ -276,7 +279,19 @@ export default function DashboardPage() {
     useEffect(() => {
         const tasksQuery = query(collection(db, 'tasks'));
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
-            const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const fetchedTasks = snapshot.docs.map(doc => {
+                const data = doc.data();
+                // Serialize Timestamps
+                const serializedData = {};
+                for (const key in data) {
+                    if (data[key] instanceof Timestamp) {
+                        serializedData[key] = data[key].seconds;
+                    } else {
+                        serializedData[key] = data[key];
+                    }
+                }
+                return { ...serializedData, id: doc.id };
+            });
             setTasks(fetchedTasks);
             setIsLoading(false);
         });
@@ -287,7 +302,7 @@ export default function DashboardPage() {
     const completedTasks = useMemo(() => {
         return tasks
             .filter(t => t.status === 'Completed')
-            .sort((a, b) => (b.completionDate?.seconds || 0) - (a.completionDate?.seconds || 0));
+            .sort((a, b) => (b.completionDate || 0) - (a.completionDate || 0));
     }, [tasks]);
 
     if (isLoading) {
