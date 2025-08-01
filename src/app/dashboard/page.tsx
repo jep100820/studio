@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useTheme } from "next-themes";
 
 
 // Your web app's Firebase configuration
@@ -95,24 +96,32 @@ function TaskCompletionTable({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-60 w-full overflow-y-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Tasks Completed</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {data.map((row) => (
-                        <TableRow key={row.date}>
-                            <TableCell className="font-medium">{row.date}</TableCell>
-                            <TableCell className="text-right">{row.completed}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Productivity</CardTitle>
+                <CardDescription>Tasks completed per day (last 14 days).</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="h-96 w-full overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Tasks Completed</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((row) => (
+                                <TableRow key={row.date}>
+                                    <TableCell className="font-medium">{row.date}</TableCell>
+                                    <TableCell className="text-right">{row.completed}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -131,19 +140,26 @@ function TaskStatusChart({ tasks }) {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
     return (
-        <div className="h-60 w-full">
-            <ResponsiveContainer>
-                <PieChart>
-                    <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
-                        {data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                    <Legend iconSize={10} />
-                </PieChart>
-            </ResponsiveContainer>
-        </div>
+       <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Active Task Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="h-60 w-full">
+                    <ResponsiveContainer>
+                        <PieChart>
+                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Legend iconSize={10} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -160,22 +176,29 @@ function TaskPriorityChart({ tasks }) {
     }, [tasks]);
 
     return (
-        <div className="h-60 w-full">
-            <ResponsiveContainer>
-                <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20}>
-                         {data.map((entry, index) => {
-                            const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
-                            return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
-                        })}
-                    </Bar>
-                </BarChart>
-            </ResponsiveContainer>
-        </div>
+         <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Completed by Priority</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="h-60 w-full">
+                    <ResponsiveContainer>
+                        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                            <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20}>
+                                 {data.map((entry, index) => {
+                                    const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
+                                    return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
+                                })}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -325,6 +348,7 @@ function StatsDisplay({ tasks, completedTasks }) {
 export default function DashboardPage() {
     const [tasks, setTasks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { theme, setTheme } = useTheme();
 
     useEffect(() => {
         const tasksQuery = query(collection(db, 'tasks'));
@@ -360,44 +384,41 @@ export default function DashboardPage() {
         <div className="flex flex-col h-screen bg-background text-foreground">
             <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
                 <h1 className="text-2xl font-bold">Dashboard</h1>
-                <Link href="/">
-                    <Button variant="outline">Back to Board</Button>
-                </Link>
-            </header>
-            <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 overflow-hidden">
-                {/* Left Column (2/3 width) */}
-                <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0 overflow-y-auto">
-                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
-                    <Card>
-                        <CardHeader className="p-4 pb-2">
-                            <CardTitle className="text-lg">Analytics</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-2">
-                            <Tabs defaultValue="productivity">
-                                <TabsList className="grid w-full grid-cols-3 h-9">
-                                    <TabsTrigger value="productivity" className="text-xs">Productivity</TabsTrigger>
-                                    <TabsTrigger value="distribution" className="text-xs">Distribution</TabsTrigger>
-                                    <TabsTrigger value="prioritization" className="text-xs">Prioritization</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="productivity" className="pt-2">
-                                    <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Completed Per Day (Last 14 Days)</h4>
-                                    <TaskCompletionTable tasks={completedTasks} />
-                                </TabsContent>
-                                <TabsContent value="distribution" className="pt-2">
-                                     <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Active Task Distribution</h4>
-                                     <TaskStatusChart tasks={tasks} />
-                                </TabsContent>
-                                 <TabsContent value="prioritization" className="pt-2">
-                                    <h4 className="text-sm font-semibold mb-2 text-center text-muted-foreground">Completed by Priority</h4>
-                                    <TaskPriorityChart tasks={completedTasks} />
-                                </TabsContent>
-                            </Tabs>
-                        </CardContent>
-                    </Card>
+                 <div className="flex items-center gap-2 flex-shrink-0">
+                    <Link href="/">
+                        <Button variant="outline" size="sm">
+                            Back to Board
+                        </Button>
+                    </Link>
+                    <Link href="/settings">
+                      <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Settings
+                      </Button>
+                    </Link>
+                    <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="outline" size="icon">
+                      <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      <span className="sr-only">Toggle theme</span>
+                    </Button>
                 </div>
-                {/* Right Column (1/3 width) */}
-                <div className="flex flex-col min-h-0 overflow-y-auto">
+            </header>
+            <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 overflow-y-auto">
+                {/* Left Column (1/3 width) */}
+                <div className="flex flex-col min-h-0">
                     <CompletedTasksList tasks={completedTasks} />
+                </div>
+                
+                {/* Middle Column (1/3 width) */}
+                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+                    <TaskStatusChart tasks={tasks} />
+                    <TaskPriorityChart tasks={completedTasks} />
+                </div>
+
+                {/* Right Column (1/3 width) */}
+                <div className="flex flex-col gap-6 lg:gap-8 min-h-0">
+                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
+                    <TaskCompletionTable tasks={completedTasks} />
                 </div>
             </main>
         </div>

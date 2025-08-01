@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -17,6 +17,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import isEqual from 'lodash.isequal';
 import { format, parseISO, isValid } from 'date-fns';
+import { useTheme } from 'next-themes';
 
 
 // Your web app's Firebase configuration
@@ -356,6 +357,7 @@ export default function SettingsPage() {
     const [originalSettings, setOriginalSettings] = useState(null); // Settings from Firestore
     const [isLoading, setIsLoading] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
+    const { theme, setTheme } = useTheme();
 
     useEffect(() => {
         const settingsRef = doc(db, 'settings', 'workflow');
@@ -425,8 +427,8 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
-            <header className="flex justify-between items-center mb-6">
+        <div className="min-h-screen bg-background text-foreground">
+            <header className="flex justify-between items-center p-4 border-b">
                 <h1 className="text-2xl font-bold">Settings</h1>
                  <div className="flex items-center gap-2">
                     <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
@@ -440,9 +442,20 @@ export default function SettingsPage() {
                     <Link href="/">
                         <Button variant="outline">Back to Board</Button>
                     </Link>
+                    <Link href="/dashboard">
+                      <Button variant="outline" size="sm">
+                          <LayoutDashboard className="h-4 w-4 mr-2" />
+                          Dashboard
+                      </Button>
+                    </Link>
+                    <Button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} variant="outline" size="icon">
+                      <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      <span className="sr-only">Toggle theme</span>
+                    </Button>
                 </div>
             </header>
-            <div className="space-y-6">
+            <main className="p-4 md:p-8 space-y-6">
                 <SettingsCard
                     title="Workflow Statuses"
                     items={settings?.workflowCategories}
@@ -467,7 +480,7 @@ export default function SettingsPage() {
                     fieldName="bidOrigins"
                 />
                 <ImportExportCard />
-            </div>
+            </main>
         </div>
     );
 }
