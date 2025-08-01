@@ -72,10 +72,10 @@ function TaskCompletionChart({ tasks }) {
         }).reverse();
 
         const tasksPerDay = tasks
-            .map(task => ({...task, completionDate: toDate(task.completionDate)}))
-            .filter(task => task.completionDate)
+            .map(task => ({...task, completionDateObj: toDate(task.completionDate)}))
+            .filter(task => task.completionDateObj && isValid(task.completionDateObj))
             .reduce((acc, task) => {
-                const day = format(task.completionDate, 'yyyy-MM-dd');
+                const day = format(task.completionDateObj, 'yyyy-MM-dd');
                 acc[day] = (acc[day] || 0) + 1;
                 return acc;
             }, {});
@@ -329,7 +329,7 @@ export default function DashboardPage() {
 
     const completedTasks = useMemo(() => {
         return tasks
-            .filter(t => t.status === 'Completed' && t.completionDate)
+            .filter(t => t.status === 'Completed' && toDate(t.completionDate))
             .sort((a, b) => {
                 const dateA = toDate(a.completionDate);
                 const dateB = toDate(b.completionDate);
