@@ -72,8 +72,8 @@ function TaskCompletionChart({ tasks }) {
                     date = new Date(task.completionDate * 1000);
                 } else if (typeof task.completionDate === 'string') {
                     date = new Date(task.completionDate);
-                } else {
-                    date = task.completionDate?.toDate?.();
+                } else if (task.completionDate?.seconds) {
+                    date = task.completionDate.toDate();
                 }
 
                 if (isValid(date)) {
@@ -216,7 +216,7 @@ function CompletedTasksList({ tasks }) {
                                 >
                                     <p className="font-semibold text-foreground">{task.taskid}</p>
                                     <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
-                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate({ seconds: task.completionDate})}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate)}</p>
                                 </div>
                             ))}
                         </div>
@@ -359,13 +359,22 @@ export default function DashboardPage() {
         return tasks
             .filter(t => t.status === 'Completed')
             .sort((a, b) => {
-                 let dateA = a.completionDate;
-                 let dateB = b.completionDate;
-                 if(typeof dateA === 'number') dateA = new Date(dateA * 1000);
-                 if(typeof dateB === 'number') dateB = new Date(dateB * 1000);
-                 if(typeof dateA === 'string') dateA = new Date(dateA);
-                 if(typeof dateB === 'string') dateB = new Date(dateB);
-                return (dateB || 0) - (dateA || 0)
+                 let dateA, dateB;
+                 
+                 if(typeof a.completionDate === 'number') dateA = new Date(a.completionDate * 1000);
+                 else if (a.completionDate?.seconds) dateA = a.completionDate.toDate();
+                 else if(typeof a.completionDate === 'string') dateA = new Date(a.completionDate);
+                 else dateA = null;
+
+                 if(typeof b.completionDate === 'number') dateB = new Date(b.completionDate * 1000);
+                 else if (b.completionDate?.seconds) dateB = b.completionDate.toDate();
+                 else if(typeof b.completionDate === 'string') dateB = new Date(b.completionDate);
+                 else dateB = null;
+
+                if (!isValid(dateA)) return 1;
+                if (!isValid(dateB)) return -1;
+
+                return dateB.getTime() - dateA.getTime();
             });
     }, [tasks]);
 
@@ -421,4 +430,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
