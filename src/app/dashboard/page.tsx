@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTheme } from "next-themes";
 
@@ -139,6 +139,52 @@ function TaskPriorityChart({ tasks }) {
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
                             })}
                         </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+function WeeklyCompletionChart({ tasks }) {
+    const data = useMemo(() => {
+        const last7Days = eachDayOfInterval({
+            start: subDays(endOfToday(), 6),
+            end: endOfToday()
+        });
+
+        const dailyCounts = last7Days.map(day => ({
+            date: format(day, 'MMM d'),
+            count: 0,
+        }));
+
+        tasks.forEach(task => {
+            const completionDate = toDate(task.completionDate);
+            if (completionDate) {
+                const dayString = format(completionDate, 'MMM d');
+                const dayData = dailyCounts.find(d => d.date === dayString);
+                if (dayData) {
+                    dayData.count++;
+                }
+            }
+        });
+
+        return dailyCounts;
+    }, [tasks]);
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Weekly Completion Trend</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
@@ -378,15 +424,19 @@ export default function DashboardPage() {
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
                     <Tabs defaultValue="status" className="h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
+                            <TabsTrigger value="trend">Weekly Trend</TabsTrigger>
                         </TabsList>
                         <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
                         </TabsContent>
                         <TabsContent value="priority" className="flex-grow">
                             <TaskPriorityChart tasks={completedTasks} />
+                        </TabsContent>
+                        <TabsContent value="trend" className="flex-grow">
+                            <WeeklyCompletionChart tasks={completedTasks} />
                         </TabsContent>
                     </Tabs>
                 </div>
@@ -398,7 +448,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-
-    
-    
