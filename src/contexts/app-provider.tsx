@@ -39,8 +39,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [filters, setFilters] = useLocalStorage<AppFilters>('filters', { kanban: 'all' });
-  const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -70,16 +70,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           console.error("Error initializing database:", error);
         }
       }
-      // setIsLoading(false); // We can manage loading state more granularly
     }, (error) => {
         console.error("Error fetching settings:", error);
-       // setIsLoading(false);
     });
 
     const unsubscribeTasks = onSnapshot(query(tasksCollectionRef), (snapshot) => {
         const tasksData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task));
         setTasks(tasksData);
-        setIsLoading(false); // Set loading to false after tasks are fetched
+        setIsLoading(false);
     }, (error) => {
         console.error("Error fetching tasks:", error);
         setIsLoading(false);
@@ -218,9 +216,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   if (!isClient || isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading application data...</p>
-      </div>
+        <div className="flex h-screen items-center justify-center">
+            <p>Loading application data...</p>
+        </div>
     );
   }
 
