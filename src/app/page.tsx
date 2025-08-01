@@ -827,7 +827,7 @@ function KanbanPageContent() {
           <div className="flex-shrink-0">
               <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
           </div>
-          <div className="flex-grow flex gap-6 overflow-x-auto">
+          <div className="flex-grow flex gap-6 overflow-x-auto pt-4">
               {columns.map((status) => (
                 <KanbanColumn
                   key={status}
