@@ -58,23 +58,23 @@ const parseDateString = (dateString) => {
 };
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return '';
-
-  let date;
-  if (timestamp?.seconds) {
-    date = new Date(timestamp.seconds * 1000);
-  } else if (timestamp instanceof Date) {
-    date = new Date(timestamp);
-  } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
-    date = new Date(timestamp);
-  } else {
+    if (!timestamp) return '';
+  
+    let date;
+    if (timestamp?.seconds) {
+      date = new Date(timestamp.seconds * 1000);
+    } else if (timestamp instanceof Date) {
+        date = timestamp;
+    } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      date = new Date(timestamp);
+    } else {
+      return '';
+    }
+  
+    if (isValid(date)) {
+      return format(date, 'MMM d, yyyy');
+    }
     return '';
-  }
-
-  if (isValid(date)) {
-    return format(date, 'MMM d, yyyy');
-  }
-  return '';
 };
 
 // Function to determine if a color is light or dark
@@ -255,7 +255,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         if (timestamp.seconds) {
             date = new Date(timestamp.seconds * 1000);
         } else if (timestamp instanceof Date) {
-            date = new Date(timestamp);
+            date = timestamp;
         } else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
             date = new Date(timestamp);
         } else {
@@ -284,25 +284,20 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                   </div>
               )}
               
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
                  </div>
                  <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
-                    <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} />
+                    <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} className="w-full" />
                  </div>
               </div>
               
               <div className="space-y-2">
                   <Label htmlFor="desc">Description</Label>
-                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                  <Label htmlFor="remarks">Remarks</Label>
-                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} />
+                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} rows={1} />
               </div>
               
                <div className="grid grid-cols-2 gap-4">
@@ -327,11 +322,16 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
               </div>
+              
+               <div className="space-y-2">
+                  <Label htmlFor="remarks">Remarks</Label>
+                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} rows={1}/>
+              </div>
 
               {isEditing && task.completionDate && (
                 <div className="space-y-2">
                   <Label htmlFor="completionDate">Completion</Label>
-                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50" />
+                  <Input id="completionDate" name="completionDate" type="text" value={formatDate(task?.completionDate)} disabled className="bg-muted/50 w-auto" />
               </div>
               )}
           </div>
@@ -520,3 +520,5 @@ export default function KanbanPage() {
     </DndContext>
   );
 }
+
+    
