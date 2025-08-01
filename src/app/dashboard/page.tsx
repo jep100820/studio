@@ -73,58 +73,6 @@ const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
 };
 
 
-function TaskCompletionTable({ tasks }) {
-    const data = useMemo(() => {
-        const last14Days = Array.from({ length: 14 }, (_, i) => {
-            const d = subDays(new Date(), i);
-            return format(startOfDay(d), 'yyyy-MM-dd');
-        }).reverse();
-
-        const tasksPerDay = tasks
-            .map(task => ({ ...task, completionDateObj: toDate(task.completionDate) }))
-            .filter(task => task.completionDateObj && isValid(task.completionDateObj))
-            .reduce((acc, task) => {
-                const day = format(task.completionDateObj, 'yyyy-MM-dd');
-                acc[day] = (acc[day] || 0) + 1;
-                return acc;
-            }, {});
-            
-        return last14Days.map(day => ({
-            date: format(parseISO(day), 'MMM d'),
-            completed: tasksPerDay[day] || 0,
-        }));
-    }, [tasks]);
-
-    return (
-        <Card className="flex-grow flex flex-col">
-            <CardHeader>
-                <CardTitle className="text-lg">Productivity</CardTitle>
-                <CardDescription>Tasks completed per day (last 14 days).</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col min-h-0">
-                <div className="flex-grow w-full overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Tasks Completed</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {data.map((row) => (
-                                <TableRow key={row.date}>
-                                    <TableCell className="font-medium">{row.date}</TableCell>
-                                    <TableCell className="text-right">{row.completed}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
-
 function TaskStatusChart({ tasks }) {
     const data = useMemo(() => {
         const statusCounts = tasks
@@ -304,12 +252,12 @@ function StatsDisplay({ tasks, completedTasks }) {
     }, [tasks, completedTasks]);
 
     return (
-        <Card>
+        <Card className="h-full flex flex-col">
             <CardHeader className="p-4 pb-2">
                  <CardTitle className="text-lg">Project Snapshot</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-2">
-                 <div className="grid grid-cols-5 gap-2 text-center">
+            <CardContent className="p-4 pt-2 flex-grow flex flex-col justify-center">
+                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-2 text-center">
                     <div className="p-2 bg-muted/50 rounded-lg">
                         <CheckCircle className="h-4 w-4 mx-auto text-green-500 mb-1" />
                         <p className="text-lg font-bold">{stats.totalCompleted}</p>
@@ -414,7 +362,6 @@ export default function DashboardPage() {
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
                     <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
-                    <TaskCompletionTable tasks={completedTasks} />
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
