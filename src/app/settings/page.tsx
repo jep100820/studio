@@ -109,8 +109,8 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
         setName(item.name);
     }, [item.name]);
 
-    const handleNameChange = (newName) => {
-        setName(newName);
+    const handleNameChange = (e) => {
+        setName(e.target.value);
     };
     
     const handleBlur = () => {
@@ -158,9 +158,9 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                         <Input
                             ref={inputRef}
                             value={name}
-                            onChange={(e) => handleNameChange(e.target.value)}
+                            onChange={handleNameChange}
                             onBlur={handleBlur}
-                            className={cn("flex-grow font-semibold border-2 border-primary text-foreground", textColor)}
+                            className={cn("flex-grow font-semibold border-2 border-primary", !isColorLight(item.color) ? "text-foreground" : "")}
                         />
                     ) : (
                         <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
@@ -356,7 +356,7 @@ function CustomTagsSection({ settings, onUpdate }) {
                             <SortableItem
                                 id={mainTag.id}
                                 item={mainTag}
-                                onUpdate={handleMainTagUpdate}
+                                onUpdate={(id, updated) => handleMainTagUpdate(id, updated)}
                                 onRemove={() => handleRemoveMainTag(mainTag.id)}
                                 hasColor={false}
                                 hasSubStatuses={false}

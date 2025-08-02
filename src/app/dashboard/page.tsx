@@ -271,11 +271,18 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
 
 function BidOriginChart({ tasks, settings }) {
     const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
+    
+    // Using the first custom tag category as Bid Origin for now
+    const bidOriginCategory = settings.customTags?.[0];
+
     const data = useMemo(() => {
+        if (!bidOriginCategory) return [];
+
         const originCounts = tasks
-            .filter(task => task.status !== 'Completed' && task.bidOrigin)
+            .filter(task => task.status !== 'Completed' && task.tags && task.tags[bidOriginCategory.name])
             .reduce((acc, task) => {
-                acc[task.bidOrigin] = (acc[task.bidOrigin] || 0) + 1;
+                const origin = task.tags[bidOriginCategory.name];
+                acc[origin] = (acc[origin] || 0) + 1;
                 return acc;
             }, {});
         
@@ -284,13 +291,13 @@ function BidOriginChart({ tasks, settings }) {
             value,
             fill: COLORS[index % COLORS.length]
         }));
-    }, [tasks]);
+    }, [tasks, bidOriginCategory]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Performance by Bid Origin</CardTitle>
-                <CardDescription>Distribution of active tasks based on their origin.</CardDescription>
+                <CardTitle className="text-lg">Performance by Source</CardTitle>
+                <CardDescription>Distribution of active tasks based on their source.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
@@ -323,7 +330,6 @@ function WeeklyCompletionChart({ tasks }) {
                 const completionDate = toDate(task.completionDate);
                 if (!completionDate) return false;
                 
-                // Check if the completion date is within the week range (inclusive)
                 return (isAfter(completionDate, weekStart) || isSameDay(completionDate, weekStart)) && 
                        (isBefore(completionDate, weekEnd) || isSameDay(completionDate, weekEnd));
             }).length;
