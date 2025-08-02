@@ -693,20 +693,21 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
 
 function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
-    if (!isOpen) return null;
+    if (!isOpen || changes.length === 0) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Confirm Status Renaming</DialogTitle>
+                    <DialogTitle>Confirm Setting Renaming</DialogTitle>
                     <DialogDescription>
-                        You have renamed the following statuses. Do you want to update all existing tasks to match?
+                        You have renamed the following items. Do you want to update all existing tasks to match?
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 space-y-2">
+                <div className="py-4 space-y-2 max-h-60 overflow-y-auto">
                     {changes.map((change, index) => (
                         <div key={index} className="text-sm p-2 rounded-md bg-muted">
+                            {change.type && <span className="font-bold text-xs uppercase text-muted-foreground mr-2">{change.type}</span>}
                             Rename "<strong>{change.from}</strong>" to "<strong>{change.to}</strong>"
                         </div>
                     ))}
@@ -737,29 +738,30 @@ export default function SettingsPage() {
         const settingsRef = doc(db, 'settings', 'workflow');
         const unsubscribe = onSnapshot(settingsRef, (doc) => {
             if (doc.exists()) {
-                const data = doc.data();
+                let data = doc.data();
+                 // --- MIGRATION & DEFAULTS ---
+                if (data.bidOrigins && !data.customTags) {
+                    data.customTags = [{ name: "Bid Origin", tags: data.bidOrigins.map(bo => ({ name: bo.name })) }];
+                    delete data.bidOrigins; // Clean up old field
+                }
+
                  if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
                 }
-                 // Set default for new settings if they don't exist
-                if (!data.hasOwnProperty('enableTimeTracking')) {
-                    data.enableTimeTracking = false;
-                }
-                if (!data.hasOwnProperty('workWeek')) {
-                    // Default to a standard Mon-Fri work week
-                    data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-                }
-                 if (!data.hasOwnProperty('dashboardSettings')) {
+                if (!data.hasOwnProperty('enableTimeTracking')) data.enableTimeTracking = false;
+                if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
                         charts: { taskStatus: true, taskPriority: true, dailyActivity: true },
                         stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true },
                     };
                 }
-                if (!data.hasOwnProperty('customTags')) {
-                    data.customTags = [];
-                }
-                setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
-                setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
+                 if (!data.hasOwnProperty('customTags')) data.customTags = [];
+                // --- END MIGRATION & DEFAULTS ---
+                
+                const deepCopy = JSON.parse(JSON.stringify(data));
+                setSettings(deepCopy);
+                setOriginalSettings(JSON.parse(JSON.stringify(data)));
             }
             setIsLoading(false);
         });
@@ -780,13 +782,13 @@ export default function SettingsPage() {
     };
     
     const handleAddNewItem = (fieldName) => {
+        if (!settings) return;
         const currentItems = settings[fieldName] || [];
-        // Prevent adding new item with duplicate name
+        
         let i = 1;
         let newItemName = 'New Item';
         while (currentItems.some(item => item.name === newItemName)) {
-            newItemName = `New Item ${i}`;
-            i++;
+            newItemName = `New Item ${i++}`;
         }
         
         let newItem = { name: newItemName };
@@ -812,19 +814,45 @@ export default function SettingsPage() {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
 
-        const originalMap = new Map(originalSettings.workflowCategories.map((cat, index) => [index, cat.name]));
-        const currentMap = new Map(settings.workflowCategories.map((cat, index) => [index, cat.name]));
-        const detectedChanges = [];
-
-        for (const [index, origName] of originalMap.entries()) {
-            const newName = currentMap.get(index);
-            if (newName && newName !== origName) {
-                if (!settings.workflowCategories.some(cat => cat.name === origName)) {
-                    detectedChanges.push({ from: origName, to: newName });
+        const findRenames = (original, current, type) => {
+            const changes = [];
+            if (!original || !current) return changes;
+            const originalMap = new Map(original.map((item, index) => [index, item]));
+            
+            current.forEach((item, index) => {
+                const originalItem = originalMap.get(index);
+                if (originalItem && originalItem.name !== item.name) {
+                     // Check if the old name truly doesn't exist anymore in the current list
+                    if (!current.some(i => i.name === originalItem.name)) {
+                        changes.push({ from: originalItem.name, to: item.name, type });
+                    }
                 }
-            }
+            });
+            return changes;
+        }
+        
+        const findTagRenames = (original, current) => {
+            let changes = [];
+            if (!original || !current) return changes;
+            
+            const mainTagRenames = findRenames(original, current, 'Tag Category');
+            changes = changes.concat(mainTagRenames);
+            
+            current.forEach((tagCategory, index) => {
+                const originalCategory = original[index];
+                if (originalCategory && originalCategory.name === tagCategory.name) {
+                    const subTagRenames = findRenames(originalCategory.tags, tagCategory.tags, `Tag in ${tagCategory.name}`);
+                    changes = changes.concat(subTagRenames);
+                }
+            });
+            return changes;
         }
 
+        const detectedChanges = [
+            ...findRenames(originalSettings.workflowCategories, settings.workflowCategories, 'Status'),
+            ...findRenames(originalSettings.importanceLevels, settings.importanceLevels, 'Importance'),
+            ...findTagRenames(originalSettings.customTags, settings.customTags)
+        ];
 
         if (detectedChanges.length > 0) {
             setRenameChanges(detectedChanges);
@@ -840,26 +868,63 @@ export default function SettingsPage() {
     };
 
     const handleConfirmUpdate = async () => {
-        // 1. Update tasks in DB
-        const batch = writeBatch(db);
-        const tasksRef = collection(db, 'tasks');
-        
-        for (const change of renameChanges) {
-            const q = query(tasksRef, where("status", "==", change.from));
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach((doc) => {
-                batch.update(doc.ref, { status: change.to });
-            });
-        }
-        await batch.commit();
-        
         const settingsToSave = JSON.parse(JSON.stringify(settings));
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
-
-        // 2. Update settings in DB
+        
+        // 1. Update settings in DB first
         await updateSettingsInDb(settingsToSave);
+
+        // 2. Then update tasks
+        const batch = writeBatch(db);
+        const tasksRef = collection(db, 'tasks');
+        const tasksSnapshot = await getDocs(tasksRef);
+
+        tasksSnapshot.forEach(taskDoc => {
+            const taskData = taskDoc.data();
+            let needsUpdate = false;
+            const updates = {};
+
+            for (const change of renameChanges) {
+                switch(change.type) {
+                    case 'Status':
+                        if (taskData.status === change.from) {
+                            updates.status = change.to;
+                            needsUpdate = true;
+                        }
+                        break;
+                    case 'Importance':
+                         if (taskData.importance === change.from) {
+                            updates.importance = change.to;
+                            needsUpdate = true;
+                        }
+                        break;
+                    case 'Tag Category':
+                        if (taskData.tags && taskData.tags[change.from]) {
+                            updates[`tags.${change.to}`] = taskData.tags[change.from];
+                            updates[`tags.${change.from}`] = null; // or delete
+                            needsUpdate = true;
+                        }
+                        break;
+                    default: // Sub-tag
+                         if (change.type.startsWith('Tag in')) {
+                            const categoryName = change.type.replace('Tag in ', '');
+                             if (taskData.tags && taskData.tags[categoryName] === change.from) {
+                                updates[`tags.${categoryName}`] = change.to;
+                                needsUpdate = true;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            if (needsUpdate) {
+                batch.update(taskDoc.ref, updates);
+            }
+        });
+
+        await batch.commit();
         
         // 3. Close modal
         setIsConfirmModalOpen(false);
