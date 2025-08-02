@@ -105,35 +105,20 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     );
 }
 
-function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses, onSubStatusUpdate }) {
+function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-    const [isEditing, setIsEditing] = useState(false);
-    const inputRef = useRef(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
     };
 
-    const handleItemChange = (path, value) => {
-        const newItem = { ...item, [path]: value };
-        onUpdate(id, newItem);
+    const handleNameChange = (newName) => {
+        onUpdate(id, { ...item, name: newName });
     };
-    
-    useEffect(() => {
-        if (isEditing && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isEditing]);
-    
-    const handleNameBlur = () => {
-        setIsEditing(false);
-    };
-    
-    const handleNameKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            setIsEditing(false);
-        }
+
+    const handleColorChange = (newColor) => {
+        onUpdate(id, { ...item, color: newColor });
     };
 
     const textColor = item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
@@ -146,56 +131,51 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
                 style={style}
                 className="flex items-center gap-2"
              >
-                <div {...attributes} {...listeners} className="cursor-grab p-2">
+                <div {...attributes} {...listeners} className="cursor-grab p-2 self-stretch flex items-center">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                 <div 
-                    className="flex-grow flex items-center p-2 rounded-lg shadow-sm"
-                    style={{ backgroundColor: item.color || '#ffffff' }}
-                >
-                    {isEditing ? (
-                        <Input
-                            ref={inputRef}
-                            value={item.name}
-                            onChange={(e) => handleItemChange('name', e.target.value)}
-                            onBlur={handleNameBlur}
-                            onKeyDown={handleNameKeyDown}
-                            className={cn("flex-grow bg-transparent border-0 ring-offset-0 focus-visible:ring-1 h-auto py-1", textColor)}
-                        />
-                    ) : (
-                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
-                    )}
-                    
-                    {hasSubStatuses && (
-                         <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
-                           ({subStatusCount > 0 ? `${subStatusCount} substatus` : 'No substatus'}{subStatusCount > 1 && 'es'})
-                        </span>
-                    )}
-
-                    <div className="flex items-center gap-1 ml-auto">
-                        {item.hasOwnProperty('color') && (
-                             <div className="relative">
-                                <label htmlFor={`color-${id}`} className="cursor-pointer">
-                                    <Paintbrush className={cn("h-4 w-4", textColor)} />
-                                </label>
-                                <Input
-                                    id={`color-${id}`}
-                                    type="color"
-                                    value={item.color}
-                                    onChange={(e) => handleItemChange('color', e.target.value)}
-                                    className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                            </div>
+                <div className="flex-grow">
+                    <button
+                        onClick={hasSubStatuses ? () => onToggleExpand(id) : undefined}
+                        className={cn(
+                            "w-full text-left flex items-center p-3 rounded-lg shadow-sm",
+                            hasSubStatuses && "cursor-pointer"
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
-                            <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+                        style={{ backgroundColor: item.color || '#ffffff' }}
+                    >
+                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
+                        
+                        {hasSubStatuses && (
+                             <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
+                               ({subStatusCount > 0 ? `${subStatusCount} substatus` : 'No substatus'}{subStatusCount > 1 && 'es'})
+                            </span>
+                        )}
+
+                        <div className={cn("flex items-center gap-1 ml-auto", textColor)}>
+                            {item.hasOwnProperty('color') && (
+                                <div className="relative w-6 h-6">
+                                    <label htmlFor={`color-${id}`} className="cursor-pointer w-full h-full flex items-center justify-center">
+                                        <Paintbrush className="h-4 w-4" />
+                                    </label>
+                                    <Input
+                                        id={`color-${id}`}
+                                        type="color"
+                                        value={item.color}
+                                        onChange={(e) => handleColorChange(e.target.value)}
+                                        className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                            {hasSubStatuses && (
+                                item.isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                            )}
+                        </div>
+                    </button>
+                 </div>
             </div>
              {hasSubStatuses && item.isExpanded && (
                  <SubStatusManager
@@ -208,7 +188,7 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
     );
 }
 
-function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, onSubStatusUpdate, onToggleSubStatus }) {
+function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -233,27 +213,31 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
         }
     };
     
-    const handleItemUpdate = (index, newItem) => {
-        const newItems = [...items];
-        const originalIndex = items.findIndex(item => item.name === displayedItems[index].name);
-        if (originalIndex !== -1) {
-            newItems[originalIndex] = newItem;
-            onUpdate(fieldName, newItems);
-        }
+    const handleItemUpdate = (itemName, newItem) => {
+        const newItems = items.map(item => (item.name === itemName ? newItem : item));
+        onUpdate(fieldName, newItems);
     }
     
-    const handleSubStatusUpdateWrapper = (parentIndex, newSubStatuses) => {
-        const newItems = [...items];
-        const originalIndex = items.findIndex(item => item.name === displayedItems[parentIndex].name);
-        if (originalIndex !== -1) {
-            newItems[originalIndex].subStatuses = newSubStatuses;
-            onUpdate(fieldName, newItems);
-        }
+    const handleSubStatusUpdate = (parentItemName, newSubStatuses) => {
+        const newItems = items.map(item =>
+            item.name === parentItemName
+                ? { ...item, subStatuses: newSubStatuses }
+                : item
+        );
+        onUpdate(fieldName, newItems);
     };
+
+    const handleToggleExpand = (itemName) => {
+        const newItems = items.map(item =>
+            item.name === itemName
+                ? { ...item, isExpanded: !item.isExpanded }
+                : item
+        );
+        onUpdate(fieldName, newItems);
+    }
     
-    const handleRemoveItem = (index) => {
-        const itemNameToRemove = displayedItems[index].name;
-        const newItems = items.filter((item) => item.name !== itemNameToRemove);
+    const handleRemoveItem = (itemName) => {
+        const newItems = items.filter((item) => item.name !== itemName);
         onUpdate(fieldName, newItems);
     };
     
@@ -270,10 +254,11 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
                                     key={item.name}
                                     id={item.name}
                                     item={item}
-                                    onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
-                                    onRemove={() => handleRemoveItem(index)}
+                                    onUpdate={handleItemUpdate}
+                                    onRemove={() => handleRemoveItem(item.name)}
+                                    onToggleExpand={handleToggleExpand}
                                     hasSubStatuses={hasSubStatuses}
-                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdateWrapper(index, newSubstatuses)}
+                                    onSubStatusUpdate={handleSubStatusUpdate}
                                 />
                             ))}
                         </div>
@@ -533,7 +518,7 @@ export default function SettingsPage() {
             if (doc.exists()) {
                 const data = doc.data();
                  if (data.workflowCategories) {
-                    data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, subStatuses: cat.subStatuses || [] }));
+                    data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
                 }
                 setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
                 setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
@@ -756,3 +741,5 @@ export default function SettingsPage() {
         </>
     );
 }
+
+    
