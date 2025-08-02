@@ -8,8 +8,8 @@ import { getFirestore, doc, onSnapshot, updateDoc, getDoc, collection, getDocs, 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -20,6 +20,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 
 
 // Your web app's Firebase configuration
@@ -39,6 +40,12 @@ const db = getFirestore(app);
 // A more robust date parser for import
 const parseDateString = (dateString) => {
     if (!dateString) return null;
+    // Check for full ISO 8601 date-time string
+    if (typeof dateString === 'string' && dateString.includes('T')) {
+        const date = parseISO(dateString);
+        return isValid(date) ? Timestamp.fromDate(date) : null;
+    }
+     // Check for date-only string
     if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const date = parseISO(dateString);
         return isValid(date) ? Timestamp.fromDate(date) : null;
@@ -249,6 +256,41 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
     );
 }
 
+function GeneralSettingsCard({ settings, onUpdate, startOpen = false }) {
+    const [isOpen, setIsOpen] = useState(startOpen);
+
+    const handleSwitchChange = (checked) => {
+        onUpdate('enableTimeTracking', checked);
+    };
+
+    return (
+        <Card>
+            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
+                <CardTitle>General Settings</CardTitle>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
+            </CardHeader>
+            {isOpen && (
+                <CardContent>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
+                             <SettingsCardDescription>
+                                Enable to use date and time pickers for due dates and completion dates.
+                            </SettingsCardDescription>
+                        </div>
+                        <Switch
+                            id="time-tracking"
+                            checked={settings?.enableTimeTracking || false}
+                            onCheckedChange={handleSwitchChange}
+                        />
+                    </div>
+                </CardContent>
+            )}
+        </Card>
+    );
+}
+
+
 function ImportExportCard() {
     const importFileRef = useRef(null);
     const [isOpen, setIsOpen] = useState(false);
@@ -262,7 +304,7 @@ function ImportExportCard() {
             const convertedData = { ...data };
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
-                    convertedData[key] = format(convertedData[key].toDate(), 'yyyy-MM-dd');
+                    convertedData[key] = convertedData[key].toDate().toISOString();
                 }
             }
             delete convertedData.id; // Don't export the Firestore document ID
@@ -567,6 +609,11 @@ export default function SettingsPage() {
                     </div>
                 </header>
                 <main className="flex-grow p-4 md:p-8 space-y-6 overflow-y-auto">
+                    <GeneralSettingsCard
+                        settings={settings}
+                        onUpdate={handleSettingsUpdate}
+                        startOpen={true}
+                    />
                     <SettingsCard
                         title="Workflow Statuses"
                         items={settings?.workflowCategories}
@@ -574,7 +621,6 @@ export default function SettingsPage() {
                         onAddItem={handleAddNewItem}
                         fieldName="workflowCategories"
                         hasSubStatuses={true}
-                        startOpen={true}
                     />
                     <SettingsCard
                         title="Importance Levels"

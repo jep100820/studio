@@ -78,7 +78,8 @@ const toDate = (dateInput) => {
     
     // String
     if (typeof dateInput === 'string') {
-        let date = parseISO(dateInput); // Try ISO format first (YYYY-MM-DD)
+        // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm'
+        let date = parseISO(dateInput); 
         if (isValid(date)) return date;
 
         date = parse(dateInput, 'dd/MM/yyyy', new Date()); // Try "dd/MM/yyyy"
@@ -97,10 +98,13 @@ const parseDateStringToTimestamp = (dateString) => {
     return date ? Timestamp.fromDate(date) : null;
 };
 
-const formatDate = (timestamp, outputFormat = 'MMM d, yyyy') => {
+const formatDate = (timestamp, includeTime = false) => {
     const date = toDate(timestamp);
-    return date ? format(date, outputFormat) : '';
+    if (!date) return '';
+    const formatString = includeTime ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
+    return format(date, formatString);
 };
+
 
 // Function to determine if a color is light or dark
 function isColorLight(hexColor) {
@@ -134,6 +138,7 @@ const seedDatabase = async () => {
         { name: 'Low', color: '#10b981' },
       ],
       bidOrigins: [],
+      enableTimeTracking: false,
     });
     console.log('Default settings created.');
   }
@@ -213,7 +218,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       <div className="flex-grow" style={{ pointerEvents: 'none' }}>
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
-              <span>Due Date: {formatDate(task.dueDate)}</span>
+              <span>Due Date: {formatDate(task.dueDate, settings.enableTimeTracking)}</span>
           </div>
 
           <div className="mt-2 flex items-center gap-2">
@@ -235,12 +240,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                 <p className="text-sm mt-1">{task.remarks || 'No remarks'}</p>
                 
                 <p className="text-sm font-semibold mt-2">Date Started:</p>
-                <p className="text-sm mt-1">{formatDate(task.date)}</p>
+                <p className="text-sm mt-1">{formatDate(task.date, settings.enableTimeTracking)}</p>
 
                 {task.completionDate && (
                     <>
                         <p className="text-sm font-semibold mt-2">Completed:</p>
-                        <p className="text-sm mt-1">{formatDate(task.completionDate)}</p>
+                        <p className="text-sm mt-1">{formatDate(task.completionDate, settings.enableTimeTracking)}</p>
                     </>
                 )}
                 
@@ -331,13 +336,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        // The input type="date" provides value in "YYYY-MM-DD" format
+        // The input provides value in "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" format
         const timestamp = parseDateStringToTimestamp(value);
         setTask(prev => ({ ...prev, [name]: timestamp }));
     };
 
-    const formatDateForInput = (timestamp) => {
-        return formatDate(timestamp, 'yyyy-MM-dd');
+    const formatDateForInput = (timestamp, includeTime) => {
+        const formatString = includeTime ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd';
+        return formatDate(timestamp, formatString);
     };
 
     const currentSubStatuses = useMemo(() => {
@@ -357,7 +363,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
           <div className="py-4 space-y-4">
               {isEditing && (
                   <div className="text-sm text-muted-foreground">
-                      <p>Date Started: {formatDate(task.date)}</p>
+                      <p>Date Started: {formatDate(task.date, settings.enableTimeTracking)}</p>
                   </div>
               )}
               
@@ -368,7 +374,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                  </div>
                  <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
-                    <Input id="dueDate" name="dueDate" type="date" value={formatDateForInput(task?.dueDate)} onChange={handleDateChange} className="w-full" />
+                    <Input 
+                      id="dueDate" 
+                      name="dueDate" 
+                      type={settings.enableTimeTracking ? "datetime-local" : "date"} 
+                      value={formatDateForInput(task?.dueDate, settings.enableTimeTracking)} 
+                      onChange={handleDateChange} 
+                      className="w-full" 
+                    />
                  </div>
               </div>
               
@@ -408,7 +421,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
               {isEditing && (
                  <div className="space-y-2">
                     <Label htmlFor="completionDate">Completion Date</Label>
-                    <Input id="completionDate" name="completionDate" type="date" value={formatDateForInput(task?.completionDate)} onChange={handleDateChange} className="w-full" />
+                    <Input 
+                      id="completionDate" 
+                      name="completionDate" 
+                      type={settings.enableTimeTracking ? "datetime-local" : "date"} 
+                      value={formatDateForInput(task?.completionDate, settings.enableTimeTracking)} 
+                      onChange={handleDateChange} 
+                      className="w-full" 
+                    />
                 </div>
               )}
           </div>
@@ -483,7 +503,7 @@ function DueDateWidget({ title, value, icon: Icon, color, onClick, disabled }) {
     );
 }
 
-function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick }) {
+function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick, settings }) {
     if (!isOpen) return null;
 
     return (
@@ -502,7 +522,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick }) {
                                 <li key={task.id} onClick={() => onTaskClick(task.id)} className="text-sm p-3 rounded-md hover:bg-muted cursor-pointer border">
                                     <p className="font-semibold">{task.taskid}</p>
                                     <p className="text-xs text-muted-foreground mt-1">Status: {task.status}</p>
-                                    <p className="text-xs text-muted-foreground">Due: {formatDate(task.dueDate)}</p>
+                                    <p className="text-xs text-muted-foreground">Due: {formatDate(task.dueDate, settings.enableTimeTracking)}</p>
                                 </li>
                             ))}
                         </ul>
@@ -518,7 +538,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick }) {
     );
 }
 
-function DueDateSummary({ tasks, onTaskClick }) {
+function DueDateSummary({ tasks, onTaskClick, settings }) {
     const [modalData, setModalData] = useState({ isOpen: false, title: '', tasks: [] });
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
@@ -592,6 +612,7 @@ function DueDateSummary({ tasks, onTaskClick }) {
                 title={modalData.title}
                 tasks={modalData.tasks}
                 onTaskClick={handleTaskItemClick}
+                settings={settings}
             />
         </div>
     );
@@ -599,7 +620,7 @@ function DueDateSummary({ tasks, onTaskClick }) {
 
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [] });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [], enableTimeTracking: false });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -825,7 +846,7 @@ function KanbanPageContent() {
         <header className="flex-shrink-0 flex items-center justify-between p-4 border-b gap-4">
           <div className="flex items-center gap-4 flex-shrink-0">
             <h1 className="text-2xl font-bold">KanbanFlow</h1>
-            <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} />
+            <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} settings={settings} />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={() => handleOpenModal()} size="sm">

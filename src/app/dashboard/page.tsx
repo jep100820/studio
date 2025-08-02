@@ -4,14 +4,14 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, where, Timestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -55,7 +55,8 @@ const toDate = (dateInput) => {
     
     // String
     if (typeof dateInput === 'string') {
-        let date = parseISO(dateInput); // Try ISO format first (YYYY-MM-DD)
+        // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm'
+        let date = parseISO(dateInput); 
         if (isValid(date)) return date;
 
         date = parse(dateInput, 'dd/MM/yyyy', new Date()); // Try "dd/MM/yyyy"
@@ -68,9 +69,12 @@ const toDate = (dateInput) => {
     return null; // Return null if format is unknown
 };
 
-const formatDate = (dateInput, outputFormat = 'MMM d, yyyy') => {
+
+const formatDate = (dateInput, includeTime = false) => {
     const date = toDate(dateInput);
-    return date ? format(date, outputFormat) : '';
+    if (!date) return '';
+    const formatString = includeTime ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
+    return format(date, formatString);
 };
 
 function isColorLight(hexColor) {
@@ -237,8 +241,8 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 const completionDate = toDate(task.completionDate);
-                if (completionDate && isBefore(completionDate, day)) {
-                    return false; // Already completed before this day
+                if (completionDate && isBefore(completionDate, endOfDay(day))) {
+                    return false; // Already completed before this day ended
                 }
                 return true;
             }).length;
@@ -279,7 +283,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
 }
 
 
-function CompletedTasksList({ tasks }) {
+function CompletedTasksList({ tasks, settings }) {
     const [searchTerm, setSearchTerm] = useState('');
     const router = useRouter();
 
@@ -327,7 +331,7 @@ function CompletedTasksList({ tasks }) {
                                 >
                                     <p className="font-semibold text-foreground">{task.taskid}</p>
                                     <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
-                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate) || 'Not set'}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate, settings?.enableTimeTracking) || 'Not set'}</p>
                                 </div>
                             ))}
                         </div>
@@ -435,12 +439,19 @@ function StatsDisplay({ tasks, completedTasks }) {
 
 export default function DashboardPage() {
     const [tasks, setTasks] = useState([]);
+    const [settings, setSettings] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const { theme, setTheme } = useTheme();
     const router = useRouter();
     const [dateRange, setDateRange] = useState({ from: null, to: null });
 
     useEffect(() => {
+        const settingsUnsub = onSnapshot(doc(db, 'settings', 'workflow'), (doc) => {
+            if (doc.exists()) {
+                setSettings(doc.data());
+            }
+        });
+
         const tasksQuery = query(collection(db, 'tasks'));
         const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => {
@@ -464,7 +475,10 @@ export default function DashboardPage() {
             setIsLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            settingsUnsub();
+        }
     }, []);
 
     const completedTasks = useMemo(() => {
@@ -494,9 +508,10 @@ export default function DashboardPage() {
 
     const handleDateChange = (e, part) => {
         const { value } = e.target;
+        // The input type="date" provides value in "YYYY-MM-DD" format
         const newDate = toDate(value);
         if (newDate) {
-            setDateRange(prev => ({ ...prev, [part]: part === 'from' ? startOfDay(newDate) : endOfToday(newDate) }));
+            setDateRange(prev => ({ ...prev, [part]: part === 'from' ? startOfDay(newDate) : endOfDay(newDate) }));
         }
     };
     
@@ -572,7 +587,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
-                    <CompletedTasksList tasks={completedTasks} />
+                    <CompletedTasksList tasks={completedTasks} settings={settings} />
                 </div>
             </main>
         </div>
