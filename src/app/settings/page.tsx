@@ -65,34 +65,34 @@ function isColorLight(hexColor) {
     return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
 }
 
-function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
+function SubStatusManager({ parentId, subStatuses, onUpdate }) {
     const handleAdd = () => {
-        const newSubStatuses = [...subStatuses, { name: 'New Sub-Status' }];
-        onUpdate(parentIndex, newSubStatuses);
+        const newSubStatus = { id: `sub-${Date.now()}`, name: 'New Sub-Status' };
+        const newSubStatuses = [...subStatuses, newSubStatus];
+        onUpdate(parentId, newSubStatuses);
     };
 
-    const handleRemove = (subIndex) => {
-        const newSubStatuses = subStatuses.filter((_, i) => i !== subIndex);
-        onUpdate(parentIndex, newSubStatuses);
+    const handleRemove = (subId) => {
+        const newSubStatuses = subStatuses.filter((s) => s.id !== subId);
+        onUpdate(parentId, newSubStatuses);
     };
 
-    const handleChange = (subIndex, value) => {
-        const newSubStatuses = [...subStatuses];
-        newSubStatuses[subIndex].name = value;
-        onUpdate(parentIndex, newSubStatuses);
+    const handleChange = (subId, value) => {
+        const newSubStatuses = subStatuses.map(s => s.id === subId ? { ...s, name: value } : s);
+        onUpdate(parentId, newSubStatuses);
     };
 
     return (
         <div className="p-3 mt-2 space-y-3 bg-muted/50 rounded-lg ml-10">
             <div className="space-y-2">
-                {subStatuses?.map((sub, subIndex) => (
-                    <div key={subIndex} className="flex items-center gap-2">
+                {subStatuses?.map((sub) => (
+                    <div key={sub.id} className="flex items-center gap-2">
                         <Input
                             value={sub.name}
-                            onChange={(e) => handleChange(subIndex, e.target.value)}
+                            onChange={(e) => handleChange(sub.id, e.target.value)}
                             className="flex-grow bg-background h-9"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)} className="h-9 w-9">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(sub.id)} className="h-9 w-9">
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
@@ -108,6 +108,8 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
 
 function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const [isEditing, setIsEditing] = useState(false);
+    const inputRef = useRef(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -122,65 +124,84 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
         onUpdate(id, { ...item, color: newColor });
     };
 
-    const textColor = hasColor && item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
-    const bgColor = hasColor ? item.color : '#ffffff';
+    const toggleEdit = () => {
+        setIsEditing(!isEditing);
+    };
+
+    useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+        }
+    }, [isEditing]);
+
+    const textColor = hasColor && item.color && !isColorLight(item.color) ? 'text-white' : 'text-foreground';
+    const bgColor = hasColor ? item.color : 'hsl(var(--card))';
+    
+    const subStatusSummary = useMemo(() => {
+        if (!hasSubStatuses || !item.subStatuses) return '';
+        if (item.subStatuses.length === 0) return '(No substatus)';
+        return `(${item.subStatuses.map(s => s.name).join(', ')})`;
+    }, [item.subStatuses, hasSubStatuses]);
 
     return (
         <div className="mb-3">
-             <div 
-                ref={setNodeRef} 
-                style={style}
-                className="flex items-center gap-2"
-             >
-                <div {...attributes} {...listeners} className="cursor-grab p-2 self-stretch flex items-center">
+             <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+                <div {...attributes} {...listeners} className="cursor-grab p-2 self-stretch flex items-center bg-card rounded-l-lg border-y border-l">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                <div className="flex-grow">
-                    <button
-                        onClick={hasSubStatuses ? () => onToggleExpand(id) : undefined}
-                        className={cn(
-                            "w-full text-left flex items-center p-3 rounded-lg shadow-sm",
-                            hasSubStatuses && "cursor-pointer"
-                        )}
-                        style={{ backgroundColor: bgColor }}
-                    >
+                <div 
+                    className="flex-grow flex items-center p-3 rounded-r-lg shadow-sm"
+                    style={{ backgroundColor: bgColor }}
+                >
+                    {isEditing ? (
+                        <Input
+                            ref={inputRef}
+                            value={item.name}
+                            onChange={(e) => handleNameChange(e.target.value)}
+                            onBlur={() => setIsEditing(false)}
+                            className={cn("flex-grow font-semibold border-2 border-primary", textColor)}
+                        />
+                    ) : (
                         <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
-                        
-                        {hasSubStatuses && (
-                             <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
-                               ({item.subStatuses?.length > 0 ? item.subStatuses.map(s => s.name).join(', ') : 'No substatus'})
-                            </span>
-                        )}
+                    )}
 
-                        <div className={cn("flex items-center gap-1 ml-auto", textColor)}>
-                            {hasColor && (
-                                <div className="relative w-6 h-6">
-                                    <label htmlFor={`color-${id}`} className="cursor-pointer w-full h-full flex items-center justify-center">
-                                        <Paintbrush className="h-4 w-4" />
-                                    </label>
-                                    <Input
-                                        id={`color-${id}`}
-                                        type="color"
-                                        value={item.color}
-                                        onChange={(e) => handleColorChange(e.target.value)}
-                                        className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                                    />
-                                </div>
-                            )}
-                            <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
-                                <X className="h-4 w-4" />
+                    <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
+                        {subStatusSummary}
+                    </span>
+
+                    <div className={cn("flex items-center gap-1 ml-auto", textColor)}>
+                         <Button variant="ghost" size="icon" onClick={toggleEdit} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        {hasColor && (
+                            <div className="relative w-8 h-8 flex items-center justify-center">
+                                <label htmlFor={`color-${id}`} className="cursor-pointer w-full h-full flex items-center justify-center">
+                                    <Paintbrush className="h-4 w-4" />
+                                </label>
+                                <Input
+                                    id={`color-${id}`}
+                                    type="color"
+                                    value={item.color || '#ffffff'}
+                                    onChange={(e) => handleColorChange(e.target.value)}
+                                    className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                            </div>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                         {hasSubStatuses && (
+                            <Button variant="ghost" size="icon" onClick={() => onToggleExpand(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
+                                {item.isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </Button>
-                            {hasSubStatuses && (
-                                item.isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-                            )}
-                        </div>
-                    </button>
-                 </div>
+                        )}
+                    </div>
+                </div>
             </div>
              {hasSubStatuses && item.isExpanded && (
                  <SubStatusManager
-                    parentIndex={id}
+                    parentId={id}
                     subStatuses={item.subStatuses || []}
                     onUpdate={onSubStatusUpdate}
                 />
@@ -189,8 +210,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     );
 }
 
-
-function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true }) {
+function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -198,65 +218,52 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
         })
     );
     
-    const [localItems, setLocalItems] = useState(items);
-    
-    useEffect(() => {
-        setLocalItems(items);
-    }, [items]);
-    
     const displayedItems = useMemo(() => {
         if (fieldName === 'workflowCategories') {
-            return localItems?.filter(item => item.name !== 'Completed') || [];
+            return items?.filter(item => item.name !== 'Completed') || [];
         }
-        return localItems || [];
-    }, [localItems, fieldName]);
+        return items || [];
+    }, [items, fieldName]);
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = localItems.findIndex(item => item.name === active.id);
-            const newIndex = localItems.findIndex(item => item.name === over.id);
-            const newItems = arrayMove(localItems, oldIndex, newIndex);
+            const oldIndex = items.findIndex(item => item.id === active.id);
+            const newIndex = items.findIndex(item => item.id === over.id);
+            const newItems = arrayMove(items, oldIndex, newIndex);
             onUpdate(fieldName, newItems);
         }
     };
     
-    const handleItemUpdate = (itemName, newItem) => {
-        const newItems = localItems.map(item => (item.name === itemName ? newItem : item));
+    const handleItemUpdate = (itemId, newItem) => {
+        const newItems = items.map(item => (item.id === itemId ? newItem : item));
         onUpdate(fieldName, newItems);
     }
     
-    const handleSubStatusUpdate = (parentItemName, newSubStatuses) => {
-        const newItems = localItems.map(item =>
-            item.name === parentItemName
+    const handleSubStatusUpdate = (parentItemId, newSubStatuses) => {
+        const newItems = items.map(item =>
+            item.id === parentItemId
                 ? { ...item, subStatuses: newSubStatuses }
                 : item
         );
         onUpdate(fieldName, newItems);
     };
 
-    const handleToggleExpand = (itemName) => {
-        const newItems = localItems.map(item =>
-            item.name === itemName
+    const handleToggleExpand = (itemId) => {
+        const newItems = items.map(item =>
+            item.id === itemId
                 ? { ...item, isExpanded: !item.isExpanded }
                 : item
         );
         onUpdate(fieldName, newItems);
     }
     
-    const handleRemoveItem = (itemName) => {
-        const newItems = localItems.filter((item) => item.name !== itemName);
-        onUpdate(fieldName, newItems);
-    };
-    
-    const handleNameChange = (oldName, newName) => {
-        const newItems = localItems.map(item => 
-            item.name === oldName ? { ...item, name: newName } : item
-        );
+    const handleRemoveItem = (itemId) => {
+        const newItems = items.filter((item) => item.id !== itemId);
         onUpdate(fieldName, newItems);
     };
 
-    const itemIds = useMemo(() => displayedItems?.map(it => it.name) || [], [displayedItems]);
+    const itemIds = useMemo(() => displayedItems?.map(it => it.id) || [], [displayedItems]);
     
     return (
         <Card>
@@ -266,11 +273,11 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
                         <div>
                            {displayedItems?.map((item, index) => (
                                 <SortableItem
-                                    key={item.name}
-                                    id={item.name}
+                                    key={item.id}
+                                    id={item.id}
                                     item={item}
                                     onUpdate={handleItemUpdate}
-                                    onRemove={() => handleRemoveItem(item.name)}
+                                    onRemove={() => handleRemoveItem(item.id)}
                                     onToggleExpand={handleToggleExpand}
                                     hasSubStatuses={hasSubStatuses}
                                     onSubStatusUpdate={handleSubStatusUpdate}
@@ -295,70 +302,95 @@ function CustomTagsSection({ settings, onUpdate }) {
     const handleAddMainTag = () => {
         if (customTags.length >= 4) return;
         const newMainTag = {
+            id: `tagcat-${Date.now()}`,
             name: `New Tag Category ${customTags.length + 1}`,
             tags: [],
         };
         onUpdate('customTags', [...customTags, newMainTag]);
     };
 
-    const handleRemoveMainTag = (index) => {
-        const newCustomTags = customTags.filter((_, i) => i !== index);
+    const handleRemoveMainTag = (id) => {
+        const newCustomTags = customTags.filter((t) => t.id !== id);
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleMainTagNameChange = (index, newName) => {
+    const handleMainTagNameChange = (id, newName) => {
+        const newCustomTags = customTags.map(t => t.id === id ? { ...t, name: newName } : t);
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const handleAddSubTag = (mainId) => {
         const newCustomTags = [...customTags];
-        newCustomTags[index].name = newName;
+        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
+        if (mainTagIndex === -1 || newCustomTags[mainTagIndex].tags.length >= 10) return;
+        
+        const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
+        newCustomTags[mainTagIndex].tags.push(newSubTag);
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleAddSubTag = (mainIndex) => {
+    const handleRemoveSubTag = (mainId, subId) => {
         const newCustomTags = [...customTags];
-        if (newCustomTags[mainIndex].tags.length >= 10) return;
-        newCustomTags[mainIndex].tags.push({ name: 'New Tag' });
+        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
+        if (mainTagIndex === -1) return;
+
+        newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.filter((st) => st.id !== subId);
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleRemoveSubTag = (mainIndex, subIndex) => {
+    const handleSubTagNameChange = (mainId, subId, newName) => {
         const newCustomTags = [...customTags];
-        newCustomTags[mainIndex].tags = newCustomTags[mainIndex].tags.filter((_, i) => i !== subIndex);
+        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
+        if (mainTagIndex === -1) return;
+        
+        const subTagIndex = newCustomTags[mainTagIndex].tags.findIndex(st => st.id === subId);
+        if (subTagIndex === -1) return;
+
+        newCustomTags[mainTagIndex].tags[subTagIndex].name = newName;
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleSubTagNameChange = (mainIndex, subIndex, newName) => {
-        const newCustomTags = [...customTags];
-        newCustomTags[mainIndex].tags[subIndex].name = newName;
-        onUpdate('customTags', newCustomTags);
-    };
+    const MainTagEditor = ({ mainTag }) => {
+        const [isEditing, setIsEditing] = useState(false);
 
-    const MainTagEditor = ({ mainTag, index }) => {
         return (
             <div className="border rounded-lg mb-4">
                 <div className="p-4 flex items-center justify-between">
-                    <Input 
-                        value={mainTag.name}
-                        onChange={(e) => handleMainTagNameChange(index, e.target.value)}
-                        className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 p-0"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(index)}>
+                     <div className="flex items-center gap-2 flex-grow">
+                        {isEditing ? (
+                            <Input
+                                value={mainTag.name}
+                                onChange={(e) => handleMainTagNameChange(mainTag.id, e.target.value)}
+                                onBlur={() => setIsEditing(false)}
+                                autoFocus
+                                className="text-base font-semibold border-2 border-primary p-1"
+                            />
+                        ) : (
+                             <h4 className="text-base font-semibold">{mainTag.name}</h4>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className="h-8 w-8">
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(mainTag.id)}>
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
                 <div className="p-4 pt-0 space-y-2">
-                    {mainTag.tags.map((tag, subIndex) => (
-                        <div key={subIndex} className="flex items-center gap-2">
+                    {mainTag.tags.map((tag) => (
+                        <div key={tag.id} className="flex items-center gap-2">
                             <Input 
                                 value={tag.name}
-                                onChange={(e) => handleSubTagNameChange(index, subIndex, e.target.value)}
+                                onChange={(e) => handleSubTagNameChange(mainTag.id, tag.id, e.target.value)}
                                 className="h-9"
                             />
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveSubTag(index, subIndex)} className="w-9 h-9">
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveSubTag(mainTag.id, tag.id)} className="w-9 h-9">
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
                     ))}
                     {mainTag.tags.length < 10 && (
-                        <Button variant="outline" size="sm" onClick={() => handleAddSubTag(index)}>
+                        <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Tag
                         </Button>
@@ -372,8 +404,8 @@ function CustomTagsSection({ settings, onUpdate }) {
         <Card>
             <CardContent className="pt-6">
                 <div className="space-y-4">
-                    {customTags.map((tag, index) => (
-                        <MainTagEditor key={index} mainTag={tag} index={index} />
+                    {customTags.map((tag) => (
+                        <MainTagEditor key={tag.id} mainTag={tag} />
                     ))}
                 </div>
                  {customTags.length < 4 && (
@@ -733,6 +765,35 @@ export default function SettingsPage() {
     const router = useRouter();
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [renameChanges, setRenameChanges] = useState([]);
+    
+    // Counter for new item IDs
+    const nextIdCounter = useRef(Date.now());
+    const getNextId = (prefix = 'item') => {
+        nextIdCounter.current += 1;
+        return `${prefix}-${nextIdCounter.current}`;
+    };
+
+    const addIdsToData = (data) => {
+        if (data.workflowCategories) {
+            data.workflowCategories = data.workflowCategories.map(cat => ({
+                ...cat,
+                id: cat.id || getNextId('cat'),
+                subStatuses: (cat.subStatuses || []).map(sub => ({ ...sub, id: sub.id || getNextId('sub') }))
+            }));
+        }
+        if (data.importanceLevels) {
+            data.importanceLevels = data.importanceLevels.map(imp => ({ ...imp, id: imp.id || getNextId('imp') }));
+        }
+        if (data.customTags) {
+            data.customTags = data.customTags.map(tag => ({
+                ...tag,
+                id: tag.id || getNextId('tag'),
+                tags: (tag.tags || []).map(subTag => ({ ...subTag, id: subTag.id || getNextId('subtag') }))
+            }));
+        }
+        return data;
+    };
+
 
     useEffect(() => {
         const settingsRef = doc(db, 'settings', 'workflow');
@@ -741,7 +802,10 @@ export default function SettingsPage() {
                 let data = doc.data();
                  // --- MIGRATION & DEFAULTS ---
                 if (data.bidOrigins && !data.customTags) {
-                    data.customTags = [{ name: "Bid Origin", tags: data.bidOrigins.map(bo => ({ name: bo.name })) }];
+                    data.customTags = [{
+                        name: "Bid Origin",
+                        tags: data.bidOrigins.map(bo => ({ name: bo.name }))
+                    }];
                     delete data.bidOrigins; // Clean up old field
                 }
 
@@ -752,16 +816,17 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true },
-                        stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true },
+                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true, bidOrigin: true, weeklyCompletion: true, dayOfWeekCompletion: true },
+                        stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
                 // --- END MIGRATION & DEFAULTS ---
                 
-                const deepCopy = JSON.parse(JSON.stringify(data));
+                const dataWithIds = addIdsToData(data);
+                const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
-                setOriginalSettings(JSON.parse(JSON.stringify(data)));
+                setOriginalSettings(JSON.parse(JSON.stringify(dataWithIds)));
             }
             setIsLoading(false);
         });
@@ -770,7 +835,19 @@ export default function SettingsPage() {
     }, []);
     
     useEffect(() => {
-        setIsDirty(!isEqual(settings, originalSettings));
+        if (settings && originalSettings) {
+             // Create copies without transient properties like isExpanded for comparison
+            const cleanSettings = JSON.parse(JSON.stringify(settings));
+            const cleanOriginalSettings = JSON.parse(JSON.stringify(originalSettings));
+
+            if (cleanSettings.workflowCategories) {
+                cleanSettings.workflowCategories.forEach(cat => delete cat.isExpanded);
+            }
+            if (cleanOriginalSettings.workflowCategories) {
+                cleanOriginalSettings.workflowCategories.forEach(cat => delete cat.isExpanded);
+            }
+            setIsDirty(!isEqual(cleanSettings, cleanOriginalSettings));
+        }
     }, [settings, originalSettings]);
 
     const handleSettingsUpdate = (fieldName, updatedItems) => {
@@ -791,7 +868,7 @@ export default function SettingsPage() {
             newItemName = `New Item ${i++}`;
         }
         
-        let newItem = { name: newItemName };
+        let newItem = { id: getNextId(fieldName), name: newItemName };
 
         if(fieldName === 'workflowCategories') {
             newItem.color = '#cccccc';
@@ -813,18 +890,28 @@ export default function SettingsPage() {
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
+        // Also remove IDs as they are client-side only for now
+        const removeIds = (obj) => {
+             if (Array.isArray(obj)) {
+                obj.forEach(removeIds);
+            } else if (obj !== null && typeof obj === 'object') {
+                delete obj.id;
+                Object.values(obj).forEach(removeIds);
+            }
+            return obj;
+        };
 
         const findRenames = (original, current, type) => {
             const changes = [];
             if (!original || !current) return changes;
-            const originalMap = new Map(original.map((item, index) => [index, item]));
+
+            const originalMap = new Map(original.map(item => [item.id, item.name]));
             
-            current.forEach((item, index) => {
-                const originalItem = originalMap.get(index);
-                if (originalItem && originalItem.name !== item.name) {
-                     // Check if the old name truly doesn't exist anymore in the current list
-                    if (!current.some(i => i.name === originalItem.name)) {
-                        changes.push({ from: originalItem.name, to: item.name, type });
+            current.forEach((item) => {
+                const originalName = originalMap.get(item.id);
+                if (originalName && originalName !== item.name) {
+                    if (!current.some(i => i.name === originalName)) {
+                        changes.push({ from: originalName, to: item.name, type, id: item.id });
                     }
                 }
             });
@@ -835,12 +922,14 @@ export default function SettingsPage() {
             let changes = [];
             if (!original || !current) return changes;
             
+            // Main tag category renames
             const mainTagRenames = findRenames(original, current, 'Tag Category');
             changes = changes.concat(mainTagRenames);
             
-            current.forEach((tagCategory, index) => {
-                const originalCategory = original[index];
-                if (originalCategory && originalCategory.name === tagCategory.name) {
+            // Sub-tag renames
+            current.forEach((tagCategory) => {
+                const originalCategory = original.find(c => c.id === tagCategory.id);
+                if (originalCategory && originalCategory.name === tagCategory.name) { // Only check sub-tags if main tag name is same
                     const subTagRenames = findRenames(originalCategory.tags, tagCategory.tags, `Tag in ${tagCategory.name}`);
                     changes = changes.concat(subTagRenames);
                 }
@@ -864,7 +953,21 @@ export default function SettingsPage() {
     
     const updateSettingsInDb = async (settingsToSave) => {
         const settingsRef = doc(db, 'settings', 'workflow');
-        await updateDoc(settingsRef, settingsToSave);
+        // Cleanse IDs before saving to Firestore
+        const cleanseIds = (data) => {
+            const cleansedData = JSON.parse(JSON.stringify(data));
+            const walker = (obj) => {
+                if (Array.isArray(obj)) {
+                    obj.forEach(walker);
+                } else if (obj && typeof obj === 'object') {
+                    delete obj.id;
+                    Object.values(obj).forEach(walker);
+                }
+            };
+            walker(cleansedData);
+            return cleansedData;
+        };
+        await updateDoc(settingsRef, cleanseIds(settingsToSave));
     };
 
     const handleConfirmUpdate = async () => {
@@ -873,10 +976,8 @@ export default function SettingsPage() {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
         
-        // 1. Update settings in DB first
         await updateSettingsInDb(settingsToSave);
 
-        // 2. Then update tasks
         const batch = writeBatch(db);
         const tasksRef = collection(db, 'tasks');
         const tasksSnapshot = await getDocs(tasksRef);
@@ -901,9 +1002,13 @@ export default function SettingsPage() {
                         }
                         break;
                     case 'Tag Category':
-                        if (taskData.tags && taskData.tags[change.from]) {
+                        // This case is tricky. We'd need to know the ID mapping.
+                        // Assuming we handle rename by changing the key in tags object.
+                        if (taskData.tags && typeof taskData.tags[change.from] !== 'undefined') {
                             updates[`tags.${change.to}`] = taskData.tags[change.from];
-                            updates[`tags.${change.from}`] = null; // or delete
+                            // This would require a field deletion which is special
+                            // For simplicity, we can set it to null or an empty string if deletion is complex.
+                            // updates[`tags.${change.from}`] = deleteField(); // Firestore specific
                             needsUpdate = true;
                         }
                         break;
@@ -918,6 +1023,18 @@ export default function SettingsPage() {
                         break;
                 }
             }
+             // For tag category renames, we need a more robust way to update the keys in the `tags` map.
+             // The above `tags.${change.to}` works for adding, but not renaming a key.
+             // A read-modify-write is safer here.
+            const tagCategoryChange = renameChanges.find(c => c.type === 'Tag Category' && taskData.tags && taskData.tags.hasOwnProperty(c.from));
+            if (tagCategoryChange) {
+                const newTags = { ...taskData.tags };
+                newTags[tagCategoryChange.to] = newTags[tagCategoryChange.from];
+                delete newTags[tagCategoryChange.from];
+                updates.tags = newTags;
+                needsUpdate = true;
+            }
+
 
             if (needsUpdate) {
                 batch.update(taskDoc.ref, updates);
@@ -926,13 +1043,11 @@ export default function SettingsPage() {
 
         await batch.commit();
         
-        // 3. Close modal
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
     };
     
     const handleCancelConfirmation = async () => {
-        // Just save the settings without updating tasks
         const settingsToSave = JSON.parse(JSON.stringify(settings));
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
@@ -943,7 +1058,7 @@ export default function SettingsPage() {
     }
 
     const handleCancelChanges = () => {
-        setSettings(JSON.parse(JSON.stringify(originalSettings))); // Revert to original
+        setSettings(JSON.parse(JSON.stringify(originalSettings)));
     };
 
     if (isLoading) {
