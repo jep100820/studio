@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -264,30 +264,35 @@ function CompletionTrendChart({ completedTasks }) {
             end: endOfToday()
         });
 
-        return last30Days.map(day => {
+        const dailyData = last30Days.map(day => {
             const completedCount = completedTasks.filter(task => {
                 const completionDate = toDate(task.completionDate);
                 return completionDate && isSameDay(day, completionDate);
             }).length;
 
             return {
-                date: format(day, 'MMM d'),
+                date: format(day, 'EEE, MMM d'),
                 Completed: completedCount,
+                isWeekend: isFriday(day) || isSaturday(day)
             };
         });
+
+        // Filter out weekends with no data
+        return dailyData.filter(d => !d.isWeekend || d.Completed > 0);
+
     }, [completedTasks]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">30-Day Completion Trend</CardTitle>
-                <CardDescription>Tasks completed per day.</CardDescription>
+                <CardDescription>Tasks completed per day. Excludes weekends with no activity.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={50} />
                         <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Bar dataKey="Completed" fill="#8884d8" name="Completed" radius={[4, 4, 0, 0]} />
@@ -558,3 +563,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    
