@@ -3,8 +3,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, query, where, Timestamp, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where, Timestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,20 +19,6 @@ import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "kanbanflow-6cvc6.firebaseapp.com",
-    projectId: "kanbanflow-6cvc6",
-    storageBucket: "kanbanflow-6cvc6.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 // A robust, unified date parsing function
 const toDate = (dateInput) => {

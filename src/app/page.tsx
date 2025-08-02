@@ -3,9 +3,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, Suspense, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
 import {
-  getFirestore,
   collection,
   onSnapshot,
   doc,
@@ -20,6 +18,7 @@ import {
   query,
   where,
 } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { DndContext, useDraggable, useDroppable, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
   Dialog,
@@ -41,20 +40,6 @@ import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, ne
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "kanbanflow-6cvc6.firebaseapp.com",
-  projectId: "kanbanflow-6cvc6",
-  storageBucket: "kanbanflow-6cvc6.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 // A robust, unified date parsing function
 const toDate = (dateInput) => {

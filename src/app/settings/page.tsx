@@ -3,8 +3,8 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, updateDoc, getDoc, collection, getDocs, writeBatch, query, where, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, updateDoc, getDoc, collection, getDocs, writeBatch, query, where, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,20 +24,6 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import Papa from 'papaparse';
 
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "kanbanflow-6cvc6.firebaseapp.com",
-    projectId: "kanbanflow-6cvc6",
-    storageBucket: "kanbanflow-6cvc6.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 // A more robust date parser for import
 const parseDateString = (dateString) => {
