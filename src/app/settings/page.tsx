@@ -172,7 +172,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                             value={name}
                             onChange={(e) => handleNameChange(e.target.value)}
                             onBlur={handleBlur}
-                            className={cn("flex-grow font-semibold border-2 border-primary", textColor)}
+                            className={cn("flex-grow font-semibold border-2 border-primary", textColor, "text-foreground")}
                         />
                     ) : (
                         <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
@@ -326,8 +326,8 @@ function CustomTagsSection({ settings, onUpdate }) {
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleMainTagNameChange = (id, newName) => {
-        const newCustomTags = customTags.map(t => t.id === id ? { ...t, name: newName } : t);
+    const handleMainTagUpdate = (id, updatedMainTag) => {
+        const newCustomTags = customTags.map(t => t.id === id ? updatedMainTag : t);
         onUpdate('customTags', newCustomTags);
     };
 
@@ -350,74 +350,49 @@ function CustomTagsSection({ settings, onUpdate }) {
         onUpdate('customTags', newCustomTags);
     };
 
-    const handleSubTagNameChange = (mainId, subId, newName) => {
+    const handleSubTagUpdate = (mainId, subId, updatedSubTag) => {
         const newCustomTags = [...customTags];
         const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
         if (mainTagIndex === -1) return;
         
-        const subTagIndex = newCustomTags[mainTagIndex].tags.findIndex(st => st.id === subId);
-        if (subTagIndex === -1) return;
-
-        newCustomTags[mainTagIndex].tags[subTagIndex].name = newName;
+        newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.map(st => st.id === subId ? updatedSubTag : st);
         onUpdate('customTags', newCustomTags);
     };
 
-    const MainTagEditor = ({ mainTag }) => {
-        const [isEditing, setIsEditing] = useState(false);
-
-        return (
-            <div className="border rounded-lg mb-4">
-                <div className="p-4 flex items-center justify-between">
-                     <div className="flex items-center gap-2 flex-grow">
-                        {isEditing ? (
-                            <Input
-                                value={mainTag.name}
-                                onChange={(e) => handleMainTagNameChange(mainTag.id, e.target.value)}
-                                onBlur={() => setIsEditing(false)}
-                                autoFocus
-                                className="text-base font-semibold border-2 border-primary p-1"
-                            />
-                        ) : (
-                             <h4 className="text-base font-semibold">{mainTag.name}</h4>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className="h-8 w-8">
-                            <Pencil className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(mainTag.id)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-                <div className="p-4 pt-0 space-y-2">
-                    {mainTag.tags.map((tag) => (
-                        <div key={tag.id} className="flex items-center gap-2">
-                            <Input 
-                                value={tag.name}
-                                onChange={(e) => handleSubTagNameChange(mainTag.id, tag.id, e.target.value)}
-                                className="h-9"
-                            />
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveSubTag(mainTag.id, tag.id)} className="w-9 h-9">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                    {mainTag.tags.length < 10 && (
-                        <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Tag
-                        </Button>
-                    )}
-                </div>
-            </div>
-        )
-    };
-    
     return (
         <Card>
             <CardContent className="pt-6">
                 <div className="space-y-4">
-                    {customTags.map((tag) => (
-                        <MainTagEditor key={tag.id} mainTag={tag} />
+                    {customTags.map((mainTag) => (
+                        <div key={mainTag.id} className="p-4 border rounded-lg">
+                            <SortableItem
+                                id={mainTag.id}
+                                item={mainTag}
+                                onUpdate={handleMainTagUpdate}
+                                onRemove={() => handleRemoveMainTag(mainTag.id)}
+                                hasColor={false}
+                                hasSubStatuses={false}
+                            />
+                            <div className="pl-10 mt-4 space-y-2">
+                                {mainTag.tags.map(subTag => (
+                                    <SortableItem
+                                        key={subTag.id}
+                                        id={subTag.id}
+                                        item={subTag}
+                                        onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
+                                        onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
+                                        hasColor={false}
+                                        hasSubStatuses={false}
+                                    />
+                                ))}
+                                {mainTag.tags.length < 10 && (
+                                     <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Tag
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     ))}
                 </div>
                  {customTags.length < 4 && (
@@ -815,8 +790,9 @@ export default function SettingsPage() {
                  // --- MIGRATION & DEFAULTS ---
                 if (data.bidOrigins && !data.customTags) {
                     data.customTags = [{
+                        id: 'tagcat-bidorigin-migrated',
                         name: "Bid Origin",
-                        tags: data.bidOrigins.map(bo => ({ name: bo.name }))
+                        tags: data.bidOrigins.map(bo => ({ id: getNextId('subtag'), name: bo.name }))
                     }];
                     delete data.bidOrigins; // Clean up old field
                 }
