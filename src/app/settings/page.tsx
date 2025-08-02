@@ -120,15 +120,16 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
                     value={item.name}
                     onChange={(e) => handleItemChange('name', e.target.value)}
                     className="flex-grow"
+                    style={item.color ? { borderColor: item.color, "--ring-color": item.color } : {}}
                 />
                 {item.hasOwnProperty('color') && (
                     <div className="relative">
-                        <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                         <Input
                             type="color"
                             value={item.color}
                             onChange={(e) => handleItemChange('color', e.target.value)}
-                            className="w-16 pl-8 p-1"
+                            className="w-16 h-10 pl-8 p-1 bg-transparent"
                         />
                     </div>
                 )}
@@ -453,6 +454,24 @@ function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) 
 }
 
 
+function AccordionSection({ title, children }) {
+    const [isOpen, setIsOpen] = useState(true);
+
+    return (
+        <div className="border-b">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex justify-between items-center p-4 text-lg font-semibold"
+            >
+                {title}
+                <ChevronDown className={cn('transition-transform', isOpen && 'rotate-180')} />
+            </button>
+            {isOpen && <div className="p-4 pt-0">{children}</div>}
+        </div>
+    );
+}
+
+
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null); // Local, editable settings
     const [originalSettings, setOriginalSettings] = useState(null); // Settings from Firestore
@@ -630,37 +649,43 @@ export default function SettingsPage() {
                         </Button>
                     </div>
                 </header>
-                <main className="flex-grow p-4 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-y-auto">
-                    <div className="space-y-6">
-                        <SettingsCard
-                            title="Workflow Statuses"
-                            items={settings?.workflowCategories}
-                            onUpdate={handleSettingsUpdate}
-                            onAddItem={handleAddNewItem}
-                            fieldName="workflowCategories"
-                            hasSubStatuses={true}
-                        />
-                        <SettingsCard
-                            title="Importance Levels"
-                            items={settings?.importanceLevels}
-                            onUpdate={handleSettingsUpdate}
-                            onAddItem={handleAddNewItem}
-                            fieldName="importanceLevels"
-                        />
-                         <SettingsCard
-                            title="Bid Origins"
-                            items={settings?.bidOrigins}
-                            onUpdate={handleSettingsUpdate}
-                            onAddItem={handleAddNewItem}
-                            fieldName="bidOrigins"
-                        />
-                    </div>
-                    <div className="space-y-6">
-                        <GeneralSettingsCard
-                            settings={settings}
-                            onUpdate={handleSettingsUpdate}
-                        />
-                        <ImportExportCard />
+                <main className="flex-grow p-4 md:p-8 overflow-y-auto">
+                    <div className="max-w-4xl mx-auto">
+                        <AccordionSection title="Workflow Settings">
+                             <div className="space-y-6">
+                                <SettingsCard
+                                    title="Workflow Statuses"
+                                    items={settings?.workflowCategories}
+                                    onUpdate={handleSettingsUpdate}
+                                    onAddItem={handleAddNewItem}
+                                    fieldName="workflowCategories"
+                                    hasSubStatuses={true}
+                                />
+                                <SettingsCard
+                                    title="Importance Levels"
+                                    items={settings?.importanceLevels}
+                                    onUpdate={handleSettingsUpdate}
+                                    onAddItem={handleAddNewItem}
+                                    fieldName="importanceLevels"
+                                />
+                                 <SettingsCard
+                                    title="Bid Origins"
+                                    items={settings?.bidOrigins}
+                                    onUpdate={handleSettingsUpdate}
+                                    onAddItem={handleAddNewItem}
+                                    fieldName="bidOrigins"
+                                />
+                            </div>
+                        </AccordionSection>
+                        <AccordionSection title="General & Data Settings">
+                            <div className="space-y-6">
+                                <GeneralSettingsCard
+                                    settings={settings}
+                                    onUpdate={handleSettingsUpdate}
+                                />
+                                <ImportExportCard />
+                            </div>
+                        </AccordionSection>
                     </div>
                 </main>
             </div>
