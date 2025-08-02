@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import Papa from 'papaparse';
 
 
 // Your web app's Firebase configuration
@@ -41,6 +42,7 @@ const db = getFirestore(app);
 // A more robust date parser for import
 const parseDateString = (dateString) => {
     if (!dateString) return null;
+    if(dateString instanceof Timestamp) return dateString;
     // Check for full ISO 8601 date-time string
     if (typeof dateString === 'string' && dateString.includes('T')) {
         const date = parseISO(dateString);
@@ -172,7 +174,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                             value={name}
                             onChange={(e) => handleNameChange(e.target.value)}
                             onBlur={handleBlur}
-                            className={cn("flex-grow font-semibold border-2 border-primary", textColor, "text-foreground")}
+                            className={cn("flex-grow font-semibold border-2 border-primary text-foreground", textColor)}
                         />
                     ) : (
                         <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
@@ -431,7 +433,7 @@ function AccordionSection({ title, children, summary }) {
 }
 
 
-function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName }) {
+function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileType }) {
     if (!isOpen) return null;
 
     return (
@@ -440,7 +442,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName }) {
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID and add new ones. This action cannot be undone.
+                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -454,24 +456,24 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName }) {
 
 
 function ImportExportCard() {
-    const importFileRef = useRef(null);
+    const importJsonRef = useRef(null);
+    const importCsvRef = useRef(null);
     const [isImporting, setIsImporting] = useState(false);
-    const [importDialog, setImportDialog] = useState({ isOpen: false, file: null });
+    const [importDialog, setImportDialog] = useState({ isOpen: false, file: null, fileType: '' });
 
 
-    const handleExport = async () => {
+    const handleExportJson = async () => {
         const tasksQuery = query(collection(db, 'tasks'));
         const querySnapshot = await getDocs(tasksQuery);
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // Convert Timestamps to ISO strings for JSON
             const convertedData = { ...data };
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
             }
-            delete convertedData.id; // Don't export the Firestore document ID
+            delete convertedData.id;
             return convertedData;
         });
 
@@ -484,41 +486,98 @@ function ImportExportCard() {
         link.click();
         document.body.removeChild(link);
     };
+
+    const handleExportCsv = async () => {
+        const tasksQuery = query(collection(db, 'tasks'));
+        const querySnapshot = await getDocs(tasksQuery);
+        const tasksToExport = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            const convertedData = { ...data };
+            for (const key in convertedData) {
+                if (convertedData[key] instanceof Timestamp) {
+                    convertedData[key] = convertedData[key].toDate().toISOString();
+                }
+            }
+            // Flatten tags
+            if (convertedData.tags) {
+                for(const tagName in convertedData.tags) {
+                    convertedData[`tag_${tagName}`] = convertedData.tags[tagName];
+                }
+                delete convertedData.tags;
+            }
+
+            delete convertedData.id;
+            return convertedData;
+        });
+
+        if (tasksToExport.length === 0) {
+            alert("No tasks to export.");
+            return;
+        }
+
+        const csv = Papa.unparse(tasksToExport);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', 'tasks.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
     
-    const handleFileSelect = (event) => {
+    const handleFileSelect = (event, fileType) => {
         const file = event.target.files[0];
         if (!file) return;
-        setImportDialog({ isOpen: true, file: file });
-        event.target.value = ''; // Reset file input
+        setImportDialog({ isOpen: true, file: file, fileType: fileType });
+        event.target.value = '';
     };
 
 
     const handleConfirmImport = () => {
-        const { file } = importDialog;
+        const { file, fileType } = importDialog;
         if (!file) return;
         
-        setImportDialog({ isOpen: false, file: null });
+        setImportDialog({ isOpen: false, file: null, fileType: '' });
         setIsImporting(true);
 
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const importedTasks = JSON.parse(e.target.result);
+                let importedTasks;
+                if (fileType === 'json') {
+                    importedTasks = JSON.parse(e.target.result);
+                } else { // csv
+                    const parseResult = Papa.parse(e.target.result, { header: true, skipEmptyLines: true });
+                    importedTasks = parseResult.data;
+                }
+                
                 if (!Array.isArray(importedTasks)) {
-                    alert('Error: JSON file should contain an array of tasks.');
-                    return;
+                    throw new Error('Imported file should contain an array of tasks.');
                 }
 
                 const batch = writeBatch(db);
                 for (const task of importedTasks) {
-                    if (!task.taskid) continue; // Skip tasks without a taskid
+                    if (!task.taskid) continue;
 
-                    const taskData = {
-                        ...task,
-                        date: parseDateString(task.date),
-                        dueDate: parseDateString(task.dueDate),
-                        completionDate: parseDateString(task.completionDate),
-                    };
+                    const taskData = { ...task };
+                    
+                    // Re-hydrate tags from CSV columns
+                    if(fileType === 'csv') {
+                        taskData.tags = {};
+                        for(const key in taskData) {
+                            if(key.startsWith('tag_')) {
+                                const tagName = key.substring(4);
+                                taskData.tags[tagName] = taskData[key];
+                                delete taskData[key];
+                            }
+                        }
+                    }
+
+                    taskData.date = parseDateString(task.date);
+                    taskData.dueDate = parseDateString(task.dueDate);
+                    taskData.completionDate = parseDateString(task.completionDate);
+                    taskData.lastModified = parseDateString(task.lastModified) || Timestamp.now();
+                    taskData.subStatusChangeCount = Number(task.subStatusChangeCount) || 0;
 
                     const tasksRef = collection(db, 'tasks');
                     const q = query(tasksRef, where("taskid", "==", task.taskid));
@@ -536,8 +595,8 @@ function ImportExportCard() {
                 await batch.commit();
                 alert('Import complete!');
             } catch (error) {
-                console.error("Error parsing or importing JSON:", error);
-                alert('Error importing file. Please ensure it is a valid JSON file. Check console for details.');
+                console.error("Error parsing or importing file:", error);
+                alert(`Error importing file. Please ensure it is a valid ${fileType.toUpperCase()} file. Check console for details.`);
             } finally {
                  setIsImporting(false);
             }
@@ -548,32 +607,32 @@ function ImportExportCard() {
     return (
         <>
             <CardContent>
-                <div className="flex items-center gap-4">
-                     <input type="file" ref={importFileRef} onChange={handleFileSelect} accept=".json" style={{ display: 'none' }} />
-                    <Button onClick={() => importFileRef.current?.click()} variant="outline" disabled={isImporting}>
-                        {isImporting ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Importing...
-                            </>
-                        ) : (
-                             <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Import JSON
-                             </>
-                        )}
+                <div className="grid grid-cols-2 gap-4">
+                     <input type="file" ref={importJsonRef} onChange={(e) => handleFileSelect(e, 'json')} accept=".json" style={{ display: 'none' }} />
+                     <input type="file" ref={importCsvRef} onChange={(e) => handleFileSelect(e, 'csv')} accept=".csv" style={{ display: 'none' }} />
+                     
+                    <Button onClick={() => importJsonRef.current?.click()} variant="outline" disabled={isImporting}>
+                        {isImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</> : <><Upload className="h-4 w-4 mr-2" /> Import JSON</>}
                     </Button>
-                    <Button onClick={handleExport} variant="outline">
+                    <Button onClick={handleExportJson} variant="outline">
                         <Download className="h-4 w-4 mr-2" />
                         Export JSON
+                    </Button>
+                    <Button onClick={() => importCsvRef.current?.click()} variant="outline" disabled={isImporting}>
+                        {isImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</> : <><Upload className="h-4 w-4 mr-2" /> Import CSV</>}
+                    </Button>
+                    <Button onClick={handleExportCsv} variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
                     </Button>
                 </div>
             </CardContent>
             <ImportConfirmationDialog
                 isOpen={importDialog.isOpen}
-                onCancel={() => setImportDialog({ isOpen: false, file: null })}
+                onCancel={() => setImportDialog({ isOpen: false, file: null, fileType: '' })}
                 onConfirm={handleConfirmImport}
                 fileName={importDialog.file?.name}
+                fileType={importDialog.fileType}
             />
         </>
     );
