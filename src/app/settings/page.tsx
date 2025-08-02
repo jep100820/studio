@@ -503,6 +503,70 @@ function GeneralSettingsCard({ settings, onUpdate }) {
     );
 }
 
+function DashboardSettingsCard({ settings, onUpdate }) {
+    const handleChartVisibilityChange = (chartName, checked) => {
+        const newCharts = { ...settings.dashboardSettings.charts, [chartName]: checked };
+        onUpdate('dashboardSettings', { ...settings.dashboardSettings, charts: newCharts });
+    };
+
+    const handleStatVisibilityChange = (statName, checked) => {
+        const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
+        onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
+    };
+
+    const chartSettings = settings?.dashboardSettings?.charts || {};
+    const statSettings = settings?.dashboardSettings?.stats || {};
+
+    return (
+        <CardContent className="space-y-6">
+            <div className="rounded-lg border p-4">
+                <Label className="text-base">Visible Charts</Label>
+                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
+                <div className="mt-4 space-y-3">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="chart-status" checked={chartSettings.taskStatus} onCheckedChange={(c) => handleChartVisibilityChange('taskStatus', c)} />
+                        <Label htmlFor="chart-status">Active Task Distribution</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="chart-priority" checked={chartSettings.taskPriority} onCheckedChange={(c) => handleChartVisibilityChange('taskPriority', c)} />
+                        <Label htmlFor="chart-priority">Completed by Priority</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="chart-trend" checked={chartSettings.dailyActivity} onCheckedChange={(c) => handleChartVisibilityChange('dailyActivity', c)} />
+                        <Label htmlFor="chart-trend">Daily Activity Trend</Label>
+                    </div>
+                </div>
+            </div>
+            <div className="rounded-lg border p-4">
+                <Label className="text-base">Visible Statistics</Label>
+                <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
+                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <div className="flex items-center space-x-2">
+                        <Checkbox id="stat-completed" checked={statSettings.totalCompleted} onCheckedChange={(c) => handleStatVisibilityChange('totalCompleted', c)} />
+                        <Label htmlFor="stat-completed">Total Completed</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="stat-overdue" checked={statSettings.overdue} onCheckedChange={(c) => handleStatVisibilityChange('overdue', c)} />
+                        <Label htmlFor="stat-overdue">Tasks Overdue</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="stat-active" checked={statSettings.active} onCheckedChange={(c) => handleStatVisibilityChange('active', c)} />
+                        <Label htmlFor="stat-active">Active Tasks</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="stat-avg-time" checked={statSettings.avgTime} onCheckedChange={(c) => handleStatVisibilityChange('avgTime', c)} />
+                        <Label htmlFor="stat-avg-time">Avg. Completion Time</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="stat-last7" checked={statSettings.last7} onCheckedChange={(c) => handleStatVisibilityChange('last7', c)} />
+                        <Label htmlFor="stat-last7">Completed Last 7d</Label>
+                    </div>
+                 </div>
+            </div>
+        </CardContent>
+    );
+}
+
 
 function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
     if (!isOpen) return null;
@@ -560,6 +624,12 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) {
                     // Default to a standard Mon-Fri work week
                     data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                }
+                 if (!data.hasOwnProperty('dashboardSettings')) {
+                    data.dashboardSettings = {
+                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true },
+                        stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true },
+                    };
                 }
                 setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
                 setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
@@ -761,6 +831,13 @@ export default function SettingsPage() {
 
                         <AccordionSection title="General Settings" summary="Application-wide preferences">
                             <GeneralSettingsCard
+                                settings={settings}
+                                onUpdate={handleSettingsUpdate}
+                            />
+                        </AccordionSection>
+
+                         <AccordionSection title="Dashboard Settings" summary="Customize dashboard charts and stats">
+                            <DashboardSettingsCard
                                 settings={settings}
                                 onUpdate={handleSettingsUpdate}
                             />

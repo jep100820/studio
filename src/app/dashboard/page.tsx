@@ -346,7 +346,7 @@ function CompletedTasksList({ tasks, settings }) {
     );
 }
 
-function StatsDisplay({ tasks, completedTasks }) {
+function StatsDisplay({ tasks, completedTasks, settings }) {
     const stats = useMemo(() => {
         const now = new Date();
         const overdueTasks = tasks.filter(t => {
@@ -388,6 +388,8 @@ function StatsDisplay({ tasks, completedTasks }) {
             last7: filterCompletedByDays(7),
         };
     }, [tasks, completedTasks]);
+    
+    const visibleStats = settings?.dashboardSettings?.stats || {};
 
     return (
         <Card className="h-full flex flex-col">
@@ -396,41 +398,51 @@ function StatsDisplay({ tasks, completedTasks }) {
             </CardHeader>
             <CardContent className="p-4 pt-2 flex-grow overflow-y-auto">
                  <div className="grid grid-cols-1 gap-4">
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                           <p className="text-lg font-bold">{stats.totalCompleted}</p>
-                           <p className="text-sm text-muted-foreground">Total Completed</p>
+                    {visibleStats.totalCompleted && (
+                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                            <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                               <p className="text-lg font-bold">{stats.totalCompleted}</p>
+                               <p className="text-sm text-muted-foreground">Total Completed</p>
+                            </div>
                         </div>
-                    </div>
-                     <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                           <p className="text-lg font-bold">{stats.overdue}</p>
-                           <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                    )}
+                    {visibleStats.overdue && (
+                         <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                            <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                               <p className="text-lg font-bold">{stats.overdue}</p>
+                               <p className="text-sm text-muted-foreground">Tasks Overdue</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <Zap className="h-6 w-6 text-blue-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                           <p className="text-lg font-bold">{stats.active}</p>
-                           <p className="text-sm text-muted-foreground">Active Tasks</p>
+                    )}
+                    {visibleStats.active && (
+                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                            <Zap className="h-6 w-6 text-blue-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                               <p className="text-lg font-bold">{stats.active}</p>
+                               <p className="text-sm text-muted-foreground">Active Tasks</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <Clock className="h-6 w-6 text-blue-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                            <p className="text-lg font-bold">{stats.avgTime}d</p>
-                            <p className="text-sm text-muted-foreground">Avg. Completion Time</p>
+                    )}
+                    {visibleStats.avgTime && (
+                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                            <Clock className="h-6 w-6 text-blue-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                                <p className="text-lg font-bold">{stats.avgTime}d</p>
+                                <p className="text-sm text-muted-foreground">Avg. Completion Time</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                        <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
-                        <div className="flex-grow">
-                            <p className="text-lg font-bold">{stats.last7}</p>
-                            <p className="text-sm text-muted-foreground">Completed Last 7d</p>
+                    )}
+                    {visibleStats.last7 && (
+                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                            <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                                <p className="text-lg font-bold">{stats.last7}</p>
+                                <p className="text-sm text-muted-foreground">Completed Last 7d</p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                  </div>
             </CardContent>
         </Card>
@@ -519,6 +531,19 @@ export default function DashboardPage() {
         if (!isValid(date)) return '';
         return format(date, 'yyyy-MM-dd');
     };
+    
+    const visibleCharts = useMemo(() => {
+        const defaultCharts = { taskStatus: true, taskPriority: true, dailyActivity: true };
+        if (!settings?.dashboardSettings?.charts) return defaultCharts;
+        return settings.dashboardSettings.charts;
+    }, [settings]);
+
+    const defaultTab = useMemo(() => {
+        if (visibleCharts.dailyActivity) return "trend";
+        if (visibleCharts.taskStatus) return "status";
+        if (visibleCharts.taskPriority) return "priority";
+        return "";
+    }, [visibleCharts]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -554,7 +579,7 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
-                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} />
+                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} settings={settings} />
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
@@ -568,22 +593,30 @@ export default function DashboardPage() {
                             <Input id="to-date" type="date" value={formatDateForInput(dateRange.to)} onChange={(e) => handleDateChange(e, 'to')} />
                         </div>
                     </div>
-                    <Tabs defaultValue="trend" className="h-full flex flex-col flex-grow">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="status">Task Status</TabsTrigger>
-                            <TabsTrigger value="priority">Task Priority</TabsTrigger>
-                            <TabsTrigger value="trend">Daily Activity Trend</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="status" className="flex-grow">
-                            <TaskStatusChart tasks={tasks} />
-                        </TabsContent>
-                        <TabsContent value="priority" className="flex-grow">
-                            <TaskPriorityChart tasks={completedTasks} />
-                        </TabsContent>
-                        <TabsContent value="trend" className="flex-grow">
-                            <DailyActivityChart allTasks={tasks} startDate={dateRange.from} endDate={dateRange.to} />
-                        </TabsContent>
-                    </Tabs>
+                    {defaultTab && (
+                        <Tabs defaultValue={defaultTab} className="h-full flex flex-col flex-grow">
+                            <TabsList className="grid w-full grid-cols-3">
+                                {visibleCharts.taskStatus && <TabsTrigger value="status">Task Status</TabsTrigger>}
+                                {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
+                                {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity Trend</TabsTrigger>}
+                            </TabsList>
+                            {visibleCharts.taskStatus && (
+                                <TabsContent value="status" className="flex-grow">
+                                    <TaskStatusChart tasks={tasks} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.taskPriority && (
+                                <TabsContent value="priority" className="flex-grow">
+                                    <TaskPriorityChart tasks={completedTasks} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.dailyActivity && (
+                                <TabsContent value="trend" className="flex-grow">
+                                    <DailyActivityChart allTasks={tasks} startDate={dateRange.from} endDate={dateRange.to} />
+                                </TabsContent>
+                            )}
+                        </Tabs>
+                    )}
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
