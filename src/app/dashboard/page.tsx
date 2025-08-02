@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
+import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil, Eye, BarChart2, TrendingUp, Percent, Shuffle } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -283,6 +283,122 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
     );
 }
 
+function BidOriginChart({ tasks, settings }) {
+    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
+    const data = useMemo(() => {
+        const originCounts = tasks
+            .filter(task => task.status !== 'Completed' && task.bidOrigin)
+            .reduce((acc, task) => {
+                acc[task.bidOrigin] = (acc[task.bidOrigin] || 0) + 1;
+                return acc;
+            }, {});
+        
+        return Object.entries(originCounts).map(([name, value], index) => ({ 
+            name, 
+            value,
+            fill: COLORS[index % COLORS.length]
+        }));
+    }, [tasks]);
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Performance by Bid Origin</CardTitle>
+                <CardDescription>Distribution of active tasks based on their origin.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%" label={(entry) => `${entry.name} (${entry.value})`}>
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend />
+                    </PieChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+
+function WeeklyCompletionChart({ tasks }) {
+    const data = useMemo(() => {
+        const weeks = Array.from({ length: 12 }, (_, i) => subWeeks(new Date(), i)).reverse();
+        
+        return weeks.map(weekStart => {
+            const weekEnd = endOfWeek(weekStart);
+            const weekLabel = `W${getWeek(weekStart)}`;
+            
+            const completedCount = tasks.filter(task => {
+                const completionDate = toDate(task.completionDate);
+                return completionDate && isSameDay(completionDate, weekStart) || (isAfter(completionDate, weekStart) && isBefore(completionDate, weekEnd));
+            }).length;
+            
+            return {
+                name: weekLabel,
+                'Tasks Completed': completedCount
+            };
+        });
+    }, [tasks]);
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Weekly Completion Trend</CardTitle>
+                <CardDescription>Tasks completed per week over the last 12 weeks.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={12} />
+                        <YAxis allowDecimals={false} fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="Tasks Completed" stroke="#8884d8" />
+                    </LineChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+function DayOfWeekCompletionChart({ tasks }) {
+    const data = useMemo(() => {
+        const dayCounts = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
+        tasks
+            .filter(t => t.completionDate)
+            .forEach(t => {
+                const dayName = format(toDate(t.completionDate), 'E');
+                dayCounts[dayName]++;
+            });
+        
+        return Object.entries(dayCounts).map(([name, count]) => ({ name, count }));
+    }, [tasks]);
+    
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Productivity by Day</CardTitle>
+                <CardDescription>Total tasks completed on each day of the week.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" fontSize={12} />
+                        <YAxis allowDecimals={false} fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed" />
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
 
 function CompletedTasksList({ tasks, settings }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -350,12 +466,16 @@ function CompletedTasksList({ tasks, settings }) {
 function StatsDisplay({ tasks, completedTasks, settings }) {
     const stats = useMemo(() => {
         const now = new Date();
-        const overdueTasks = tasks.filter(t => {
-            if (t.status === 'Completed') return false;
+        const startOfToday = startOfDay(now);
+        const sevenDaysAgo = subDays(now, 7);
+
+        const activeTasks = tasks.filter(t => t.status !== 'Completed');
+
+        const overdueTasks = activeTasks.filter(t => {
             const dueDate = toDate(t.dueDate);
-            return dueDate && dueDate < startOfDay(now);
+            return dueDate && dueDate < startOfToday;
         }).length;
-        
+
         const completionTimes = completedTasks
             .map(t => {
                 const startDate = toDate(t.date);
@@ -370,25 +490,55 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
         const avgCompletionTime = completionTimes.length > 0
             ? (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)
             : 0;
-            
+
         const filterCompletedByDays = (days) => {
             const dateLimit = subDays(now, days);
             return completedTasks.filter(t => {
                 const completionDate = toDate(t.completionDate);
                 return completionDate && completionDate >= dateLimit;
             }).length;
-        }
+        };
 
-        const activeTasks = tasks.filter(t => t.status !== 'Completed').length;
+        const completedLast7d = filterCompletedByDays(7);
+        const totalActive = activeTasks.length;
+        const completionRate = totalActive > 0 ? ((completedLast7d / (totalActive + completedLast7d)) * 100).toFixed(0) : 0;
+        
+        const staleTasks = activeTasks.filter(t => {
+            const lastModified = toDate(t.lastModified || t.date);
+            return lastModified && lastModified < sevenDaysAgo;
+        }).length;
+
+        const totalSubStatusChanges = completedTasks.reduce((sum, task) => sum + (task.subStatusChangeCount || 0), 0);
+        const avgSubStatusChanges = completedTasks.length > 0 ? (totalSubStatusChanges / completedTasks.length).toFixed(1) : 0;
 
         return {
             totalCompleted: completedTasks.length,
             overdue: overdueTasks,
-            active: activeTasks,
+            active: totalActive,
             avgTime: avgCompletionTime,
-            last7: filterCompletedByDays(7),
+            last7: completedLast7d,
+            completedToday: completedTasks.filter(t => isSameDay(toDate(t.completionDate), now)).length,
+            createdToday: tasks.filter(t => isSameDay(toDate(t.date), now)).length,
+            completionRate: completionRate,
+            inReview: tasks.filter(t => t.status === 'For Review').length,
+            stale: staleTasks,
+            avgSubStatusChanges: avgSubStatusChanges
         };
     }, [tasks, completedTasks]);
+    
+    const statConfig = [
+        { key: 'totalCompleted', label: 'Total Completed', icon: CheckCircle, color: 'text-green-500' },
+        { key: 'overdue', label: 'Tasks Overdue', icon: AlertTriangle, color: 'text-red-500' },
+        { key: 'active', label: 'Active Tasks', icon: Zap, color: 'text-blue-500' },
+        { key: 'avgTime', label: 'Avg. Completion Time', icon: Clock, color: 'text-blue-500', suffix: 'd' },
+        { key: 'last7', label: 'Completed Last 7d', icon: Calendar, color: 'text-purple-500' },
+        { key: 'completedToday', label: 'Completed Today', icon: CheckCircle, color: 'text-green-500' },
+        { key: 'createdToday', label: 'Created Today', icon: PlusCircle, color: 'text-blue-500' },
+        { key: 'completionRate', label: 'Completion Rate (7d)', icon: Percent, color: 'text-green-500', suffix: '%' },
+        { key: 'inReview', label: 'Tasks in Review', icon: Eye, color: 'text-yellow-500' },
+        { key: 'stale', label: 'Stale Tasks (>7d)', icon: AlertTriangle, color: 'text-orange-500' },
+        { key: 'avgSubStatusChanges', label: 'Avg. Sub-status Changes', icon: Shuffle, color: 'text-gray-500' },
+    ];
     
     const visibleStats = useMemo(() => {
         if (!settings?.dashboardSettings?.stats) {
@@ -404,51 +554,20 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
             </CardHeader>
             <CardContent className="p-4 pt-2 flex-grow overflow-y-auto">
                  <div className="grid grid-cols-1 gap-4">
-                    {visibleStats.totalCompleted && (
-                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                            <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
-                            <div className="flex-grow">
-                               <p className="text-lg font-bold">{stats.totalCompleted}</p>
-                               <p className="text-sm text-muted-foreground">Total Completed</p>
-                            </div>
-                        </div>
-                    )}
-                    {visibleStats.overdue && (
-                         <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                            <AlertTriangle className="h-6 w-6 text-red-500 flex-shrink-0" />
-                            <div className="flex-grow">
-                               <p className="text-lg font-bold">{stats.overdue}</p>
-                               <p className="text-sm text-muted-foreground">Tasks Overdue</p>
-                            </div>
-                        </div>
-                    )}
-                    {visibleStats.active && (
-                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                            <Zap className="h-6 w-6 text-blue-500 flex-shrink-0" />
-                            <div className="flex-grow">
-                               <p className="text-lg font-bold">{stats.active}</p>
-                               <p className="text-sm text-muted-foreground">Active Tasks</p>
-                            </div>
-                        </div>
-                    )}
-                    {visibleStats.avgTime && (
-                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                            <Clock className="h-6 w-6 text-blue-500 flex-shrink-0" />
-                            <div className="flex-grow">
-                                <p className="text-lg font-bold">{stats.avgTime}d</p>
-                                <p className="text-sm text-muted-foreground">Avg. Completion Time</p>
-                            </div>
-                        </div>
-                    )}
-                    {visibleStats.last7 && (
-                        <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
-                            <Calendar className="h-6 w-6 text-purple-500 flex-shrink-0" />
-                            <div className="flex-grow">
-                                <p className="text-lg font-bold">{stats.last7}</p>
-                                <p className="text-sm text-muted-foreground">Completed Last 7d</p>
-                            </div>
-                        </div>
-                    )}
+                    {statConfig.map(({ key, label, icon: Icon, color, suffix }) => {
+                        if (visibleStats[key]) {
+                            return (
+                                <div key={key} className="p-3 bg-muted/50 rounded-lg flex items-center gap-4">
+                                    <Icon className={cn("h-6 w-6 flex-shrink-0", color)} />
+                                    <div className="flex-grow">
+                                       <p className="text-lg font-bold">{stats[key]}{suffix || ''}</p>
+                                       <p className="text-sm text-muted-foreground">{label}</p>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })}
                  </div>
             </CardContent>
         </Card>
@@ -552,6 +671,9 @@ export default function DashboardPage() {
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.taskStatus) return "status";
         if (visibleCharts.taskPriority) return "priority";
+        if (visibleCharts.bidOrigin) return "origin";
+        if (visibleCharts.weeklyCompletion) return "weekly";
+        if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         return "";
     }, [visibleCharts]);
 
@@ -608,13 +730,14 @@ export default function DashboardPage() {
                     {defaultTab && (
                         <Tabs defaultValue={defaultTab} className="h-full flex flex-col flex-grow">
                             <TabsList className={cn("grid w-full", 
-                                activeCharts.length === 3 && 'grid-cols-3', 
-                                activeCharts.length === 2 && 'grid-cols-2',
-                                activeCharts.length === 1 && 'grid-cols-1'
+                                `grid-cols-${activeCharts.length}`
                             )}>
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Status</TabsTrigger>}
                                 {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
-                                {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity Trend</TabsTrigger>}
+                                {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
+                                {visibleCharts.bidOrigin && <TabsTrigger value="origin">Bid Origin</TabsTrigger>}
+                                {visibleCharts.weeklyCompletion && <TabsTrigger value="weekly">Weekly Trend</TabsTrigger>}
+                                {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
@@ -629,6 +752,21 @@ export default function DashboardPage() {
                             {visibleCharts.dailyActivity && (
                                 <TabsContent value="trend" className="flex-grow">
                                     <DailyActivityChart allTasks={tasks} startDate={dateRange.from} endDate={dateRange.to} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.bidOrigin && (
+                                <TabsContent value="origin" className="flex-grow">
+                                    <BidOriginChart tasks={tasks} settings={settings} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.weeklyCompletion && (
+                                <TabsContent value="weekly" className="flex-grow">
+                                    <WeeklyCompletionChart tasks={completedTasks} />
+                                </TabsContent>
+                            )}
+                             {visibleCharts.dayOfWeekCompletion && (
+                                <TabsContent value="dayOfWeek" className="flex-grow">
+                                    <DayOfWeekCompletionChart tasks={completedTasks} />
                                 </TabsContent>
                             )}
                         </Tabs>

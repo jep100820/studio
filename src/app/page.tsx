@@ -227,6 +227,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                         <p className="text-sm mt-1">{formatDate(task.completionDate, displayFormat)}</p>
                     </>
                 )}
+                 {task.bidOrigin && (
+                    <>
+                        <p className="text-sm font-semibold mt-2">Bid Origin:</p>
+                        <p className="text-sm mt-1">{task.bidOrigin}</p>
+                    </>
+                )}
                 
                 <div className="mt-4 flex justify-end">
                     <Button 
@@ -381,12 +387,21 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                        </select>
                    </div>
               </div>
-               <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="importance">Importance</Label>
                    <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
                         <option value="">None</option>
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="bidOrigin">Bid Origin</Label>
+                   <select name="bidOrigin" id="bidOrigin" value={task?.bidOrigin || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
+                        <option value="">None</option>
+                       {settings.bidOrigins?.map(bo => <option key={bo.name} value={bo.name}>{bo.name}</option>)}
+                   </select>
+                </div>
               </div>
 
                <div className="space-y-2">
@@ -661,7 +676,10 @@ function KanbanPageContent() {
           importance: '',
           desc: '',
           remarks: '',
-          completionDate: null
+          completionDate: null,
+          bidOrigin: '',
+          subStatusChangeCount: 0,
+          lastModified: Timestamp.now(),
       };
       setSelectedTask(task ? { ...task } : defaultTask);
       setIsModalOpen(true);
@@ -694,16 +712,20 @@ function KanbanPageContent() {
     const taskToUpdate = tasks.find(t => t.id === active.id);
     if (!taskToUpdate) return;
 
+    const taskRef = doc(db, 'tasks', active.id);
+
     if (over.id === 'completion-zone') {
         if (window.confirm('Are you sure you want to complete this task?')) {
             const updatedTask = {
                 ...taskToUpdate,
                 status: 'Completed',
                 completionDate: taskToUpdate.completionDate || Timestamp.now(),
+                lastModified: Timestamp.now(),
             };
-            await updateDoc(doc(db, 'tasks', active.id), { 
+            await updateDoc(taskRef, { 
                 status: 'Completed', 
-                completionDate: updatedTask.completionDate
+                completionDate: updatedTask.completionDate,
+                lastModified: updatedTask.lastModified,
             });
             handleOpenModal(updatedTask);
         }
@@ -715,8 +737,7 @@ function KanbanPageContent() {
             setSubStatusData({ task: taskToUpdate, newStatus, subStatuses: targetCategory.subStatuses });
             setIsSubStatusModalOpen(true);
         } else {
-            const taskRef = doc(db, 'tasks', active.id);
-            await updateDoc(taskRef, { status: newStatus, subStatus: '' });
+            await updateDoc(taskRef, { status: newStatus, subStatus: '', lastModified: Timestamp.now() });
         }
     }
   };
@@ -737,7 +758,14 @@ function KanbanPageContent() {
   const handleSubStatusSave = async (selectedSubStatus) => {
       const { task, newStatus } = subStatusData;
       const taskRef = doc(db, 'tasks', task.id);
-      await updateDoc(taskRef, { status: newStatus, subStatus: selectedSubStatus });
+      const currentSubStatusChangeCount = task.subStatusChangeCount || 0;
+
+      await updateDoc(taskRef, { 
+          status: newStatus, 
+          subStatus: selectedSubStatus,
+          lastModified: Timestamp.now(),
+          subStatusChangeCount: currentSubStatusChangeCount + 1
+       });
       setIsSubStatusModalOpen(false);
       setSubStatusData({ task: null, newStatus: '', subStatuses: [] });
   };
@@ -750,7 +778,10 @@ function KanbanPageContent() {
   
   const handleSaveTask = async () => {
       if (!selectedTask || !selectedTask.taskid) return;
-      const taskToSave = { ...selectedTask };
+      const taskToSave = { 
+          ...selectedTask,
+          lastModified: Timestamp.now(),
+      };
       
       const currentCategory = settings.workflowCategories.find(cat => cat.name === taskToSave.status);
       if (!currentCategory?.subStatuses?.some(sub => sub.name === taskToSave.subStatus)) {
