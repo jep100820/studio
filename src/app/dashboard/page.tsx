@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTheme } from "next-themes";
 
@@ -208,49 +208,64 @@ function TaskPriorityChart({ tasks }) {
     );
 }
 
-function DailyActivityChart({ allTasks, completedTasks }) {
+function DailyActivityChart({ allTasks }) {
     const data = useMemo(() => {
-        const last7Days = eachDayOfInterval({
-            start: subDays(endOfToday(), 6),
-            end: endOfToday()
+        const today = endOfToday();
+        const last30Days = eachDayOfInterval({
+            start: subDays(today, 29),
+            end: today
         });
 
-        return last7Days.map(day => {
+        return last30Days.map(day => {
             const createdCount = allTasks.filter(task => {
                 const taskDate = toDate(task.date);
                 return taskDate && isSameDay(day, taskDate);
             }).length;
 
-            const completedCount = completedTasks.filter(task => {
+            const completedCount = allTasks.filter(task => {
                 const completionDate = toDate(task.completionDate);
                 return completionDate && isSameDay(day, completionDate);
+            }).length;
+
+            const activeCount = allTasks.filter(task => {
+                const startDate = toDate(task.date);
+                if (!startDate || isAfter(startDate, day)) {
+                    return false; // Not created yet
+                }
+                const completionDate = toDate(task.completionDate);
+                if (completionDate && isBefore(completionDate, day)) {
+                    return false; // Already completed before this day
+                }
+                return true;
             }).length;
 
             return {
                 date: format(day, 'MMM d'),
                 Created: createdCount,
                 Completed: completedCount,
+                Active: activeCount
             };
         });
-    }, [allTasks, completedTasks]);
+    }, [allTasks]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Daily Activity</CardTitle>
-                 <CardDescription>Tasks created vs. completed in the last 7 days.</CardDescription>
+                <CardTitle className="text-lg">Daily Activity (Last 30 Days)</CardTitle>
+                <CardDescription>Created, completed, and total active tasks.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}>
+                    <ComposedChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Legend iconSize={10} />
-                        <Line type="monotone" dataKey="Created" stroke="#3b82f6" strokeWidth={2} name="Created" />
-                        <Line type="monotone" dataKey="Completed" stroke="#22c55e" strokeWidth={2} name="Completed" />
-                    </LineChart>
+                        <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created" />
+                        <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed" />
+                        <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" />
+                    </ComposedChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
@@ -436,10 +451,16 @@ export default function DashboardPage() {
         return tasks
             .filter(t => t.status === 'Completed')
             .sort((a, b) => {
+                const aHasDate = !!a.completionDate;
+                const bHasDate = !!b.completionDate;
+                if (!aHasDate && bHasDate) return -1; // a without date comes first
+                if (aHasDate && !bHasDate) return 1;  // b without date comes first
+                if (!aHasDate && !bHasDate) return 0; // both without dates, order doesn't matter
+
                 const dateA = toDate(a.completionDate);
                 const dateB = toDate(b.completionDate);
-                if (!dateA && dateB) return -1;
-                if (dateA && !dateB) return 1;
+                if (!dateA && dateB) return 1;
+                if (dateA && !dateB) return -1;
                 if (!dateA && !dateB) return 0;
                 return dateB.getTime() - dateA.getTime();
             });
@@ -502,7 +523,7 @@ export default function DashboardPage() {
                             <TaskPriorityChart tasks={completedTasks} />
                         </TabsContent>
                         <TabsContent value="trend" className="flex-grow">
-                            <DailyActivityChart allTasks={tasks} completedTasks={completedTasks} />
+                            <DailyActivityChart allTasks={tasks} />
                         </TabsContent>
                     </Tabs>
                 </div>
