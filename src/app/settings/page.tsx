@@ -99,7 +99,6 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
 
 function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses, onSubStatusUpdate }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-    const [isOpen, setIsOpen] = useState(false);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -117,50 +116,33 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
                 <div {...attributes} {...listeners} className="cursor-grab p-2">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="flex-grow font-medium">{item.name}</div>
-                {hasSubStatuses && item.subStatuses && item.subStatuses.length > 0 && !isOpen && (
-                    <div className="flex items-center gap-1 flex-wrap ml-auto mr-2">
-                        {item.subStatuses.map((sub, index) => (
-                            <span key={index} className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
-                                {sub.name}
-                            </span>
-                        ))}
+                <Input
+                    value={item.name}
+                    onChange={(e) => handleItemChange('name', e.target.value)}
+                    className="flex-grow"
+                />
+                {item.hasOwnProperty('color') && (
+                    <div className="relative">
+                        <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="color"
+                            value={item.color}
+                            onChange={(e) => handleItemChange('color', e.target.value)}
+                            className="w-16 pl-8 p-1"
+                        />
                     </div>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className={cn(hasSubStatuses && item.subStatuses?.length > 0 ? "" : "ml-auto")}>
-                     <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+                <Button variant="ghost" size="icon" onClick={() => onRemove(id)}>
+                    <X className="h-4 w-4" />
                 </Button>
             </div>
-             {isOpen && (
-                <div className="mt-4 pt-4 border-t space-y-4">
-                     <div className="flex items-center gap-2">
-                        <Input
-                            value={item.name}
-                            onChange={(e) => handleItemChange('name', e.target.value)}
-                            className="flex-grow"
-                        />
-                        {item.hasOwnProperty('color') && (
-                            <div className="relative">
-                                <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="color"
-                                    value={item.color}
-                                    onChange={(e) => handleItemChange('color', e.target.value)}
-                                    className="w-16 pl-8 p-1"
-                                />
-                            </div>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    {hasSubStatuses && (
-                         <SubStatusManager
-                            parentIndex={id} // The ID here is the index in the original array
-                            subStatuses={item.subStatuses || []}
-                            onUpdate={onSubStatusUpdate}
-                        />
-                    )}
+             {hasSubStatuses && (
+                 <div className="mt-4 pt-4 border-t">
+                     <SubStatusManager
+                        parentIndex={id} // The ID here is the index in the original array
+                        subStatuses={item.subStatuses || []}
+                        onUpdate={onSubStatusUpdate}
+                    />
                 </div>
              )}
         </div>
@@ -648,34 +630,38 @@ export default function SettingsPage() {
                         </Button>
                     </div>
                 </header>
-                <main className="flex-grow p-4 md:p-8 space-y-6 overflow-y-auto">
-                    <GeneralSettingsCard
-                        settings={settings}
-                        onUpdate={handleSettingsUpdate}
-                    />
-                    <SettingsCard
-                        title="Workflow Statuses"
-                        items={settings?.workflowCategories}
-                        onUpdate={handleSettingsUpdate}
-                        onAddItem={handleAddNewItem}
-                        fieldName="workflowCategories"
-                        hasSubStatuses={true}
-                    />
-                    <SettingsCard
-                        title="Importance Levels"
-                        items={settings?.importanceLevels}
-                        onUpdate={handleSettingsUpdate}
-                        onAddItem={handleAddNewItem}
-                        fieldName="importanceLevels"
-                    />
-                     <SettingsCard
-                        title="Bid Origins"
-                        items={settings?.bidOrigins}
-                        onUpdate={handleSettingsUpdate}
-                        onAddItem={handleAddNewItem}
-                        fieldName="bidOrigins"
-                    />
-                    <ImportExportCard />
+                <main className="flex-grow p-4 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 overflow-y-auto">
+                    <div className="space-y-6">
+                        <SettingsCard
+                            title="Workflow Statuses"
+                            items={settings?.workflowCategories}
+                            onUpdate={handleSettingsUpdate}
+                            onAddItem={handleAddNewItem}
+                            fieldName="workflowCategories"
+                            hasSubStatuses={true}
+                        />
+                        <SettingsCard
+                            title="Importance Levels"
+                            items={settings?.importanceLevels}
+                            onUpdate={handleSettingsUpdate}
+                            onAddItem={handleAddNewItem}
+                            fieldName="importanceLevels"
+                        />
+                         <SettingsCard
+                            title="Bid Origins"
+                            items={settings?.bidOrigins}
+                            onUpdate={handleSettingsUpdate}
+                            onAddItem={handleAddNewItem}
+                            fieldName="bidOrigins"
+                        />
+                    </div>
+                    <div className="space-y-6">
+                        <GeneralSettingsCard
+                            settings={settings}
+                            onUpdate={handleSettingsUpdate}
+                        />
+                        <ImportExportCard />
+                    </div>
                 </main>
             </div>
             <UpdateTasksConfirmationDialog
