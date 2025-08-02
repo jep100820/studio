@@ -258,70 +258,130 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
 
     const itemIds = useMemo(() => displayedItems?.map(it => it.name) || [], [displayedItems]);
     
-    const EditableItem = ({ item }) => {
-        const [isEditing, setIsEditing] = useState(false);
-        const [name, setName] = useState(item.name);
-        
-        const handleSave = () => {
-            handleNameChange(item.name, name);
-            setIsEditing(false);
-        };
-
-        if (isEditing) {
-            return (
-                <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-muted">
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-grow h-9"/>
-                    <Button onClick={handleSave} size="sm">Save</Button>
-                    <Button onClick={() => setIsEditing(false)} variant="ghost" size="sm">Cancel</Button>
-                </div>
-            );
-        }
-
-        return (
-             <div className="flex items-center gap-2 mb-2 p-3 rounded-lg border">
-                <span className="flex-grow">{item.name}</span>
-                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="h-8 w-8">
-                    <Pencil className="h-4 w-4"/>
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.name)} className="h-8 w-8">
-                    <X className="h-4 w-4"/>
-                </Button>
-             </div>
-        );
-    };
-
     return (
         <Card>
             <CardContent className="pt-6">
-                 {fieldName !== 'bidOrigins' ? (
-                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                            <div>
-                               {displayedItems?.map((item, index) => (
-                                    <SortableItem
-                                        key={item.name}
-                                        id={item.name}
-                                        item={item}
-                                        onUpdate={handleItemUpdate}
-                                        onRemove={() => handleRemoveItem(item.name)}
-                                        onToggleExpand={handleToggleExpand}
-                                        hasSubStatuses={hasSubStatuses}
-                                        onSubStatusUpdate={handleSubStatusUpdate}
-                                        hasColor={hasColor}
-                                    />
-                                ))}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-                 ) : (
-                    <div>
-                        {displayedItems.map(item => <EditableItem key={item.name} item={item} />)}
-                    </div>
-                 )}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        <div>
+                           {displayedItems?.map((item, index) => (
+                                <SortableItem
+                                    key={item.name}
+                                    id={item.name}
+                                    item={item}
+                                    onUpdate={handleItemUpdate}
+                                    onRemove={() => handleRemoveItem(item.name)}
+                                    onToggleExpand={handleToggleExpand}
+                                    hasSubStatuses={hasSubStatuses}
+                                    onSubStatusUpdate={handleSubStatusUpdate}
+                                    hasColor={hasColor}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
                 <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
                     Add New
                 </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
+function CustomTagsSection({ settings, onUpdate }) {
+    const customTags = settings.customTags || [];
+
+    const handleAddMainTag = () => {
+        if (customTags.length >= 4) return;
+        const newMainTag = {
+            name: `New Tag Category ${customTags.length + 1}`,
+            tags: [],
+        };
+        onUpdate('customTags', [...customTags, newMainTag]);
+    };
+
+    const handleRemoveMainTag = (index) => {
+        const newCustomTags = customTags.filter((_, i) => i !== index);
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const handleMainTagNameChange = (index, newName) => {
+        const newCustomTags = [...customTags];
+        newCustomTags[index].name = newName;
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const handleAddSubTag = (mainIndex) => {
+        const newCustomTags = [...customTags];
+        if (newCustomTags[mainIndex].tags.length >= 10) return;
+        newCustomTags[mainIndex].tags.push({ name: 'New Tag' });
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const handleRemoveSubTag = (mainIndex, subIndex) => {
+        const newCustomTags = [...customTags];
+        newCustomTags[mainIndex].tags = newCustomTags[mainIndex].tags.filter((_, i) => i !== subIndex);
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const handleSubTagNameChange = (mainIndex, subIndex, newName) => {
+        const newCustomTags = [...customTags];
+        newCustomTags[mainIndex].tags[subIndex].name = newName;
+        onUpdate('customTags', newCustomTags);
+    };
+
+    const MainTagEditor = ({ mainTag, index }) => {
+        return (
+            <div className="border rounded-lg mb-4">
+                <div className="p-4 flex items-center justify-between">
+                    <Input 
+                        value={mainTag.name}
+                        onChange={(e) => handleMainTagNameChange(index, e.target.value)}
+                        className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 p-0"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(index)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+                <div className="p-4 pt-0 space-y-2">
+                    {mainTag.tags.map((tag, subIndex) => (
+                        <div key={subIndex} className="flex items-center gap-2">
+                            <Input 
+                                value={tag.name}
+                                onChange={(e) => handleSubTagNameChange(index, subIndex, e.target.value)}
+                                className="h-9"
+                            />
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveSubTag(index, subIndex)} className="w-9 h-9">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    {mainTag.tags.length < 10 && (
+                        <Button variant="outline" size="sm" onClick={() => handleAddSubTag(index)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Tag
+                        </Button>
+                    )}
+                </div>
+            </div>
+        )
+    };
+    
+    return (
+        <Card>
+            <CardContent className="pt-6">
+                <div className="space-y-4">
+                    {customTags.map((tag, index) => (
+                        <MainTagEditor key={index} mainTag={tag} index={index} />
+                    ))}
+                </div>
+                 {customTags.length < 4 && (
+                    <Button onClick={handleAddMainTag} variant="outline" size="sm" className="mt-4">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Tag Category
+                    </Button>
+                )}
             </CardContent>
         </Card>
     );
@@ -695,6 +755,9 @@ export default function SettingsPage() {
                         stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true },
                     };
                 }
+                if (!data.hasOwnProperty('customTags')) {
+                    data.customTags = [];
+                }
                 setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
                 setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
             }
@@ -734,9 +797,6 @@ export default function SettingsPage() {
             newItem.isExpanded = false;
         } else if (fieldName === 'importanceLevels') {
             newItem.color = '#cccccc';
-        } else {
-             // For bidOrigins, no color is needed
-             newItem = { name: newItemName };
         }
 
         const newItems = [...currentItems, newItem];
@@ -884,15 +944,12 @@ export default function SettingsPage() {
                         </AccordionSection>
 
                          <AccordionSection 
-                            title="Bid Origins"
-                             summary={settings?.bidOrigins?.map(c => c.name).join(', ') || 'No bid origins configured.'}
+                            title="Custom Tags"
+                             summary={settings?.customTags?.map(c => c.name).join(', ') || 'No custom tags configured.'}
                         >
-                            <SettingsSection
-                                items={settings?.bidOrigins}
+                            <CustomTagsSection
+                                settings={settings}
                                 onUpdate={handleSettingsUpdate}
-                                onAddItem={handleAddNewItem}
-                                fieldName="bidOrigins"
-                                hasColor={false}
                             />
                         </AccordionSection>
 

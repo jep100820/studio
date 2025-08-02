@@ -136,7 +136,7 @@ const seedDatabase = async () => {
         { name: 'Medium', color: '#f59e0b' },
         { name: 'Low', color: '#10b981' },
       ],
-      bidOrigins: [],
+      customTags: [],
       enableTimeTracking: false,
     });
     console.log('Default settings created.');
@@ -200,7 +200,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
               <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
             {importance && (
               <div className="flex items-center text-xs">
@@ -208,6 +208,9 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                  {task.importance}
               </div>
              )}
+             {task.tags && Object.entries(task.tags).map(([key, value]) => (
+                value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
+             ))}
           </div>
         
          {isExpanded && (
@@ -318,6 +321,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         const { name, value } = e.target;
         setTask(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleTagChange = (e) => {
+        const { name, value } = e.target;
+        setTask(prev => ({ 
+            ...prev,
+            tags: {
+                ...prev.tags,
+                [name]: value
+            }
+        }));
+    };
     
     const handleDateChange = (e) => {
         const { name, value } = e.target;
@@ -347,7 +361,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Task' : 'Add Task'}</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 max-h-[80vh] overflow-y-auto pr-4">
               {isEditing && (
                   <div className="text-sm text-muted-foreground">
                       <p>Date Started: {formatDate(task.date, displayFormat)}</p>
@@ -395,14 +409,25 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                        {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                    </select>
                 </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="bidOrigin">Bid Origin</Label>
-                   <select name="bidOrigin" id="bidOrigin" value={task?.bidOrigin || ''} onChange={handleChange} className="w-full border rounded px-2 py-2 bg-input">
-                        <option value="">None</option>
-                       {settings.bidOrigins?.map(bo => <option key={bo.name} value={bo.name}>{bo.name}</option>)}
-                   </select>
-                </div>
               </div>
+              
+               <div className="grid grid-cols-2 gap-4">
+                 {settings.customTags?.map(mainTag => (
+                    <div className="space-y-2" key={mainTag.name}>
+                        <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
+                        <select 
+                            name={mainTag.name} 
+                            id={`tag-${mainTag.name}`} 
+                            value={task?.tags?.[mainTag.name] || ''} 
+                            onChange={handleTagChange} 
+                            className="w-full border rounded px-2 py-2 bg-input"
+                        >
+                            <option value="">None</option>
+                            {mainTag.tags.map(tag => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
+                        </select>
+                    </div>
+                 ))}
+               </div>
 
                <div className="space-y-2">
                   <Label htmlFor="desc">Description</Label>
@@ -617,7 +642,7 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
 
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [], enableTimeTracking: false, workWeek: [] });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], customTags: [], enableTimeTracking: false, workWeek: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -677,7 +702,7 @@ function KanbanPageContent() {
           desc: '',
           remarks: '',
           completionDate: null,
-          bidOrigin: '',
+          tags: {},
           subStatusChangeCount: 0,
           lastModified: Timestamp.now(),
       };
