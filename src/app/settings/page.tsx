@@ -109,15 +109,27 @@ function SubStatusManager({ parentId, subStatuses, onUpdate }) {
 function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(item.name);
     const inputRef = useRef(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
     };
+    
+    useEffect(() => {
+        setName(item.name);
+    }, [item.name]);
 
     const handleNameChange = (newName) => {
-        onUpdate(id, { ...item, name: newName });
+        setName(newName);
+    };
+    
+    const handleBlur = () => {
+        setIsEditing(false);
+        if(name !== item.name) {
+            onUpdate(id, { ...item, name });
+        }
     };
 
     const handleColorChange = (newColor) => {
@@ -125,12 +137,12 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     };
 
     const toggleEdit = () => {
-        setIsEditing(!isEditing);
+        setIsEditing(true);
     };
 
     useEffect(() => {
         if (isEditing) {
-            inputRef.current?.focus();
+            inputRef.current?.select();
         }
     }, [isEditing]);
 
@@ -157,9 +169,9 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                     {isEditing ? (
                         <Input
                             ref={inputRef}
-                            value={item.name}
+                            value={name}
                             onChange={(e) => handleNameChange(e.target.value)}
-                            onBlur={() => setIsEditing(false)}
+                            onBlur={handleBlur}
                             className={cn("flex-grow font-semibold border-2 border-primary", textColor)}
                         />
                     ) : (
