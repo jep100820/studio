@@ -122,7 +122,6 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     };
 
     const textColor = item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
-    const subStatusCount = item.subStatuses?.length || 0;
 
     return (
         <div className="mb-3">
@@ -148,7 +147,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                         
                         {hasSubStatuses && (
                              <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
-                               ({subStatusCount > 0 ? `${subStatusCount} substatus` : 'No substatus'}{subStatusCount > 1 && 'es'})
+                               ({item.subStatuses?.length > 0 ? item.subStatuses.map(s => s.name).join(', ') : 'No substatus'})
                             </span>
                         )}
 
