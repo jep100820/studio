@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2 } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -54,6 +54,15 @@ const parseDateString = (dateString) => {
     return isValid(date) ? Timestamp.fromDate(date) : null;
 };
 
+// Function to determine if a color is light or dark
+function isColorLight(hexColor) {
+    if (!hexColor) return true;
+    const color = hexColor.charAt(0) === '#' ? hexColor.substring(1, 7) : hexColor;
+    const r = parseInt(color.substring(0, 2), 16); // hexToR
+    const g = parseInt(color.substring(2, 4), 16); // hexToG
+    const b = parseInt(color.substring(4, 6), 16); // hexToB
+    return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
+}
 
 function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     const handleAdd = () => {
@@ -99,6 +108,8 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
 
 function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses, onSubStatusUpdate }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const [isEditing, setIsEditing] = useState(false);
+    const inputRef = useRef(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -109,36 +120,62 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
         const newItem = { ...item, [path]: value };
         onUpdate(id, newItem);
     };
+    
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
+    const textColor = item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
 
     return (
-        <div ref={setNodeRef} style={style} className="p-4 rounded-lg border bg-card mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div ref={setNodeRef} style={style} className="mb-2">
+            <div className="flex items-center gap-2">
                 <div {...attributes} {...listeners} className="cursor-grab p-2">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <Input
-                    value={item.name}
-                    onChange={(e) => handleItemChange('name', e.target.value)}
-                    className="flex-grow"
-                    style={item.color ? { borderColor: item.color, "--ring-color": item.color } : {}}
-                />
-                {item.hasOwnProperty('color') && (
-                    <div className="relative">
-                        <Paintbrush className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                
+                <div className="flex-grow flex items-center p-2 rounded-lg border" style={{ backgroundColor: item.color || '#ffffff' }}>
+                    {!isEditing ? (
+                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
+                    ) : (
                         <Input
-                            type="color"
-                            value={item.color}
-                            onChange={(e) => handleItemChange('color', e.target.value)}
-                            className="w-16 h-10 pl-8 p-1 bg-transparent"
+                            ref={inputRef}
+                            value={item.name}
+                            onChange={(e) => handleItemChange('name', e.target.value)}
+                            onBlur={() => setIsEditing(false)}
+                            className={cn("flex-grow bg-transparent border-0 ring-offset-0 focus-visible:ring-0", textColor)}
                         />
+                    )}
+
+                    <div className="flex items-center gap-1 ml-2">
+                        {item.hasOwnProperty('color') && (
+                             <div className="relative">
+                                <label htmlFor={`color-${id}`} className="cursor-pointer">
+                                    <Paintbrush className={cn("h-5 w-5", textColor)} />
+                                </label>
+                                <Input
+                                    id={`color-${id}`}
+                                    type="color"
+                                    value={item.color}
+                                    onChange={(e) => handleItemChange('color', e.target.value)}
+                                    className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                            </div>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className={cn("hover:bg-black/10", textColor)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10", textColor)}>
+                            <X className="h-4 w-4" />
+                        </Button>
                     </div>
-                )}
-                <Button variant="ghost" size="icon" onClick={() => onRemove(id)}>
-                    <X className="h-4 w-4" />
-                </Button>
+                </div>
             </div>
              {hasSubStatuses && (
-                 <div className="mt-4 pt-4 border-t">
+                 <div className="mt-2 ml-12">
                      <SubStatusManager
                         parentIndex={id} // The ID here is the index in the original array
                         subStatuses={item.subStatuses || []}
@@ -211,7 +248,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
             <CardContent>
                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-4">
+                        <div>
                            {displayedItems?.map((item, index) => (
                                 <SortableItem
                                     key={item.name}
