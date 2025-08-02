@@ -259,12 +259,12 @@ function DailyActivityChart({ allTasks, completedTasks }) {
 
 function CompletionTrendChart({ completedTasks }) {
     const data = useMemo(() => {
-        const last14Days = eachDayOfInterval({
-            start: subDays(endOfToday(), 13),
+        const last30Days = eachDayOfInterval({
+            start: subDays(endOfToday(), 29),
             end: endOfToday()
         });
 
-        return last14Days.map(day => {
+        return last30Days.map(day => {
             const completedCount = completedTasks.filter(task => {
                 const completionDate = toDate(task.completionDate);
                 return completionDate && isSameDay(day, completionDate);
@@ -280,7 +280,7 @@ function CompletionTrendChart({ completedTasks }) {
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">14-Day Completion Trend</CardTitle>
+                <CardTitle className="text-lg">30-Day Completion Trend</CardTitle>
                 <CardDescription>Tasks completed per day.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -534,7 +534,7 @@ export default function DashboardPage() {
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
                             <TabsTrigger value="trend">Daily Activity</TabsTrigger>
-                            <TabsTrigger value="completion">14-Day Trend</TabsTrigger>
+                            <TabsTrigger value="completion">30-Day Trend</TabsTrigger>
                         </TabsList>
                         <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
@@ -558,5 +558,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-    
