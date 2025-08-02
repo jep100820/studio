@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTheme } from "next-themes";
+import { Label } from '@/components/ui/label';
 
 
 // Your web app's Firebase configuration
@@ -208,15 +209,18 @@ function TaskPriorityChart({ tasks }) {
     );
 }
 
-function DailyActivityChart({ allTasks }) {
+function DailyActivityChart({ allTasks, startDate, endDate }) {
     const data = useMemo(() => {
-        const today = endOfToday();
-        const last30Days = eachDayOfInterval({
-            start: subDays(today, 29),
-            end: today
+        if (!startDate || !endDate || isBefore(endDate, startDate)) {
+            return [];
+        }
+
+        const dateRange = eachDayOfInterval({
+            start: startDate,
+            end: endDate
         });
 
-        return last30Days.map(day => {
+        return dateRange.map(day => {
             const createdCount = allTasks.filter(task => {
                 const taskDate = toDate(task.date);
                 return taskDate && isSameDay(day, taskDate);
@@ -228,8 +232,8 @@ function DailyActivityChart({ allTasks }) {
             }).length;
 
             const activeCount = allTasks.filter(task => {
-                const startDate = toDate(task.date);
-                if (!startDate || isAfter(startDate, day)) {
+                const taskStartDate = toDate(task.date);
+                if (!taskStartDate || isAfter(taskStartDate, day)) {
                     return false; // Not created yet
                 }
                 const completionDate = toDate(task.completionDate);
@@ -246,13 +250,13 @@ function DailyActivityChart({ allTasks }) {
                 Active: activeCount
             };
         });
-    }, [allTasks]);
+    }, [allTasks, startDate, endDate]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Daily Activity (Last 30 Days)</CardTitle>
-                <CardDescription>Created, completed, and total active tasks.</CardDescription>
+                <CardTitle className="text-lg">Daily Activity Trend</CardTitle>
+                <CardDescription>Created, completed, and total active tasks within the selected range.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <div className="w-full h-full overflow-x-auto">
@@ -434,6 +438,7 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const { theme, setTheme } = useTheme();
     const router = useRouter();
+    const [dateRange, setDateRange] = useState({ from: null, to: null });
 
     useEffect(() => {
         const tasksQuery = query(collection(db, 'tasks'));
@@ -443,6 +448,19 @@ export default function DashboardPage() {
                 return { ...data, id: doc.id };
             });
             setTasks(fetchedTasks);
+            
+            if (fetchedTasks.length > 0 && !dateRange.from && !dateRange.to) {
+                const earliestDate = fetchedTasks
+                    .map(t => toDate(t.date))
+                    .filter(Boolean)
+                    .reduce((earliest, current) => (current < earliest ? current : earliest), new Date());
+                
+                setDateRange({
+                    from: startOfDay(earliestDate),
+                    to: endOfToday()
+                });
+            }
+
             setIsLoading(false);
         });
 
@@ -472,6 +490,19 @@ export default function DashboardPage() {
         // This is a placeholder for a potential "Add Task" modal on the dashboard
         // For now, it will navigate to the main page to add a task.
         router.push('/');
+    };
+
+    const handleDateChange = (e, part) => {
+        const { value } = e.target;
+        const newDate = toDate(value);
+        if (newDate) {
+            setDateRange(prev => ({ ...prev, [part]: part === 'from' ? startOfDay(newDate) : endOfToday(newDate) }));
+        }
+    };
+    
+    const formatDateForInput = (date) => {
+        if (!isValid(date)) return '';
+        return format(date, 'yyyy-MM-dd');
     };
 
     if (isLoading) {
@@ -512,7 +543,17 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
-                    <Tabs defaultValue="status" className="h-full flex flex-col">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="from-date">From</Label>
+                            <Input id="from-date" type="date" value={formatDateForInput(dateRange.from)} onChange={(e) => handleDateChange(e, 'from')} />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="to-date">To</Label>
+                            <Input id="to-date" type="date" value={formatDateForInput(dateRange.to)} onChange={(e) => handleDateChange(e, 'to')} />
+                        </div>
+                    </div>
+                    <Tabs defaultValue="trend" className="h-full flex flex-col flex-grow">
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
@@ -525,7 +566,7 @@ export default function DashboardPage() {
                             <TaskPriorityChart tasks={completedTasks} />
                         </TabsContent>
                         <TabsContent value="trend" className="flex-grow">
-                            <DailyActivityChart allTasks={tasks} />
+                            <DailyActivityChart allTasks={tasks} startDate={dateRange.from} endDate={dateRange.to} />
                         </TabsContent>
                     </Tabs>
                 </div>
