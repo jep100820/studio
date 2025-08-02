@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -167,8 +167,7 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
     );
 }
 
-function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, startOpen = false }) {
-    const [isOpen, setIsOpen] = useState(startOpen);
+function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -223,77 +222,92 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
 
     return (
         <Card>
-            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
+            <CardHeader>
                 <CardTitle>{title}</CardTitle>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
             </CardHeader>
-            {isOpen && (
-                <CardContent>
-                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-4">
-                               {displayedItems?.map((item, index) => (
-                                    <SortableItem
-                                        key={item.name}
-                                        id={item.name}
-                                        item={item}
-                                        onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
-                                        onRemove={() => handleRemoveItem(index)}
-                                        hasSubStatuses={hasSubStatuses}
-                                        onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
-                                    />
-                                ))}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-                    <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add New
-                    </Button>
-                </CardContent>
-            )}
+            <CardContent>
+                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-4">
+                           {displayedItems?.map((item, index) => (
+                                <SortableItem
+                                    key={item.name}
+                                    id={item.name}
+                                    item={item}
+                                    onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
+                                    onRemove={() => handleRemoveItem(index)}
+                                    hasSubStatuses={hasSubStatuses}
+                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+                <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add New
+                </Button>
+            </CardContent>
         </Card>
     );
 }
 
-function GeneralSettingsCard({ settings, onUpdate, startOpen = false }) {
-    const [isOpen, setIsOpen] = useState(startOpen);
-
+function GeneralSettingsCard({ settings, onUpdate }) {
     const handleSwitchChange = (checked) => {
         onUpdate('enableTimeTracking', checked);
     };
 
     return (
         <Card>
-            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
+            <CardHeader>
                 <CardTitle>General Settings</CardTitle>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
             </CardHeader>
-            {isOpen && (
-                <CardContent>
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                            <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
-                             <SettingsCardDescription>
-                                Enable to use date and time pickers for due dates and completion dates.
-                            </SettingsCardDescription>
-                        </div>
-                        <Switch
-                            id="time-tracking"
-                            checked={settings?.enableTimeTracking || false}
-                            onCheckedChange={handleSwitchChange}
-                        />
+            <CardContent>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                        <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
+                         <SettingsCardDescription>
+                            Enable to use date and time pickers for due dates and completion dates.
+                        </SettingsCardDescription>
                     </div>
-                </CardContent>
-            )}
+                    <Switch
+                        id="time-tracking"
+                        checked={settings?.enableTimeTracking || false}
+                        onCheckedChange={handleSwitchChange}
+                    />
+                </div>
+            </CardContent>
         </Card>
+    );
+}
+
+function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName }) {
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onCancel}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirm Data Import</DialogTitle>
+                    <DialogDescription>
+                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID and add new ones. This action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+                    <Button onClick={onConfirm}>Confirm & Import</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
 
 function ImportExportCard() {
     const importFileRef = useRef(null);
-    const [isOpen, setIsOpen] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const [importDialog, setImportDialog] = useState({ isOpen: false, file: null });
+
 
     const handleExport = async () => {
         const tasksQuery = query(collection(db, 'tasks'));
@@ -320,10 +334,20 @@ function ImportExportCard() {
         link.click();
         document.body.removeChild(link);
     };
-
-    const handleImport = (event) => {
+    
+    const handleFileSelect = (event) => {
         const file = event.target.files[0];
         if (!file) return;
+        setImportDialog({ isOpen: true, file: file });
+    };
+
+
+    const handleConfirmImport = () => {
+        const { file } = importDialog;
+        if (!file) return;
+        
+        setImportDialog({ isOpen: false, file: null });
+        setIsImporting(true);
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -364,6 +388,7 @@ function ImportExportCard() {
                 console.error("Error parsing or importing JSON:", error);
                 alert('Error importing file. Please ensure it is a valid JSON file. Check console for details.');
             } finally {
+                 setIsImporting(false);
                 if(importFileRef.current) {
                     importFileRef.current.value = '';
                 }
@@ -373,29 +398,48 @@ function ImportExportCard() {
     };
 
     return (
-        <Card>
-            <CardHeader onClick={() => setIsOpen(!isOpen)} className="cursor-pointer flex-row items-center justify-between">
-                <CardTitle>Data Management</CardTitle>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} />
-            </CardHeader>
-            {isOpen && (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Data Management</CardTitle>
+                </CardHeader>
                 <CardContent className="flex items-center gap-4">
-                     <input type="file" ref={importFileRef} onChange={handleImport} accept=".json" style={{ display: 'none' }} />
-                    <Button onClick={() => importFileRef.current?.click()} variant="outline">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import JSON
+                     <input type="file" ref={importFileRef} onChange={handleFileSelect} accept=".json" style={{ display: 'none' }} />
+                    <Button onClick={() => importFileRef.current?.click()} variant="outline" disabled={isImporting}>
+                        {isImporting ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Importing...
+                            </>
+                        ) : (
+                             <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Import JSON
+                             </>
+                        )}
                     </Button>
                     <Button onClick={handleExport} variant="outline">
                         <Download className="h-4 w-4 mr-2" />
                         Export JSON
                     </Button>
                 </CardContent>
-            )}
-        </Card>
+            </Card>
+            <ImportConfirmationDialog
+                isOpen={importDialog.isOpen}
+                onCancel={() => {
+                    setImportDialog({ isOpen: false, file: null });
+                    if(importFileRef.current) {
+                        importFileRef.current.value = '';
+                    }
+                }}
+                onConfirm={handleConfirmImport}
+                fileName={importDialog.file?.name}
+            />
+        </>
     );
 }
 
-function UpdateConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
+function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
     if (!isOpen) return null;
 
     return (
@@ -588,10 +632,6 @@ export default function SettingsPage() {
                             <Undo className="h-4 w-4 mr-2" />
                             Cancel
                         </Button>
-                        <Button onClick={() => handleOpenModal()} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Task
-                        </Button>
                         <Link href="/">
                             <Button variant="outline">Back to Board</Button>
                         </Link>
@@ -612,7 +652,6 @@ export default function SettingsPage() {
                     <GeneralSettingsCard
                         settings={settings}
                         onUpdate={handleSettingsUpdate}
-                        startOpen={true}
                     />
                     <SettingsCard
                         title="Workflow Statuses"
@@ -639,7 +678,7 @@ export default function SettingsPage() {
                     <ImportExportCard />
                 </main>
             </div>
-            <UpdateConfirmationDialog
+            <UpdateTasksConfirmationDialog
                 isOpen={isConfirmModalOpen}
                 onClose={handleCancelConfirmation}
                 onConfirm={handleConfirmUpdate}
