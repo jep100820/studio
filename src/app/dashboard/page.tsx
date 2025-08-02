@@ -257,6 +257,46 @@ function DailyActivityChart({ allTasks, completedTasks }) {
     );
 }
 
+function CompletionTrendChart({ completedTasks }) {
+    const data = useMemo(() => {
+        const last14Days = eachDayOfInterval({
+            start: subDays(endOfToday(), 13),
+            end: endOfToday()
+        });
+
+        return last14Days.map(day => {
+            const completedCount = completedTasks.filter(task => {
+                const completionDate = toDate(task.completionDate);
+                return completionDate && isSameDay(day, completionDate);
+            }).length;
+
+            return {
+                date: format(day, 'MMM d'),
+                Completed: completedCount,
+            };
+        });
+    }, [completedTasks]);
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">14-Day Completion Trend</CardTitle>
+                <CardDescription>Tasks completed per day.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="Completed" fill="#8884d8" name="Completed" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
 
 
 function CompletedTasksList({ tasks }) {
@@ -490,10 +530,11 @@ export default function DashboardPage() {
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
                     <Tabs defaultValue="status" className="h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
                             <TabsTrigger value="trend">Daily Activity</TabsTrigger>
+                            <TabsTrigger value="completion">14-Day Trend</TabsTrigger>
                         </TabsList>
                         <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
@@ -503,6 +544,9 @@ export default function DashboardPage() {
                         </TabsContent>
                         <TabsContent value="trend" className="flex-grow">
                             <DailyActivityChart allTasks={tasks} completedTasks={completedTasks} />
+                        </TabsContent>
+                         <TabsContent value="completion" className="flex-grow">
+                            <CompletionTrendChart completedTasks={completedTasks} />
                         </TabsContent>
                     </Tabs>
                 </div>
