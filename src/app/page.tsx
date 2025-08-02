@@ -37,7 +37,7 @@ import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
 import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays } from 'date-fns';
+import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -98,11 +98,10 @@ const parseDateStringToTimestamp = (dateString) => {
     return date ? Timestamp.fromDate(date) : null;
 };
 
-const formatDate = (timestamp, includeTime = false) => {
-    const date = toDate(timestamp);
+const formatDate = (dateInput, formatStr) => {
+    const date = toDate(dateInput);
     if (!date) return '';
-    const formatString = includeTime ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
-    return format(date, formatString);
+    return format(date, formatStr);
 };
 
 
@@ -142,27 +141,6 @@ const seedDatabase = async () => {
     });
     console.log('Default settings created.');
   }
-
-  const tasksCollectionRef = collection(db, 'tasks');
-  const tasksSnapshot = await getDocs(tasksCollectionRef);
-  if (tasksSnapshot.empty) {
-    console.log('Tasks collection is empty, seeding data...');
-    const batch = writeBatch(db);
-    initialTasks.forEach((task) => {
-      const docRef = doc(collection(db, 'tasks'));
-      const newTask = {
-        ...task,
-        date: parse(task.date, 'dd/MM/yyyy', new Date()),
-        dueDate: task.dueDate ? parse(task.dueDate, 'dd/MM/yyyy', new Date()) : null,
-        completionDate: task.completionDate ? parse(task.completionDate, 'dd/MM/yyyy', new Date()) : null,
-      }
-      batch.set(docRef, newTask);
-    });
-    await batch.commit();
-    console.log('Database seeded with initial tasks.');
-  } else {
-    console.log('Tasks collection is not empty.');
-  }
 };
 
 
@@ -195,6 +173,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
+  const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
 
 
   return (
@@ -218,7 +197,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       <div className="flex-grow" style={{ pointerEvents: 'none' }}>
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
-              <span>Due Date: {formatDate(task.dueDate, settings.enableTimeTracking)}</span>
+              <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
           </div>
 
           <div className="mt-2 flex items-center gap-2">
@@ -240,12 +219,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                 <p className="text-sm mt-1">{task.remarks || 'No remarks'}</p>
                 
                 <p className="text-sm font-semibold mt-2">Date Started:</p>
-                <p className="text-sm mt-1">{formatDate(task.date, settings.enableTimeTracking)}</p>
+                <p className="text-sm mt-1">{formatDate(task.date, displayFormat)}</p>
 
                 {task.completionDate && (
                     <>
                         <p className="text-sm font-semibold mt-2">Completed:</p>
-                        <p className="text-sm mt-1">{formatDate(task.completionDate, settings.enableTimeTracking)}</p>
+                        <p className="text-sm mt-1">{formatDate(task.completionDate, displayFormat)}</p>
                     </>
                 )}
                 
@@ -341,8 +320,9 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         setTask(prev => ({ ...prev, [name]: timestamp }));
     };
 
-    const formatDateForInput = (timestamp, includeTime) => {
-        const formatString = includeTime ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd';
+    const formatDateForInput = (timestamp) => {
+        if (!timestamp) return '';
+        const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd';
         return formatDate(timestamp, formatString);
     };
 
@@ -353,6 +333,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
 
     const isEditing = !!task?.id;
     const isSaveDisabled = !task?.taskid;
+    const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -363,7 +344,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
           <div className="py-4 space-y-4">
               {isEditing && (
                   <div className="text-sm text-muted-foreground">
-                      <p>Date Started: {formatDate(task.date, settings.enableTimeTracking)}</p>
+                      <p>Date Started: {formatDate(task.date, displayFormat)}</p>
                   </div>
               )}
               
@@ -378,7 +359,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                       id="dueDate" 
                       name="dueDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
-                      value={formatDateForInput(task?.dueDate, settings.enableTimeTracking)} 
+                      value={formatDateForInput(task?.dueDate)} 
                       onChange={handleDateChange} 
                       className="w-full" 
                     />
@@ -425,7 +406,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                       id="completionDate" 
                       name="completionDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
-                      value={formatDateForInput(task?.completionDate, settings.enableTimeTracking)} 
+                      value={formatDateForInput(task?.completionDate)} 
                       onChange={handleDateChange} 
                       className="w-full" 
                     />
@@ -522,7 +503,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick, setti
                                 <li key={task.id} onClick={() => onTaskClick(task.id)} className="text-sm p-3 rounded-md hover:bg-muted cursor-pointer border">
                                     <p className="font-semibold">{task.taskid}</p>
                                     <p className="text-xs text-muted-foreground mt-1">Status: {task.status}</p>
-                                    <p className="text-xs text-muted-foreground">Due: {formatDate(task.dueDate, settings.enableTimeTracking)}</p>
+                                    <p className="text-xs text-muted-foreground">Due: {formatDate(task.dueDate, settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy')}</p>
                                 </li>
                             ))}
                         </ul>
@@ -543,27 +524,28 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
         const today = startOfToday();
+        const workWeek = settings?.workWeek || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']; // Default work week
+        const dayMapping = {'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6};
         
-        let endOfWeekDate;
-        if (isFriday(today) || isSaturday(today)) {
-            // If it's Friday or Saturday, look to next week's Friday
-            endOfWeekDate = nextFriday(addDays(today, 2));
-        } else {
-            // Otherwise, look for the upcoming Friday
-            endOfWeekDate = nextFriday(today);
-        }
+        const workDayNumbers = workWeek.map(day => dayMapping[day]);
+        const weekStart = startOfWeek(today);
+        const weekEnd = endOfWeek(today);
+        
+        const allDaysInWeek = eachDayOfInterval({start: weekStart, end: weekEnd});
+        const workDaysInWeek = allDaysInWeek.filter(day => workDayNumbers.includes(day.getDay()));
+        const lastWorkDayOfWeek = workDaysInWeek[workDaysInWeek.length - 1] || today;
 
         const pastDue = tasks.filter(t => t.dueDate && isBefore(toDate(t.dueDate), today) && t.status !== 'Completed');
         const dueToday = tasks.filter(t => t.dueDate && isSameDay(toDate(t.dueDate), today) && t.status !== 'Completed');
         const dueThisWeek = tasks.filter(t => {
             if (!t.dueDate || t.status === 'Completed') return false;
             const dueDate = toDate(t.dueDate);
-            // Check if the due date is after today and before or on the end of the week date.
-            return isBefore(today, dueDate) && !isSameDay(today, dueDate) && (isBefore(dueDate, endOfWeekDate) || isSameDay(dueDate, endOfWeekDate));
+            // Check if the due date is after today and before or on the last workday of the week.
+            return isBefore(today, dueDate) && !isSameDay(today, dueDate) && (isBefore(dueDate, lastWorkDayOfWeek) || isSameDay(dueDate, lastWorkDayOfWeek));
         });
 
         return { pastDue, dueToday, dueThisWeek };
-    }, [tasks]);
+    }, [tasks, settings]);
 
     const handleWidgetClick = (title, tasks) => {
         if (tasks.length > 0) {
@@ -620,7 +602,7 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
 
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [], enableTimeTracking: false });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], bidOrigins: [], enableTimeTracking: false, workWeek: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -943,5 +925,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    

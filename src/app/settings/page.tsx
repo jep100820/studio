@@ -446,12 +446,23 @@ function ImportExportCard() {
 }
 
 function GeneralSettingsCard({ settings, onUpdate }) {
-    const handleSwitchChange = (checked) => {
-        onUpdate('enableTimeTracking', checked);
+    const handleSwitchChange = (fieldName, checked) => {
+        onUpdate(fieldName, checked);
     };
+    
+    const handleWorkWeekChange = (day, checked) => {
+        const currentWeek = settings.workWeek || [];
+        let newWeek;
+        if (checked) {
+            newWeek = [...currentWeek, day];
+        } else {
+            newWeek = currentWeek.filter(d => d !== day);
+        }
+        onUpdate('workWeek', newWeek);
+    }
 
     return (
-        <CardContent>
+        <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                     <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
@@ -462,8 +473,34 @@ function GeneralSettingsCard({ settings, onUpdate }) {
                 <Switch
                     id="time-tracking"
                     checked={settings?.enableTimeTracking || false}
-                    onCheckedChange={handleSwitchChange}
+                    onCheckedChange={(checked) => handleSwitchChange('enableTimeTracking', checked)}
                 />
+            </div>
+             <div className="rounded-lg border p-4">
+                <div className="space-y-2">
+                   <Label className="text-base">Work Week Configuration</Label>
+                    <SettingsCardDescription>
+                       Select the days to be considered 'workdays' for 'Due this Week' calculations.
+                    </SettingsCardDescription>
+                </div>
+                <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                         <Label htmlFor="include-saturdays">Include Saturdays</Label>
+                         <Switch
+                            id="include-saturdays"
+                            checked={settings?.workWeek?.includes('Saturday') || false}
+                            onCheckedChange={(checked) => handleWorkWeekChange('Saturday', checked)}
+                        />
+                    </div>
+                     <div className="flex items-center justify-between">
+                         <Label htmlFor="include-sundays">Include Sundays</Label>
+                         <Switch
+                            id="include-sundays"
+                            checked={settings?.workWeek?.includes('Sunday') || false}
+                            onCheckedChange={(checked) => handleWorkWeekChange('Sunday', checked)}
+                        />
+                    </div>
+                </div>
             </div>
         </CardContent>
     );
@@ -518,6 +555,14 @@ export default function SettingsPage() {
                 const data = doc.data();
                  if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
+                }
+                 // Set default for new settings if they don't exist
+                if (!data.hasOwnProperty('enableTimeTracking')) {
+                    data.enableTimeTracking = false;
+                }
+                if (!data.hasOwnProperty('workWeek')) {
+                    // Default to a standard Mon-Fri work week
+                    data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 }
                 setSettings(JSON.parse(JSON.stringify(data))); // Deep copy
                 setOriginalSettings(JSON.parse(JSON.stringify(data))); // Deep copy
@@ -740,5 +785,3 @@ export default function SettingsPage() {
         </>
     );
 }
-
-    
