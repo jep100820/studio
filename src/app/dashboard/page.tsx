@@ -514,7 +514,7 @@ export default function DashboardPage() {
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="status">Task Status</TabsTrigger>
                             <TabsTrigger value="priority">Task Priority</TabsTrigger>
-                            <TabsTrigger value="trend">Daily Activity</TabsTrigger>
+                            <TabsTrigger value="trend">Daily Activity Trend</TabsTrigger>
                         </TabsList>
                         <TabsContent value="status" className="flex-grow">
                             <TaskStatusChart tasks={tasks} />
