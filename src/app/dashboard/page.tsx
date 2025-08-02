@@ -255,18 +255,20 @@ function DailyActivityChart({ allTasks }) {
                 <CardDescription>Created, completed, and total active tasks.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Legend iconSize={10} />
-                        <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created" />
-                        <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed" />
-                        <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" />
-                    </ComposedChart>
-                </ResponsiveContainer>
+                <div className="w-full h-full overflow-x-auto">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={800}>
+                        <ComposedChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Legend iconSize={10} />
+                            <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created" />
+                            <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed" />
+                            <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
             </CardContent>
         </Card>
     );
