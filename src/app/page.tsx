@@ -56,61 +56,50 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// A robust, unified date parsing function
 const toDate = (dateInput) => {
     if (!dateInput) return null;
-    if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
-    const d = new Date(dateInput);
-    return isValid(d) ? d : null;
-};
 
-const parseDateString = (dateString) => {
-    if (!dateString) return null;
-
-    let date;
-    // Try parsing as YYYY-MM-DD first
-    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        date = parseISO(dateString);
-    } else {
-        // Fallback to other formats
-        date = parse(dateString, 'dd/MM/yyyy', new Date());
+    // Firestore Timestamp
+    if (typeof dateInput === 'object' && dateInput.seconds) {
+        return new Date(dateInput.seconds * 1000);
     }
     
-    return isValid(date) ? Timestamp.fromDate(date) : null;
+    // Javascript Date object
+    if (dateInput instanceof Date) {
+        return isValid(dateInput) ? dateInput : null;
+    }
+
+    // Number (milliseconds or seconds)
+    if (typeof dateInput === 'number') {
+        // If it's likely seconds, convert to milliseconds
+        return dateInput > 10000000000 ? new Date(dateInput) : new Date(dateInput * 1000);
+    }
+    
+    // String
+    if (typeof dateInput === 'string') {
+        let date = parseISO(dateInput); // Try ISO format first (YYYY-MM-DD)
+        if (isValid(date)) return date;
+
+        date = parse(dateInput, 'dd/MM/yyyy', new Date()); // Try "dd/MM/yyyy"
+        if (isValid(date)) return date;
+
+        date = new Date(dateInput); // General fallback
+        return isValid(date) ? date : null;
+    }
+    
+    return null; // Return null if format is unknown
 };
 
+// Specifically for parsing strings into Timestamps for Firestore
+const parseDateStringToTimestamp = (dateString) => {
+    const date = toDate(dateString);
+    return date ? Timestamp.fromDate(date) : null;
+};
 
 const formatDate = (timestamp, outputFormat = 'MMM d, yyyy') => {
-    if (!timestamp) return '';
-  
-    let date;
-    if (timestamp?.seconds) {
-      date = new Date(timestamp.seconds * 1000);
-    } else if (timestamp instanceof Date) {
-        date = timestamp;
-    } else if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        date = parseISO(dateString);
-    } else if (typeof timestamp === 'string') {
-        const parsedDate = parseISO(timestamp);
-        if (isValid(parsedDate)) {
-            date = parsedDate;
-        } else {
-            const genericParsedDate = new Date(timestamp);
-            if(isValid(genericParsedDate)) {
-                date = genericParsedDate;
-            } else {
-                 return '';
-            }
-        }
-    } else if (typeof timestamp === 'number') {
-      date = new Date(timestamp);
-    } else {
-      return '';
-    }
-  
-    if (isValid(date)) {
-      return format(date, outputFormat);
-    }
-    return '';
+    const date = toDate(timestamp);
+    return date ? format(date, outputFormat) : '';
 };
 
 // Function to determine if a color is light or dark
@@ -158,9 +147,9 @@ const seedDatabase = async () => {
       const docRef = doc(collection(db, 'tasks'));
       const newTask = {
         ...task,
-        date: parseDateString(task.date),
-        dueDate: parseDateString(task.dueDate),
-        completionDate: parseDateString(task.completionDate),
+        date: parseDateStringToTimestamp(task.date),
+        dueDate: parseDateStringToTimestamp(task.dueDate),
+        completionDate: parseDateStringToTimestamp(task.completionDate),
       }
       batch.set(docRef, newTask);
     });
@@ -342,13 +331,9 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        if (value) {
-            // The input type="date" provides value in "YYYY-MM-DD" format
-            const date = parseISO(value);
-            setTask(prev => ({ ...prev, [name]: isValid(date) ? Timestamp.fromDate(date) : null }));
-        } else {
-            setTask(prev => ({ ...prev, [name]: null }));
-        }
+        // The input type="date" provides value in "YYYY-MM-DD" format
+        const timestamp = parseDateStringToTimestamp(value);
+        setTask(prev => ({ ...prev, [name]: timestamp }));
     };
 
     const formatDateForInput = (timestamp) => {
@@ -935,3 +920,5 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
+    
