@@ -106,7 +106,7 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     );
 }
 
-function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate }) {
+function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
     const style = {
@@ -122,7 +122,8 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
         onUpdate(id, { ...item, color: newColor });
     };
 
-    const textColor = item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
+    const textColor = hasColor && item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
+    const bgColor = hasColor ? item.color : '#ffffff';
 
     return (
         <div className="mb-3">
@@ -142,7 +143,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                             "w-full text-left flex items-center p-3 rounded-lg shadow-sm",
                             hasSubStatuses && "cursor-pointer"
                         )}
-                        style={{ backgroundColor: item.color || '#ffffff' }}
+                        style={{ backgroundColor: bgColor }}
                     >
                         <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
                         
@@ -153,7 +154,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                         )}
 
                         <div className={cn("flex items-center gap-1 ml-auto", textColor)}>
-                            {item.hasOwnProperty('color') && (
+                            {hasColor && (
                                 <div className="relative w-6 h-6">
                                     <label htmlFor={`color-${id}`} className="cursor-pointer w-full h-full flex items-center justify-center">
                                         <Paintbrush className="h-4 w-4" />
@@ -188,7 +189,8 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     );
 }
 
-function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
+
+function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -196,30 +198,36 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
         })
     );
     
+    const [localItems, setLocalItems] = useState(items);
+    
+    useEffect(() => {
+        setLocalItems(items);
+    }, [items]);
+    
     const displayedItems = useMemo(() => {
         if (fieldName === 'workflowCategories') {
-            return items?.filter(item => item.name !== 'Completed') || [];
+            return localItems?.filter(item => item.name !== 'Completed') || [];
         }
-        return items || [];
-    }, [items, fieldName]);
+        return localItems || [];
+    }, [localItems, fieldName]);
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = items.findIndex(item => item.name === active.id);
-            const newIndex = items.findIndex(item => item.name === over.id);
-            const newItems = arrayMove(items, oldIndex, newIndex);
+            const oldIndex = localItems.findIndex(item => item.name === active.id);
+            const newIndex = localItems.findIndex(item => item.name === over.id);
+            const newItems = arrayMove(localItems, oldIndex, newIndex);
             onUpdate(fieldName, newItems);
         }
     };
     
     const handleItemUpdate = (itemName, newItem) => {
-        const newItems = items.map(item => (item.name === itemName ? newItem : item));
+        const newItems = localItems.map(item => (item.name === itemName ? newItem : item));
         onUpdate(fieldName, newItems);
     }
     
     const handleSubStatusUpdate = (parentItemName, newSubStatuses) => {
-        const newItems = items.map(item =>
+        const newItems = localItems.map(item =>
             item.name === parentItemName
                 ? { ...item, subStatuses: newSubStatuses }
                 : item
@@ -228,7 +236,7 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
     };
 
     const handleToggleExpand = (itemName) => {
-        const newItems = items.map(item =>
+        const newItems = localItems.map(item =>
             item.name === itemName
                 ? { ...item, isExpanded: !item.isExpanded }
                 : item
@@ -237,33 +245,79 @@ function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubS
     }
     
     const handleRemoveItem = (itemName) => {
-        const newItems = items.filter((item) => item.name !== itemName);
+        const newItems = localItems.filter((item) => item.name !== itemName);
         onUpdate(fieldName, newItems);
     };
     
+    const handleNameChange = (oldName, newName) => {
+        const newItems = localItems.map(item => 
+            item.name === oldName ? { ...item, name: newName } : item
+        );
+        onUpdate(fieldName, newItems);
+    };
+
     const itemIds = useMemo(() => displayedItems?.map(it => it.name) || [], [displayedItems]);
+    
+    const EditableItem = ({ item }) => {
+        const [isEditing, setIsEditing] = useState(false);
+        const [name, setName] = useState(item.name);
+        
+        const handleSave = () => {
+            handleNameChange(item.name, name);
+            setIsEditing(false);
+        };
+
+        if (isEditing) {
+            return (
+                <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-muted">
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-grow h-9"/>
+                    <Button onClick={handleSave} size="sm">Save</Button>
+                    <Button onClick={() => setIsEditing(false)} variant="ghost" size="sm">Cancel</Button>
+                </div>
+            );
+        }
+
+        return (
+             <div className="flex items-center gap-2 mb-2 p-3 rounded-lg border">
+                <span className="flex-grow">{item.name}</span>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="h-8 w-8">
+                    <Pencil className="h-4 w-4"/>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.name)} className="h-8 w-8">
+                    <X className="h-4 w-4"/>
+                </Button>
+             </div>
+        );
+    };
 
     return (
         <Card>
             <CardContent className="pt-6">
-                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                        <div>
-                           {displayedItems?.map((item, index) => (
-                                <SortableItem
-                                    key={item.name}
-                                    id={item.name}
-                                    item={item}
-                                    onUpdate={handleItemUpdate}
-                                    onRemove={() => handleRemoveItem(item.name)}
-                                    onToggleExpand={handleToggleExpand}
-                                    hasSubStatuses={hasSubStatuses}
-                                    onSubStatusUpdate={handleSubStatusUpdate}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                </DndContext>
+                 {fieldName !== 'bidOrigins' ? (
+                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                            <div>
+                               {displayedItems?.map((item, index) => (
+                                    <SortableItem
+                                        key={item.name}
+                                        id={item.name}
+                                        item={item}
+                                        onUpdate={handleItemUpdate}
+                                        onRemove={() => handleRemoveItem(item.name)}
+                                        onToggleExpand={handleToggleExpand}
+                                        hasSubStatuses={hasSubStatuses}
+                                        onSubStatusUpdate={handleSubStatusUpdate}
+                                        hasColor={hasColor}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                 ) : (
+                    <div>
+                        {displayedItems.map(item => <EditableItem key={item.name} item={item} />)}
+                    </div>
+                 )}
                 <Button onClick={() => onAddItem(fieldName)} variant="outline" size="sm" className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
                     Add New
@@ -672,15 +726,17 @@ export default function SettingsPage() {
             i++;
         }
         
-        const newItem = { name: newItemName };
+        let newItem = { name: newItemName };
 
         if(fieldName === 'workflowCategories') {
             newItem.color = '#cccccc';
             newItem.subStatuses = [];
             newItem.isExpanded = false;
-        }
-         if (fieldName === 'importanceLevels') {
+        } else if (fieldName === 'importanceLevels') {
             newItem.color = '#cccccc';
+        } else {
+             // For bidOrigins, no color is needed
+             newItem = { name: newItemName };
         }
 
         const newItems = [...currentItems, newItem];
@@ -836,6 +892,7 @@ export default function SettingsPage() {
                                 onUpdate={handleSettingsUpdate}
                                 onAddItem={handleAddNewItem}
                                 fieldName="bidOrigins"
+                                hasColor={false}
                             />
                         </AccordionSection>
 

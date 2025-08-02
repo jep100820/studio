@@ -328,13 +328,18 @@ function WeeklyCompletionChart({ tasks }) {
     const data = useMemo(() => {
         const weeks = Array.from({ length: 12 }, (_, i) => subWeeks(new Date(), i)).reverse();
         
-        return weeks.map(weekStart => {
-            const weekEnd = endOfWeek(weekStart);
+        return weeks.map(weekStartInput => {
+            const weekStart = startOfWeek(weekStartInput);
+            const weekEnd = endOfWeek(weekStartInput);
             const weekLabel = `W${getWeek(weekStart)}`;
             
             const completedCount = tasks.filter(task => {
                 const completionDate = toDate(task.completionDate);
-                return completionDate && isSameDay(completionDate, weekStart) || (isAfter(completionDate, weekStart) && isBefore(completionDate, weekEnd));
+                if (!completionDate) return false;
+                
+                // Check if the completion date is within the week range (inclusive)
+                return (isAfter(completionDate, weekStart) || isSameDay(completionDate, weekStart)) && 
+                       (isBefore(completionDate, weekEnd) || isSameDay(completionDate, weekEnd));
             }).length;
             
             return {
