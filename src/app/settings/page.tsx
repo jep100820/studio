@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, ChevronUp, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -82,16 +82,16 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
     };
 
     return (
-        <div className="p-2 mt-2 space-y-3 bg-muted/50 rounded-lg">
+        <div className="p-3 mt-2 space-y-3 bg-muted/50 rounded-lg ml-10">
             <div className="space-y-2">
                 {subStatuses?.map((sub, subIndex) => (
-                    <div key={subIndex} className="flex items-center gap-2 p-2 bg-background rounded-md shadow-sm">
+                    <div key={subIndex} className="flex items-center gap-2">
                         <Input
                             value={sub.name}
                             onChange={(e) => handleChange(subIndex, e.target.value)}
-                            className="flex-grow"
+                            className="flex-grow bg-background h-9"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(subIndex)} className="h-9 w-9">
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
@@ -104,7 +104,6 @@ function SubStatusManager({ parentIndex, subStatuses, onUpdate }) {
         </div>
     );
 }
-
 
 function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses, onSubStatusUpdate }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -124,37 +123,61 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
     useEffect(() => {
         if (isEditing && inputRef.current) {
             inputRef.current.focus();
-            inputRef.current.select();
         }
     }, [isEditing]);
+    
+    const handleNameBlur = () => {
+        setIsEditing(false);
+    };
+    
+    const handleNameKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            setIsEditing(false);
+        }
+    };
 
     const textColor = item.color && !isColorLight(item.color) ? 'text-white' : 'text-black';
+    const subStatusCount = item.subStatuses?.length || 0;
 
     return (
-        <div ref={setNodeRef} style={style} className="mb-2">
-            <div className="flex items-center gap-2">
+        <div className="mb-3">
+             <div 
+                ref={setNodeRef} 
+                style={style}
+                className="flex items-center gap-2"
+             >
                 <div {...attributes} {...listeners} className="cursor-grab p-2">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
-                
-                <div className="flex-grow flex items-center p-2 rounded-lg border" style={{ backgroundColor: item.color || '#ffffff' }}>
-                    {!isEditing ? (
-                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
-                    ) : (
+
+                 <div 
+                    className="flex-grow flex items-center p-2 rounded-lg shadow-sm"
+                    style={{ backgroundColor: item.color || '#ffffff' }}
+                >
+                    {isEditing ? (
                         <Input
                             ref={inputRef}
                             value={item.name}
                             onChange={(e) => handleItemChange('name', e.target.value)}
-                            onBlur={() => setIsEditing(false)}
-                            className={cn("flex-grow bg-transparent border-0 ring-offset-0 focus-visible:ring-0", textColor)}
+                            onBlur={handleNameBlur}
+                            onKeyDown={handleNameKeyDown}
+                            className={cn("flex-grow bg-transparent border-0 ring-offset-0 focus-visible:ring-1 h-auto py-1", textColor)}
                         />
+                    ) : (
+                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
+                    )}
+                    
+                    {hasSubStatuses && (
+                         <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
+                           ({subStatusCount > 0 ? `${subStatusCount} substatus` : 'No substatus'}{subStatusCount > 1 && 'es'})
+                        </span>
                     )}
 
-                    <div className="flex items-center gap-1 ml-2">
+                    <div className="flex items-center gap-1 ml-auto">
                         {item.hasOwnProperty('color') && (
                              <div className="relative">
                                 <label htmlFor={`color-${id}`} className="cursor-pointer">
-                                    <Paintbrush className={cn("h-5 w-5", textColor)} />
+                                    <Paintbrush className={cn("h-4 w-4", textColor)} />
                                 </label>
                                 <Input
                                     id={`color-${id}`}
@@ -165,29 +188,27 @@ function SortableItem({ id, item, onUpdate, onRemove, fieldName, hasSubStatuses,
                                 />
                             </div>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className={cn("hover:bg-black/10", textColor)}>
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10", textColor)}>
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             </div>
-             {hasSubStatuses && (
-                 <div className="mt-2 ml-12">
-                     <SubStatusManager
-                        parentIndex={id} // The ID here is the index in the original array
-                        subStatuses={item.subStatuses || []}
-                        onUpdate={onSubStatusUpdate}
-                    />
-                </div>
+             {hasSubStatuses && item.isExpanded && (
+                 <SubStatusManager
+                    parentIndex={id}
+                    subStatuses={item.subStatuses || []}
+                    onUpdate={onSubStatusUpdate}
+                />
              )}
         </div>
     );
 }
 
-function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false }) {
+function SettingsSection({ title, items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, onSubStatusUpdate, onToggleSubStatus }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -214,7 +235,6 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
     
     const handleItemUpdate = (index, newItem) => {
         const newItems = [...items];
-        // Find the correct index in the original array
         const originalIndex = items.findIndex(item => item.name === displayedItems[index].name);
         if (originalIndex !== -1) {
             newItems[originalIndex] = newItem;
@@ -222,16 +242,15 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
         }
     }
     
-    const handleSubStatusUpdate = (parentIndex, newSubStatuses) => {
+    const handleSubStatusUpdateWrapper = (parentIndex, newSubStatuses) => {
         const newItems = [...items];
-        // Find the correct index in the original array
         const originalIndex = items.findIndex(item => item.name === displayedItems[parentIndex].name);
         if (originalIndex !== -1) {
             newItems[originalIndex].subStatuses = newSubStatuses;
             onUpdate(fieldName, newItems);
         }
     };
-
+    
     const handleRemoveItem = (index) => {
         const itemNameToRemove = displayedItems[index].name;
         const newItems = items.filter((item) => item.name !== itemNameToRemove);
@@ -242,10 +261,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                         <div>
@@ -257,7 +273,7 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
                                     onUpdate={(id, newItem) => handleItemUpdate(index, newItem)}
                                     onRemove={() => handleRemoveItem(index)}
                                     hasSubStatuses={hasSubStatuses}
-                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdate(index, newSubstatuses)}
+                                    onSubStatusUpdate={(id, newSubstatuses) => handleSubStatusUpdateWrapper(index, newSubstatuses)}
                                 />
                             ))}
                         </div>
@@ -272,34 +288,30 @@ function SettingsCard({ title, items, onUpdate, onAddItem, fieldName, hasSubStat
     );
 }
 
-function GeneralSettingsCard({ settings, onUpdate }) {
-    const handleSwitchChange = (checked) => {
-        onUpdate('enableTimeTracking', checked);
-    };
+function AccordionSection({ title, children, summary }) {
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                        <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
-                         <SettingsCardDescription>
-                            Enable to use date and time pickers for due dates and completion dates.
-                        </SettingsCardDescription>
-                    </div>
-                    <Switch
-                        id="time-tracking"
-                        checked={settings?.enableTimeTracking || false}
-                        onCheckedChange={handleSwitchChange}
-                    />
+        <div className="border rounded-lg mb-4">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex justify-between items-start text-left p-4"
+            >
+                <div className="flex flex-col">
+                    <span className="font-semibold">{title}</span>
+                     {!isOpen && (
+                         <span className="text-sm text-muted-foreground mt-1 pr-4 truncate max-w-full">
+                            {summary}
+                        </span>
+                     )}
                 </div>
-            </CardContent>
-        </Card>
+                {isOpen ? <ChevronUp className="h-5 w-5 flex-shrink-0" /> : <ChevronDown className="h-5 w-5 flex-shrink-0" />}
+            </button>
+            {isOpen && <div className="p-4 pt-0">{children}</div>}
+        </div>
     );
 }
+
 
 function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName }) {
     if (!isOpen) return null;
@@ -359,6 +371,7 @@ function ImportExportCard() {
         const file = event.target.files[0];
         if (!file) return;
         setImportDialog({ isOpen: true, file: file });
+        event.target.value = ''; // Reset file input
     };
 
 
@@ -409,9 +422,6 @@ function ImportExportCard() {
                 alert('Error importing file. Please ensure it is a valid JSON file. Check console for details.');
             } finally {
                  setIsImporting(false);
-                if(importFileRef.current) {
-                    importFileRef.current.value = '';
-                }
             }
         };
         reader.readAsText(file);
@@ -419,11 +429,8 @@ function ImportExportCard() {
 
     return (
         <>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Data Management</CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-center gap-4">
+            <CardContent>
+                <div className="flex items-center gap-4">
                      <input type="file" ref={importFileRef} onChange={handleFileSelect} accept=".json" style={{ display: 'none' }} />
                     <Button onClick={() => importFileRef.current?.click()} variant="outline" disabled={isImporting}>
                         {isImporting ? (
@@ -442,22 +449,42 @@ function ImportExportCard() {
                         <Download className="h-4 w-4 mr-2" />
                         Export JSON
                     </Button>
-                </CardContent>
-            </Card>
+                </div>
+            </CardContent>
             <ImportConfirmationDialog
                 isOpen={importDialog.isOpen}
-                onCancel={() => {
-                    setImportDialog({ isOpen: false, file: null });
-                    if(importFileRef.current) {
-                        importFileRef.current.value = '';
-                    }
-                }}
+                onCancel={() => setImportDialog({ isOpen: false, file: null })}
                 onConfirm={handleConfirmImport}
                 fileName={importDialog.file?.name}
             />
         </>
     );
 }
+
+function GeneralSettingsCard({ settings, onUpdate }) {
+    const handleSwitchChange = (checked) => {
+        onUpdate('enableTimeTracking', checked);
+    };
+
+    return (
+        <CardContent>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                    <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
+                     <SettingsCardDescription>
+                        Enable to use date and time pickers for due dates and completion dates.
+                    </SettingsCardDescription>
+                </div>
+                <Switch
+                    id="time-tracking"
+                    checked={settings?.enableTimeTracking || false}
+                    onCheckedChange={handleSwitchChange}
+                />
+            </div>
+        </CardContent>
+    );
+}
+
 
 function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
     if (!isOpen) return null;
@@ -489,25 +516,6 @@ function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) 
         </Dialog>
     );
 }
-
-
-function AccordionSection({ title, children }) {
-    const [isOpen, setIsOpen] = useState(true);
-
-    return (
-        <div className="border-b">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center p-4 text-lg font-semibold"
-            >
-                {title}
-                <ChevronDown className={cn('transition-transform', isOpen && 'rotate-180')} />
-            </button>
-            {isOpen && <div className="p-4 pt-0">{children}</div>}
-        </div>
-    );
-}
-
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState(null); // Local, editable settings
@@ -563,6 +571,7 @@ export default function SettingsPage() {
         if(fieldName === 'workflowCategories') {
             newItem.color = '#cccccc';
             newItem.subStatuses = [];
+            newItem.isExpanded = false;
         }
          if (fieldName === 'importanceLevels') {
             newItem.color = '#cccccc';
@@ -575,17 +584,12 @@ export default function SettingsPage() {
     const handleSaveChanges = async () => {
         if (!originalSettings || !settings) return;
 
-        const originalNames = originalSettings.workflowCategories.map(c => c.name);
-        const newNames = settings.workflowCategories.map(c => c.name);
+        // Clean up transient state before saving
+        const settingsToSave = JSON.parse(JSON.stringify(settings));
+        if (settingsToSave.workflowCategories) {
+            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
+        }
 
-        const changes = [];
-        originalSettings.workflowCategories.forEach((origCat, index) => {
-            if (settings.workflowCategories[index] && origCat.name !== settings.workflowCategories[index].name) {
-                // This assumes order hasn't changed, which is a big assumption. A better check is needed.
-                // Let's refine this to be more robust.
-            }
-        });
-        
         const originalMap = new Map(originalSettings.workflowCategories.map((cat, index) => [index, cat.name]));
         const currentMap = new Map(settings.workflowCategories.map((cat, index) => [index, cat.name]));
         const detectedChanges = [];
@@ -593,8 +597,6 @@ export default function SettingsPage() {
         for (const [index, origName] of originalMap.entries()) {
             const newName = currentMap.get(index);
             if (newName && newName !== origName) {
-                // Check if the original name is truly gone from the new list
-                // to distinguish from reordering vs renaming
                 if (!settings.workflowCategories.some(cat => cat.name === origName)) {
                     detectedChanges.push({ from: origName, to: newName });
                 }
@@ -606,13 +608,13 @@ export default function SettingsPage() {
             setRenameChanges(detectedChanges);
             setIsConfirmModalOpen(true);
         } else {
-            await updateSettingsInDb();
+            await updateSettingsInDb(settingsToSave);
         }
     };
     
-    const updateSettingsInDb = async () => {
+    const updateSettingsInDb = async (settingsToSave) => {
         const settingsRef = doc(db, 'settings', 'workflow');
-        await updateDoc(settingsRef, settings);
+        await updateDoc(settingsRef, settingsToSave);
     };
 
     const handleConfirmUpdate = async () => {
@@ -628,9 +630,14 @@ export default function SettingsPage() {
             });
         }
         await batch.commit();
+        
+        const settingsToSave = JSON.parse(JSON.stringify(settings));
+        if (settingsToSave.workflowCategories) {
+            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
+        }
 
         // 2. Update settings in DB
-        await updateSettingsInDb();
+        await updateSettingsInDb(settingsToSave);
         
         // 3. Close modal
         setIsConfirmModalOpen(false);
@@ -639,17 +646,17 @@ export default function SettingsPage() {
     
     const handleCancelConfirmation = async () => {
         // Just save the settings without updating tasks
-        await updateSettingsInDb();
+        const settingsToSave = JSON.parse(JSON.stringify(settings));
+        if (settingsToSave.workflowCategories) {
+            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
+        }
+        await updateSettingsInDb(settingsToSave);
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
     }
 
     const handleCancelChanges = () => {
         setSettings(JSON.parse(JSON.stringify(originalSettings))); // Revert to original
-    };
-
-    const handleOpenModal = () => {
-        router.push('/');
     };
 
     if (isLoading) {
@@ -687,42 +694,56 @@ export default function SettingsPage() {
                     </div>
                 </header>
                 <main className="flex-grow p-4 md:p-8 overflow-y-auto">
-                    <div className="max-w-4xl mx-auto">
-                        <AccordionSection title="Workflow Settings">
-                             <div className="space-y-6">
-                                <SettingsCard
-                                    title="Workflow Statuses"
-                                    items={settings?.workflowCategories}
-                                    onUpdate={handleSettingsUpdate}
-                                    onAddItem={handleAddNewItem}
-                                    fieldName="workflowCategories"
-                                    hasSubStatuses={true}
-                                />
-                                <SettingsCard
-                                    title="Importance Levels"
-                                    items={settings?.importanceLevels}
-                                    onUpdate={handleSettingsUpdate}
-                                    onAddItem={handleAddNewItem}
-                                    fieldName="importanceLevels"
-                                />
-                                 <SettingsCard
-                                    title="Bid Origins"
-                                    items={settings?.bidOrigins}
-                                    onUpdate={handleSettingsUpdate}
-                                    onAddItem={handleAddNewItem}
-                                    fieldName="bidOrigins"
-                                />
-                            </div>
+                    <div className="max-w-3xl mx-auto">
+                        
+                        <AccordionSection 
+                            title="Workflow Statuses"
+                            summary={settings?.workflowCategories?.filter(c => c.name !== 'Completed').map(c => c.name).join(', ') || 'No statuses configured.'}
+                        >
+                            <SettingsSection
+                                items={settings?.workflowCategories}
+                                onUpdate={handleSettingsUpdate}
+                                onAddItem={handleAddNewItem}
+                                fieldName="workflowCategories"
+                                hasSubStatuses={true}
+                            />
                         </AccordionSection>
-                        <AccordionSection title="General & Data Settings">
-                            <div className="space-y-6">
-                                <GeneralSettingsCard
-                                    settings={settings}
-                                    onUpdate={handleSettingsUpdate}
-                                />
-                                <ImportExportCard />
-                            </div>
+
+                        <AccordionSection 
+                            title="Importance Levels"
+                            summary={settings?.importanceLevels?.map(c => c.name).join(', ') || 'No importance levels configured.'}
+                        >
+                            <SettingsSection
+                                items={settings?.importanceLevels}
+                                onUpdate={handleSettingsUpdate}
+                                onAddItem={handleAddNewItem}
+                                fieldName="importanceLevels"
+                            />
                         </AccordionSection>
+
+                         <AccordionSection 
+                            title="Bid Origins"
+                             summary={settings?.bidOrigins?.map(c => c.name).join(', ') || 'No bid origins configured.'}
+                        >
+                            <SettingsSection
+                                items={settings?.bidOrigins}
+                                onUpdate={handleSettingsUpdate}
+                                onAddItem={handleAddNewItem}
+                                fieldName="bidOrigins"
+                            />
+                        </AccordionSection>
+
+                        <AccordionSection title="General Settings" summary="Application-wide preferences">
+                            <GeneralSettingsCard
+                                settings={settings}
+                                onUpdate={handleSettingsUpdate}
+                            />
+                        </AccordionSection>
+                        
+                        <AccordionSection title="Data Management" summary="Import or export your task data">
+                            <ImportExportCard />
+                        </AccordionSection>
+
                     </div>
                 </main>
             </div>
