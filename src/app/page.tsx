@@ -147,9 +147,9 @@ const seedDatabase = async () => {
       const docRef = doc(collection(db, 'tasks'));
       const newTask = {
         ...task,
-        date: parseDateStringToTimestamp(task.date),
-        dueDate: parseDateStringToTimestamp(task.dueDate),
-        completionDate: parseDateStringToTimestamp(task.completionDate),
+        date: parse(task.date, 'dd/MM/yyyy', new Date()),
+        dueDate: task.dueDate ? parse(task.dueDate, 'dd/MM/yyyy', new Date()) : null,
+        completionDate: task.completionDate ? parse(task.completionDate, 'dd/MM/yyyy', new Date()) : null,
       }
       batch.set(docRef, newTask);
     });
@@ -524,20 +524,22 @@ function DueDateSummary({ tasks, onTaskClick }) {
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
         const today = startOfToday();
         
-        // Find the next Thursday. If today is Friday or Saturday, start from next week.
-        let endOfWeekDate = nextFriday(today); // This gives us the *next* Friday
-        if(isFriday(today) || isSaturday(today)) {
-             endOfWeekDate = nextFriday(addDays(today,2));
+        let endOfWeekDate;
+        if (isFriday(today) || isSaturday(today)) {
+            // If it's Friday or Saturday, look to next week's Friday
+            endOfWeekDate = nextFriday(addDays(today, 2));
+        } else {
+            // Otherwise, look for the upcoming Friday
+            endOfWeekDate = nextFriday(today);
         }
-        endOfWeekDate = addDays(endOfWeekDate, -1); // make it Thursday
-
 
         const pastDue = tasks.filter(t => t.dueDate && isBefore(toDate(t.dueDate), today) && t.status !== 'Completed');
         const dueToday = tasks.filter(t => t.dueDate && isSameDay(toDate(t.dueDate), today) && t.status !== 'Completed');
         const dueThisWeek = tasks.filter(t => {
             if (!t.dueDate || t.status === 'Completed') return false;
             const dueDate = toDate(t.dueDate);
-            return isBefore(dueDate, endOfWeekDate) && isBefore(today, dueDate);
+            // Check if the due date is after today and before or on the end of the week date.
+            return isBefore(today, dueDate) && !isSameDay(today, dueDate) && (isBefore(dueDate, endOfWeekDate) || isSameDay(dueDate, endOfWeekDate));
         });
 
         return { pastDue, dueToday, dueThisWeek };
