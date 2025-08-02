@@ -17,6 +17,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 
 // Your web app's Firebase configuration
@@ -389,7 +390,12 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
         };
     }, [tasks, completedTasks]);
     
-    const visibleStats = settings?.dashboardSettings?.stats || {};
+    const visibleStats = useMemo(() => {
+        if (!settings?.dashboardSettings?.stats) {
+            return { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true };
+        }
+        return settings.dashboardSettings.stats;
+    }, [settings]);
 
     return (
         <Card className="h-full flex flex-col">
@@ -538,6 +544,10 @@ export default function DashboardPage() {
         return settings.dashboardSettings.charts;
     }, [settings]);
 
+    const activeCharts = useMemo(() => {
+        return Object.entries(visibleCharts).filter(([key, value]) => value).map(([key]) => key);
+    }, [visibleCharts]);
+
     const defaultTab = useMemo(() => {
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.taskStatus) return "status";
@@ -579,7 +589,9 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
-                    <StatsDisplay tasks={tasks} completedTasks={completedTasks} settings={settings} />
+                    <div className="flex-grow">
+                        <StatsDisplay tasks={tasks} completedTasks={completedTasks} settings={settings} />
+                    </div>
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
@@ -595,7 +607,11 @@ export default function DashboardPage() {
                     </div>
                     {defaultTab && (
                         <Tabs defaultValue={defaultTab} className="h-full flex flex-col flex-grow">
-                            <TabsList className="grid w-full grid-cols-3">
+                            <TabsList className={cn("grid w-full", 
+                                activeCharts.length === 3 && 'grid-cols-3', 
+                                activeCharts.length === 2 && 'grid-cols-2',
+                                activeCharts.length === 1 && 'grid-cols-1'
+                            )}>
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Status</TabsTrigger>}
                                 {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity Trend</TabsTrigger>}
@@ -620,7 +636,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
-                    <CompletedTasksList tasks={completedTasks} settings={settings} />
+                     <div className="flex-grow">
+                        <CompletedTasksList tasks={completedTasks} settings={settings} />
+                    </div>
                 </div>
             </main>
         </div>

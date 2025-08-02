@@ -516,49 +516,56 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
+    
+    const checkedChartsCount = useMemo(() => Object.values(chartSettings).filter(Boolean).length, [chartSettings]);
+    const checkedStatsCount = useMemo(() => Object.values(statSettings).filter(Boolean).length, [statSettings]);
+
+    const isChartLimitReached = checkedChartsCount >= 3;
+    const isStatLimitReached = checkedStatsCount >= 6;
+
 
     return (
         <CardContent className="space-y-6">
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
-                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
+                <SettingsCardDescription>Select which charts to display on the dashboard (up to 3).</SettingsCardDescription>
                 <div className="mt-4 space-y-3">
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="chart-status" checked={chartSettings.taskStatus} onCheckedChange={(c) => handleChartVisibilityChange('taskStatus', c)} />
+                        <Checkbox id="chart-status" checked={chartSettings.taskStatus} onCheckedChange={(c) => handleChartVisibilityChange('taskStatus', c)} disabled={!chartSettings.taskStatus && isChartLimitReached} />
                         <Label htmlFor="chart-status">Active Task Distribution</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="chart-priority" checked={chartSettings.taskPriority} onCheckedChange={(c) => handleChartVisibilityChange('taskPriority', c)} />
+                        <Checkbox id="chart-priority" checked={chartSettings.taskPriority} onCheckedChange={(c) => handleChartVisibilityChange('taskPriority', c)} disabled={!chartSettings.taskPriority && isChartLimitReached} />
                         <Label htmlFor="chart-priority">Completed by Priority</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="chart-trend" checked={chartSettings.dailyActivity} onCheckedChange={(c) => handleChartVisibilityChange('dailyActivity', c)} />
+                        <Checkbox id="chart-trend" checked={chartSettings.dailyActivity} onCheckedChange={(c) => handleChartVisibilityChange('dailyActivity', c)} disabled={!chartSettings.dailyActivity && isChartLimitReached} />
                         <Label htmlFor="chart-trend">Daily Activity Trend</Label>
                     </div>
                 </div>
             </div>
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
-                <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
+                <SettingsCardDescription>Select which stats to display in the Project Snapshot (up to 6).</SettingsCardDescription>
                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                      <div className="flex items-center space-x-2">
-                        <Checkbox id="stat-completed" checked={statSettings.totalCompleted} onCheckedChange={(c) => handleStatVisibilityChange('totalCompleted', c)} />
+                        <Checkbox id="stat-completed" checked={statSettings.totalCompleted} onCheckedChange={(c) => handleStatVisibilityChange('totalCompleted', c)} disabled={!statSettings.totalCompleted && isStatLimitReached} />
                         <Label htmlFor="stat-completed">Total Completed</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="stat-overdue" checked={statSettings.overdue} onCheckedChange={(c) => handleStatVisibilityChange('overdue', c)} />
+                        <Checkbox id="stat-overdue" checked={statSettings.overdue} onCheckedChange={(c) => handleStatVisibilityChange('overdue', c)} disabled={!statSettings.overdue && isStatLimitReached} />
                         <Label htmlFor="stat-overdue">Tasks Overdue</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="stat-active" checked={statSettings.active} onCheckedChange={(c) => handleStatVisibilityChange('active', c)} />
+                        <Checkbox id="stat-active" checked={statSettings.active} onCheckedChange={(c) => handleStatVisibilityChange('active', c)} disabled={!statSettings.active && isStatLimitReached} />
                         <Label htmlFor="stat-active">Active Tasks</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="stat-avg-time" checked={statSettings.avgTime} onCheckedChange={(c) => handleStatVisibilityChange('avgTime', c)} />
+                        <Checkbox id="stat-avg-time" checked={statSettings.avgTime} onCheckedChange={(c) => handleStatVisibilityChange('avgTime', c)} disabled={!statSettings.avgTime && isStatLimitReached} />
                         <Label htmlFor="stat-avg-time">Avg. Completion Time</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="stat-last7" checked={statSettings.last7} onCheckedChange={(c) => handleStatVisibilityChange('last7', c)} />
+                        <Checkbox id="stat-last7" checked={statSettings.last7} onCheckedChange={(c) => handleStatVisibilityChange('last7', c)} disabled={!statSettings.last7 && isStatLimitReached} />
                         <Label htmlFor="stat-last7">Completed Last 7d</Label>
                     </div>
                  </div>
