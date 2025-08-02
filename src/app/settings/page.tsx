@@ -21,6 +21,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 // Your web app's Firebase configuration
@@ -460,6 +461,8 @@ function GeneralSettingsCard({ settings, onUpdate }) {
         }
         onUpdate('workWeek', newWeek);
     }
+    
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     return (
         <CardContent className="space-y-4">
@@ -483,23 +486,17 @@ function GeneralSettingsCard({ settings, onUpdate }) {
                        Select the days to be considered 'workdays' for 'Due this Week' calculations.
                     </SettingsCardDescription>
                 </div>
-                <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                         <Label htmlFor="include-saturdays">Include Saturdays</Label>
-                         <Switch
-                            id="include-saturdays"
-                            checked={settings?.workWeek?.includes('Saturday') || false}
-                            onCheckedChange={(checked) => handleWorkWeekChange('Saturday', checked)}
-                        />
-                    </div>
-                     <div className="flex items-center justify-between">
-                         <Label htmlFor="include-sundays">Include Sundays</Label>
-                         <Switch
-                            id="include-sundays"
-                            checked={settings?.workWeek?.includes('Sunday') || false}
-                            onCheckedChange={(checked) => handleWorkWeekChange('Sunday', checked)}
-                        />
-                    </div>
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {daysOfWeek.map(day => (
+                        <div key={day} className="flex items-center space-x-2">
+                             <Checkbox
+                                id={`workday-${day}`}
+                                checked={settings?.workWeek?.includes(day) || false}
+                                onCheckedChange={(checked) => handleWorkWeekChange(day, checked)}
+                            />
+                            <Label htmlFor={`workday-${day}`}>{day}</Label>
+                        </div>
+                    ))}
                 </div>
             </div>
         </CardContent>

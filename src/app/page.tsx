@@ -524,7 +524,7 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
         const today = startOfToday();
-        const workWeek = settings?.workWeek || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']; // Default work week
+        const workWeek = settings?.workWeek || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayMapping = {'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6};
         
         const workDayNumbers = workWeek.map(day => dayMapping[day]);
