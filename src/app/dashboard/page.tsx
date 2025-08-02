@@ -352,7 +352,7 @@ function CompletedTasksList({ tasks }) {
                                 >
                                     <p className="font-semibold text-foreground">{task.taskid}</p>
                                     <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
-                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate)}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate) || 'Not set'}</p>
                                 </div>
                             ))}
                         </div>
@@ -480,12 +480,13 @@ export default function DashboardPage() {
 
     const completedTasks = useMemo(() => {
         return tasks
-            .filter(t => t.status === 'Completed' && toDate(t.completionDate))
+            .filter(t => t.status === 'Completed')
             .sort((a, b) => {
                 const dateA = toDate(a.completionDate);
                 const dateB = toDate(b.completionDate);
-                if (!dateA) return 1;
-                if (!dateB) return -1;
+                if (!dateA && dateB) return -1;
+                if (dateA && !dateB) return 1;
+                if (!dateA && !dateB) return 0;
                 return dateB.getTime() - dateA.getTime();
             });
     }, [tasks]);
