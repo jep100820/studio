@@ -401,19 +401,25 @@ function WeeklyProgressChart({ allTasks }) {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="font-bold">Week</TableHead>
-                                <TableHead className="text-right font-bold">Active</TableHead>
-                                <TableHead className="text-right font-bold">Completed</TableHead>
+                                <TableHead className="font-bold w-[120px]">Metric</TableHead>
+                                {data.map((row) => (
+                                    <TableHead key={row.name} className="text-right font-bold">{row.name}</TableHead>
+                                ))}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data.map((row) => (
-                                <TableRow key={row.name}>
-                                    <TableCell>{row.name}</TableCell>
-                                    <TableCell className="text-right">{row['Tasks Active']}</TableCell>
-                                    <TableCell className="text-right">{row['Tasks Completed']}</TableCell>
-                                </TableRow>
-                            ))}
+                            <TableRow>
+                                <TableCell className="font-semibold">Tasks Active</TableCell>
+                                {data.map((row) => (
+                                    <TableCell key={`${row.name}-active`} className="text-right">{row['Tasks Active']}</TableCell>
+                                ))}
+                            </TableRow>
+                             <TableRow>
+                                <TableCell className="font-semibold">Tasks Completed</TableCell>
+                                {data.map((row) => (
+                                    <TableCell key={`${row.name}-completed`} className="text-right">{row['Tasks Completed']}</TableCell>
+                                ))}
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </div>
