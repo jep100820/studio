@@ -84,7 +84,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 
     return (
         <text x={x} y={y} fill={textColor} textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
-            {value > 0 ? `${name} (${value})` : ''}
+            {value > 0 ? `${value}` : ''}
         </text>
     );
 };
@@ -162,6 +162,7 @@ function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
                                 outerRadius="100%"
                                 paddingAngle={2}
                                 labelLine={false}
+                                label={renderCustomizedLabel}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -305,7 +306,19 @@ function PerformanceBySourceChart({ tasks, settings }) {
                  {data.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%">
+                            <Pie 
+                                data={data} 
+                                dataKey="value" 
+                                nameKey="name" 
+                                cx="50%" 
+                                cy="50%" 
+                                outerRadius="80%"
+                                label={({ value, fill }) => (
+                                    <text fill={isColorLight(fill) ? '#000' : '#fff'} textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
+                                        {value > 0 ? value : ''}
+                                    </text>
+                                )}
+                            >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
