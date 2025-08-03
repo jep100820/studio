@@ -19,6 +19,7 @@ import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // A robust, unified date parsing function
@@ -372,28 +373,50 @@ function WeeklyProgressChart({ allTasks }) {
                 <CardTitle className="text-lg">Weekly Progress</CardTitle>
                 <CardDescription>Active vs. completed tasks over the last 12 weeks.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data}>
-                        <defs>
-                            <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
-                            </linearGradient>
-                            <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" fontSize={12} />
-                        <YAxis allowDecimals={false} fontSize={12} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Legend />
-                        <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
-                        <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
-                    </AreaChart>
-                </ResponsiveContainer>
+            <CardContent className="flex-grow flex flex-col gap-4">
+                <div className="h-2/3">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={data}>
+                            <defs>
+                                <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" fontSize={12} />
+                            <YAxis allowDecimals={false} fontSize={12} />
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Legend />
+                            <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
+                            <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+                <div className="h-1/3 overflow-auto border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="font-bold">Week</TableHead>
+                                <TableHead className="text-right font-bold">Active</TableHead>
+                                <TableHead className="text-right font-bold">Completed</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((row) => (
+                                <TableRow key={row.name}>
+                                    <TableCell>{row.name}</TableCell>
+                                    <TableCell className="text-right">{row['Tasks Active']}</TableCell>
+                                    <TableCell className="text-right">{row['Tasks Completed']}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );
