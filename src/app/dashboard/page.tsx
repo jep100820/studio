@@ -162,7 +162,6 @@ function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
                                 outerRadius="100%"
                                 paddingAngle={2}
                                 labelLine={false}
-                                label={renderCustomizedLabel}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
