@@ -399,23 +399,15 @@ function WeeklyProgressChart({ allTasks }) {
                 </div>
                 <div className="flex-shrink-0 overflow-auto border rounded-lg">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="font-bold w-[120px] p-2 h-auto">Metric</TableHead>
-                                {data.map((row) => (
-                                    <TableHead key={row.name} className="text-right font-bold p-2 h-auto">{row.name}</TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
                         <TableBody>
                             <TableRow>
-                                <TableCell className="font-semibold p-2">Tasks Active</TableCell>
+                                <TableCell className="font-semibold p-2 w-[120px]">Tasks Active</TableCell>
                                 {data.map((row) => (
                                     <TableCell key={`${row.name}-active`} className="text-right p-2">{row['Tasks Active']}</TableCell>
                                 ))}
                             </TableRow>
                              <TableRow>
-                                <TableCell className="font-semibold p-2">Tasks Completed</TableCell>
+                                <TableCell className="font-semibold p-2 w-[120px]">Tasks Completed</TableCell>
                                 {data.map((row) => (
                                     <TableCell key={`${row.name}-completed`} className="text-right p-2">{row['Tasks Completed']}</TableCell>
                                 ))}
