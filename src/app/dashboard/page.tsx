@@ -228,8 +228,8 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 const completionDate = toDate(task.completionDate);
-                if (completionDate && isBefore(completionDate, endOfDay(day))) {
-                    return false; // Already completed before this day ended
+                if (completionDate && isBefore(completionDate, day)) {
+                    return false; // Already completed before this day
                 }
                 return true;
             }).length;
@@ -726,7 +726,7 @@ export default function DashboardPage() {
                     </div>
                     {defaultTab && (
                         <Tabs defaultValue={defaultTab} className="h-full flex flex-col flex-grow">
-                            <TabsList className="mb-4">
+                            <TabsList className="mb-4 inline-flex h-auto">
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Status</TabsTrigger>}
                                 {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
