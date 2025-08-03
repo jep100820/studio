@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil, Eye, BarChart2, TrendingUp, Percent, Shuffle } from 'lucide-react';
 import Link from 'next/link';
-import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart, LabelList } from 'recharts';
 import { Text as RechartsText } from 'recharts';
@@ -252,7 +252,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 
-                // Active if not yet completed OR completed on or after the current day
+                // Active if it was created on or before this day, AND it was either not completed yet, or was completed on or after this day.
                 if (completionDate && isBefore(completionDate, day)) {
                     return false; // Already completed *before* this day
                 }
@@ -296,48 +296,57 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
     );
 }
 
-function BidOriginChart({ tasks, settings }) {
+function PerformanceBySourceChart({ tasks, settings }) {
     const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
     
-    // Using the first custom tag category as Bid Origin for now
-    const bidOriginCategory = settings.customTags?.[0];
-
+    const sourceCategoryName = settings?.dashboardSettings?.performanceChartSource;
+    
     const data = useMemo(() => {
-        if (!bidOriginCategory) return [];
+        if (!sourceCategoryName) return [];
 
-        const originCounts = tasks
-            .filter(task => task.status !== 'Completed' && task.tags && task.tags[bidOriginCategory.name])
+        const sourceCounts = tasks
+            .filter(task => task.status !== 'Completed' && task.tags && task.tags[sourceCategoryName])
             .reduce((acc, task) => {
-                const origin = task.tags[bidOriginCategory.name];
-                acc[origin] = (acc[origin] || 0) + 1;
+                const source = task.tags[sourceCategoryName];
+                acc[source] = (acc[source] || 0) + 1;
                 return acc;
             }, {});
         
-        return Object.entries(originCounts).map(([name, value], index) => ({ 
+        return Object.entries(sourceCounts).map(([name, value], index) => ({ 
             name, 
             value,
             fill: COLORS[index % COLORS.length]
         }));
-    }, [tasks, bidOriginCategory]);
+    }, [tasks, sourceCategoryName]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Performance by Source</CardTitle>
-                <CardDescription>Distribution of active tasks based on their source.</CardDescription>
+                 <CardDescription>
+                    {sourceCategoryName 
+                        ? `Distribution of active tasks by '${sourceCategoryName}'.`
+                        : 'Select a data source in dashboard settings.'}
+                </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%" label={(entry) => `${entry.name} (${entry.value})`}>
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Legend />
-                    </PieChart>
-                </ResponsiveContainer>
+                 {data.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%" label={(entry) => `${entry.name} (${entry.value})`}>
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                ) : (
+                     <div className="flex items-center justify-center h-full text-muted-foreground">
+                        <p>No data available for the selected source.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -655,7 +664,9 @@ export default function DashboardPage() {
         return allTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
-            return isAfter(taskDate, dateRange.from) && isBefore(taskDate, dateRange.to);
+            // A task is within the range if its creation date is within the range.
+            return (isAfter(taskDate, dateRange.from) || isSameDay(taskDate, dateRange.from)) && 
+                   (isBefore(taskDate, dateRange.to) || isSameDay(taskDate, dateRange.to));
         });
     }, [allTasks, dateRange]);
 
@@ -676,7 +687,9 @@ export default function DashboardPage() {
         return completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
-            return isAfter(completionDate, dateRange.from) && isBefore(completionDate, dateRange.to);
+            // A completed task is within the range if its completion date is within the range.
+            return (isAfter(completionDate, dateRange.from) || isSameDay(completionDate, dateRange.from)) && 
+                   (isBefore(completionDate, dateRange.to) || isSameDay(completionDate, dateRange.to));
         });
     }, [completedTasks, dateRange]);
     
@@ -708,7 +721,7 @@ export default function DashboardPage() {
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         if (visibleCharts.taskPriority) return "priority";
-        if (visibleCharts.bidOrigin) return "origin";
+        if (visibleCharts.performanceBySource) return "source";
         if (visibleCharts.weeklyCompletion) return "weekly";
         return "";
     }, [visibleCharts]);
@@ -770,7 +783,7 @@ export default function DashboardPage() {
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                 {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
-                                {visibleCharts.bidOrigin && <TabsTrigger value="origin">Bid Origin</TabsTrigger>}
+                                {visibleCharts.performanceBySource && <TabsTrigger value="source">Performance</TabsTrigger>}
                                 {visibleCharts.weeklyCompletion && <TabsTrigger value="weekly">Weekly Trend</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
@@ -788,9 +801,9 @@ export default function DashboardPage() {
                                     <DailyActivityChart allTasks={allTasks} startDate={dateRange.from} endDate={dateRange.to} />
                                 </TabsContent>
                             )}
-                            {visibleCharts.bidOrigin && (
-                                <TabsContent value="origin" className="flex-grow">
-                                    <BidOriginChart tasks={filteredTasks} settings={settings} />
+                            {visibleCharts.performanceBySource && (
+                                <TabsContent value="source" className="flex-grow">
+                                    <PerformanceBySourceChart tasks={filteredTasks} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.weeklyCompletion && (

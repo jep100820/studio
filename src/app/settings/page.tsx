@@ -712,11 +712,17 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
     };
 
+    const handleSelectChange = (e) => {
+        const { value } = e.target;
+        const newDashboardSettings = { ...settings.dashboardSettings, performanceChartSource: value };
+        onUpdate('dashboardSettings', newDashboardSettings);
+    };
+
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'taskPriority', label: 'Completed by Priority' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
-        { key: 'bidOrigin', label: 'Performance by Bid Origin' },
+        { key: 'performanceBySource', label: 'Performance by Source' },
         { key: 'weeklyCompletion', label: 'Weekly Completion Trend' },
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
     ];
@@ -737,9 +743,26 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
+    const performanceChartSource = settings?.dashboardSettings?.performanceChartSource || '';
 
     return (
         <CardContent className="space-y-6">
+             <div className="rounded-lg border p-4">
+                <Label className="text-base">Performance by Source Chart</Label>
+                <SettingsCardDescription>Select a custom tag category to use as the data source for this chart.</SettingsCardDescription>
+                <div className="mt-4">
+                    <select 
+                        value={performanceChartSource} 
+                        onChange={handleSelectChange}
+                        className="w-full border rounded px-2 py-2 bg-input"
+                    >
+                        <option value="">-- Select a Source --</option>
+                        {settings.customTags?.map(tagCat => (
+                            <option key={tagCat.id} value={tagCat.name}>{tagCat.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
                 <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
@@ -862,8 +885,9 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true, bidOrigin: true, weeklyCompletion: true, dayOfWeekCompletion: true },
+                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true, performanceBySource: true, weeklyCompletion: true, dayOfWeekCompletion: true },
                         stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
+                        performanceChartSource: data.customTags?.[0]?.name || ''
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
