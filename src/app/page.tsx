@@ -346,76 +346,79 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Task' : 'Add Task'}</DialogTitle>
           </DialogHeader>
-          <div className="py-4 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 max-h-[80vh] overflow-y-auto pr-4">
+          <div className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4">
               
-              <div className="md:col-span-1 space-y-2">
-                <Label htmlFor="taskid">Task ID</Label>
-                <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="taskid">Task ID</Label>
+                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
+                  </div>
+                  <div className="md:col-span-1 space-y-2">
+                    <Label htmlFor="dueDate">Due Date</Label>
+                    <Input 
+                      id="dueDate" 
+                      name="dueDate" 
+                      type={settings.enableTimeTracking ? "datetime-local" : "date"} 
+                      value={formatDateForInput(task?.dueDate)} 
+                      onChange={handleDateChange} 
+                      className="w-full" 
+                    />
+                  </div>
               </div>
 
-              <div className="md:col-span-1 space-y-2">
-                <Label htmlFor="dueDate">Due Date</Label>
-                <Input 
-                  id="dueDate" 
-                  name="dueDate" 
-                  type={settings.enableTimeTracking ? "datetime-local" : "date"} 
-                  value={formatDateForInput(task?.dueDate)} 
-                  onChange={handleDateChange} 
-                  className="w-full" 
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                       <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                           {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
+                       </select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="subStatus">Sub-Status</Label>
+                      <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm" disabled={currentSubStatuses.length === 0}>
+                            <option value="">None</option>
+                           {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
+                       </select>
+                   </div>
               </div>
 
-              <div className="md:col-span-1 space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                   <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
-                       {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-                   </select>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="importance">Importance</Label>
+                       <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                            <option value="">None</option>
+                           {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
+                       </select>
+                  </div>
+                  {settings.customTags?.slice(0, 1).map(mainTag => (
+                    <div className="space-y-2" key={mainTag.name}>
+                        <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
+                        <select 
+                            name={mainTag.name} 
+                            id={`tag-${mainTag.name}`} 
+                            value={task?.tags?.[mainTag.name] || ''} 
+                            onChange={handleTagChange} 
+                            className="w-full border rounded px-2 py-2.5 bg-input text-sm"
+                        >
+                            <option value="">None</option>
+                            {mainTag.tags.map(tag => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
+                        </select>
+                    </div>
+                  ))}
+             </div>
 
-              <div className="md:col-span-1 space-y-2">
-                  <Label htmlFor="subStatus">Sub-Status</Label>
-                  <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm" disabled={currentSubStatuses.length === 0}>
-                        <option value="">None</option>
-                       {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
-                   </select>
-               </div>
-
-              <div className="md:col-span-1 space-y-2">
-                  <Label htmlFor="importance">Importance</Label>
-                   <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
-                        <option value="">None</option>
-                       {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
-                   </select>
-              </div>
-              
-              {settings.customTags?.map(mainTag => (
-                <div className="md:col-span-1 space-y-2" key={mainTag.name}>
-                    <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
-                    <select 
-                        name={mainTag.name} 
-                        id={`tag-${mainTag.name}`} 
-                        value={task?.tags?.[mainTag.name] || ''} 
-                        onChange={handleTagChange} 
-                        className="w-full border rounded px-2 py-2.5 bg-input text-sm"
-                    >
-                        <option value="">None</option>
-                        {mainTag.tags.map(tag => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
-                    </select>
-                </div>
-             ))}
-
-               <div className="md:col-span-2 space-y-2">
+              <div className="space-y-2">
                   <Label htmlFor="desc">Description</Label>
                   <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} rows={2} />
               </div>
               
-               <div className="md:col-span-2 space-y-2">
+              <div className="space-y-2">
                   <Label htmlFor="remarks">Remarks</Label>
                   <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} rows={2}/>
               </div>
 
               {isEditing && (
-                 <div className="md:col-span-2 space-y-2">
+                 <div className="space-y-2">
                     <Label htmlFor="completionDate">Completion Date</Label>
                     <Input 
                       id="completionDate" 
