@@ -373,24 +373,28 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                            {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
                        </select>
                   </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="subStatus">Sub-Status</Label>
-                      <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm" disabled={currentSubStatuses.length === 0}>
-                            <option value="">None</option>
-                           {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
-                       </select>
-                   </div>
+                  {currentSubStatuses.length > 0 && (
+                    <div className="space-y-2">
+                        <Label htmlFor="subStatus">Sub-Status</Label>
+                        <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                              <option value="">None</option>
+                             {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
+                         </select>
+                     </div>
+                  )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="importance">Importance</Label>
-                       <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
-                            <option value="">None</option>
-                           {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
-                       </select>
-                  </div>
-                  {settings.customTags?.slice(0, 1).map(mainTag => (
+                  {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
+                    <div className="space-y-2">
+                        <Label htmlFor="importance">Importance</Label>
+                         <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                              <option value="">None</option>
+                             {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
+                         </select>
+                    </div>
+                  )}
+                  {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.slice(0, 1).map(mainTag => (
                     <div className="space-y-2" key={mainTag.name}>
                         <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
                         <select 
@@ -409,12 +413,12 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
 
               <div className="space-y-2">
                   <Label htmlFor="desc">Description</Label>
-                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} rows={2} />
+                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} />
               </div>
               
               <div className="space-y-2">
                   <Label htmlFor="remarks">Remarks</Label>
-                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} rows={2}/>
+                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} />
               </div>
 
               {isEditing && (
