@@ -380,7 +380,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                    </select>
                </div>
 
-              <div className="md:col-span-2 space-y-2">
+              <div className="md:col-span-1 space-y-2">
                   <Label htmlFor="importance">Importance</Label>
                    <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
                         <option value="">None</option>
@@ -389,7 +389,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
               </div>
               
               {settings.customTags?.map(mainTag => (
-                <div className="md:col-span-2 space-y-2" key={mainTag.name}>
+                <div className="md:col-span-1 space-y-2" key={mainTag.name}>
                     <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
                     <select 
                         name={mainTag.name} 
