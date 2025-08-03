@@ -711,6 +711,7 @@ export default function DashboardPage() {
         const filteredActiveTasks = activeTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
+            // A task is considered "active" in the range if it was created within it
             return isAfter(taskDate, start) && isBefore(taskDate, end);
         });
 
