@@ -325,6 +325,29 @@ function PerformanceBySourceChart({ tasks, settings }) {
     );
 }
 
+const CustomizedLabel = (props) => {
+    const { x, y, width, height, value, dataKey, fill } = props;
+    const isLight = isColorLight(fill);
+    
+    if (value === 0) return null;
+
+    return (
+        <g>
+             <rect x={x} y={y - 1} width={width} height={height + 2} fill={fill} rx="2" ry="2" />
+             <RechartsText
+                x={x + width / 2}
+                y={y + height / 2}
+                fill={isLight ? '#000' : '#fff'}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="font-mono text-xs"
+            >
+                {value}
+            </RechartsText>
+        </g>
+    );
+};
+
 
 function WeeklyProgressChart({ allTasks }) {
     const data = useMemo(() => {
@@ -369,6 +392,8 @@ function WeeklyProgressChart({ allTasks }) {
     
     const activeColor = '#8884d8';
     const completedColor = '#82ca9d';
+    
+    const maxVal = Math.max(...data.map(d => d['Tasks Active']), ...data.map(d => d['Tasks Completed']));
 
     return (
         <Card className="h-full flex flex-col">
@@ -376,46 +401,48 @@ function WeeklyProgressChart({ allTasks }) {
                 <CardTitle className="text-lg">Weekly Progress</CardTitle>
                 <CardDescription>Active vs. completed tasks over the last 12 weeks.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col gap-2">
-                <div className="flex-1 min-h-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 20, right: 20, left: -32, bottom: 0 }}>
-                             <defs>
-                                <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor={completedColor} stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={activeColor} stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor={activeColor} stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0, right: 20, paddingTop: '4px'}} />
-                            <Area type="monotone" dataKey="Tasks Active" stroke={activeColor} fillOpacity={1} fill="url(#colorActive)" />
-                            <Area type="monotone" dataKey="Tasks Completed" stroke={completedColor} fillOpacity={1} fill="url(#colorCompleted)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="flex-shrink-0 overflow-x-auto -mt-4">
-                    <Table>
-                        <TableBody>
-                            <TableRow style={{ backgroundColor: activeColor }}>
-                                {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-xs" style={{ color: isColorLight(activeColor) ? '#000' : '#fff' }}>{row['Tasks Active']}</TableCell>
-                                ))}
-                            </TableRow>
-                             <TableRow style={{ backgroundColor: completedColor }}>
-                                {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-xs" style={{ color: isColorLight(completedColor) ? '#000' : '#fff' }}>{row['Tasks Completed']}</TableCell>
-                                ))}
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </div>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                     <ComposedChart data={data} margin={{ top: 20, right: 30, left: -20, bottom: 40 }}>
+                         <defs>
+                            <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor={completedColor} stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={activeColor} stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor={activeColor} stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                        <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend verticalAlign="top" align="right" wrapperStyle={{top: -4, right: 20}} />
+                        
+                        <Area type="monotone" dataKey="Tasks Active" stroke={activeColor} fillOpacity={1} fill="url(#colorActive)" />
+                        <Area type="monotone" dataKey="Tasks Completed" stroke={completedColor} fillOpacity={1} fill="url(#colorCompleted)" />
+
+                        {/* Transparent bars with labels to display data */}
+                         <Bar dataKey="Tasks Active" fill="transparent" stackId="a">
+                             <LabelList
+                                dataKey="Tasks Active"
+                                position="bottom"
+                                content={<CustomizedLabel dataKey="Tasks Active" fill={activeColor} />}
+                                offset={30}
+                             />
+                        </Bar>
+                         <Bar dataKey="Tasks Completed" fill="transparent" stackId="b">
+                             <LabelList
+                                dataKey="Tasks Completed"
+                                position="bottom"
+                                content={<CustomizedLabel dataKey="Tasks Completed" fill={completedColor} />}
+                                offset={10}
+                            />
+                        </Bar>
+
+                    </ComposedChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     );
@@ -704,20 +731,20 @@ export default function DashboardPage() {
         const start = startOfDay(dateRange.from);
         const end = endOfDay(dateRange.to);
 
-        const filteredActive = activeTasks.filter(task => {
+        const filteredActiveTasks = activeTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
             // A task is considered "active" in the range if it was created within it
             return isAfter(taskDate, start) && isBefore(taskDate, end);
         });
 
-        const filteredCompleted = completedTasks.filter(task => {
+        const filteredCompletedTasks = completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
             return isAfter(completionDate, start) && isBefore(completionDate, end);
         });
 
-        return { filteredActive, filteredCompleted };
+        return { filteredActive: filteredActiveTasks, filteredCompleted: filteredCompletedTasks };
     }, [activeTasks, completedTasks, dateRange]);
 
 
