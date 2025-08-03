@@ -720,7 +720,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
-        { key: 'taskPriority', label: 'Completed by Priority' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
         { key: 'performanceBySource', label: 'Performance by Source' },
         { key: 'weeklyCompletion', label: 'Weekly Completion Trend' },
@@ -885,7 +884,7 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, taskPriority: true, dailyActivity: true, performanceBySource: true, weeklyCompletion: true, dayOfWeekCompletion: true },
+                        charts: { taskStatus: true, dailyActivity: true, performanceBySource: true, weeklyCompletion: true, dayOfWeekCompletion: true },
                         stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                         performanceChartSource: data.customTags?.[0]?.name || ''
                     };

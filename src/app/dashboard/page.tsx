@@ -184,44 +184,6 @@ function TaskStatusOverviewChart({ tasks, settings }) {
     );
 }
 
-function TaskPriorityChart({ tasks }) {
-    const data = useMemo(() => {
-        const priorityCounts = tasks
-            .filter(task => task.status === 'Completed' && task.importance)
-            .reduce((acc, task) => {
-                acc[task.importance] = (acc[task.importance] || 0) + 1;
-                return acc;
-            }, { 'High': 0, 'Medium': 0, 'Low': 0 });
-            
-        return Object.entries(priorityCounts).map(([name, count]) => ({ name, count }));
-    }, [tasks]);
-
-    return (
-         <Card className="h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="text-lg">Completed by Priority</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                        <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={12}>
-                             {data.map((entry, index) => {
-                                const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
-                                return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
-                            })}
-                            <LabelList dataKey="count" position="right" className="fill-foreground" fontSize={12} />
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
-    );
-}
-
 function DailyActivityChart({ allTasks, startDate, endDate }) {
     const data = useMemo(() => {
         if (!startDate || !endDate || isBefore(endDate, startDate)) {
@@ -711,7 +673,7 @@ export default function DashboardPage() {
     };
     
     const visibleCharts = useMemo(() => {
-        const defaultCharts = { taskStatus: true, taskPriority: true, dailyActivity: true };
+        const defaultCharts = { taskStatus: true, dailyActivity: true };
         if (!settings?.dashboardSettings?.charts) return defaultCharts;
         return settings.dashboardSettings.charts;
     }, [settings]);
@@ -720,7 +682,6 @@ export default function DashboardPage() {
         if (visibleCharts.taskStatus) return "status";
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
-        if (visibleCharts.taskPriority) return "priority";
         if (visibleCharts.performanceBySource) return "source";
         if (visibleCharts.weeklyCompletion) return "weekly";
         return "";
@@ -782,18 +743,12 @@ export default function DashboardPage() {
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Overview</TabsTrigger>}
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
-                                {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
                                 {visibleCharts.performanceBySource && <TabsTrigger value="source">Performance</TabsTrigger>}
                                 {visibleCharts.weeklyCompletion && <TabsTrigger value="weekly">Weekly Trend</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
                                     <TaskStatusOverviewChart tasks={filteredTasks} settings={settings} />
-                                </TabsContent>
-                            )}
-                            {visibleCharts.taskPriority && (
-                                <TabsContent value="priority" className="flex-grow">
-                                    <TaskPriorityChart tasks={filteredCompletedTasks} />
                                 </TabsContent>
                             )}
                             {visibleCharts.dailyActivity && (
