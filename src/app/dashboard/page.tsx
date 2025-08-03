@@ -374,7 +374,7 @@ function WeeklyProgressChart({ allTasks }) {
                 <CardDescription>Active vs. completed tasks over the last 12 weeks.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col gap-4">
-                <div className="h-2/3">
+                <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data}>
                             <defs>
@@ -397,27 +397,27 @@ function WeeklyProgressChart({ allTasks }) {
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="h-1/3 overflow-auto border rounded-lg">
+                <div className="flex-shrink-0 overflow-auto border rounded-lg">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="font-bold w-[120px]">Metric</TableHead>
+                                <TableHead className="font-bold w-[120px] p-2 h-auto">Metric</TableHead>
                                 {data.map((row) => (
-                                    <TableHead key={row.name} className="text-right font-bold">{row.name}</TableHead>
+                                    <TableHead key={row.name} className="text-right font-bold p-2 h-auto">{row.name}</TableHead>
                                 ))}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             <TableRow>
-                                <TableCell className="font-semibold">Tasks Active</TableCell>
+                                <TableCell className="font-semibold p-2">Tasks Active</TableCell>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-right">{row['Tasks Active']}</TableCell>
+                                    <TableCell key={`${row.name}-active`} className="text-right p-2">{row['Tasks Active']}</TableCell>
                                 ))}
                             </TableRow>
                              <TableRow>
-                                <TableCell className="font-semibold">Tasks Completed</TableCell>
+                                <TableCell className="font-semibold p-2">Tasks Completed</TableCell>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-right">{row['Tasks Completed']}</TableCell>
+                                    <TableCell key={`${row.name}-completed`} className="text-right p-2">{row['Tasks Completed']}</TableCell>
                                 ))}
                             </TableRow>
                         </TableBody>
