@@ -519,6 +519,7 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
         const avgSubStatusChanges = completedTasks.length > 0 ? (totalSubStatusChanges / completedTasks.length).toFixed(1) : 0;
 
         return {
+            totalTasks: tasks.length + completedTasks.length,
             totalCompleted: completedTasks.length,
             overdue: overdueTasks,
             active: totalActive,
@@ -534,6 +535,7 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
     }, [tasks, completedTasks]);
     
     const statConfig = [
+        { key: 'totalTasks', label: 'Total Tasks', icon: BarChart2, color: 'text-purple-500' },
         { key: 'totalCompleted', label: 'Total Completed', icon: CheckCircle, color: 'text-green-500' },
         { key: 'overdue', label: 'Tasks Overdue', icon: AlertTriangle, color: 'text-red-500' },
         { key: 'active', label: 'Active Tasks', icon: Zap, color: 'text-blue-500' },
@@ -549,7 +551,7 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
     
     const visibleStats = useMemo(() => {
         if (!settings?.dashboardSettings?.stats) {
-            return { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true };
+            return { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true };
         }
         return settings.dashboardSettings.stats;
     }, [settings]);

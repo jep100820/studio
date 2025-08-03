@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, ChevronUp, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, ChevronUp, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil, BarChart2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -727,6 +727,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     ];
 
     const statConfig = [
+        { key: 'totalTasks', label: 'Total Tasks' },
         { key: 'totalCompleted', label: 'Total Completed' },
         { key: 'overdue', label: 'Tasks Overdue' },
         { key: 'active', label: 'Active Tasks' },
@@ -885,7 +886,7 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
                         charts: { taskStatus: true, dailyActivity: true, performanceBySource: true, weeklyCompletion: true, dayOfWeekCompletion: true },
-                        stats: { totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
+                        stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                         performanceChartSource: data.customTags?.[0]?.name || ''
                     };
                 }
