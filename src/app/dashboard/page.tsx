@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from 'recharts';
 import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -389,7 +389,9 @@ function DayOfWeekCompletionChart({ tasks }) {
                         <XAxis dataKey="name" fontSize={12} />
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed" />
+                        <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed">
+                            <Text dataKey="count" position="top" offset={5} className="text-sm" />
+                        </Bar>
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
