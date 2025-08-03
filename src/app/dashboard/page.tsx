@@ -84,7 +84,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 
     return (
         <text x={x} y={y} fill={textColor} textAnchor="middle" dominantBaseline="central" className="text-sm font-bold">
-            {value}
+            {value > 0 ? value : ''}
         </text>
     );
 };
@@ -255,12 +255,12 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                             <Legend iconSize={10} />
                             <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created">
-                                <LabelList dataKey="Created" position="top" className="fill-foreground" fontSize={12} />
+                                <LabelList dataKey="Created" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
                             </Bar>
                             <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed">
-                                <LabelList dataKey="Completed" position="top" className="fill-foreground" fontSize={12} />
+                                <LabelList dataKey="Completed" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
                             </Bar>
-                            <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" />
+                            <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" dot={false} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -366,6 +366,11 @@ function WeeklyProgressChart({ allTasks }) {
             };
         });
     }, [allTasks]);
+    
+    const tableData = [
+        { metric: 'Tasks Active', color: '#8884d8' },
+        { metric: 'Tasks Completed', color: '#82ca9d' }
+    ];
 
     return (
         <Card className="h-full flex flex-col">
@@ -376,7 +381,7 @@ function WeeklyProgressChart({ allTasks }) {
             <CardContent className="flex-grow flex flex-col gap-4">
                 <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data}>
+                        <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
@@ -387,11 +392,10 @@ function WeeklyProgressChart({ allTasks }) {
                                     <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" fontSize={12} />
-                            <YAxis allowDecimals={false} fontSize={12} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend />
                             <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
                             <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
                         </AreaChart>
@@ -400,18 +404,19 @@ function WeeklyProgressChart({ allTasks }) {
                 <div className="flex-shrink-0 overflow-auto border rounded-lg">
                     <Table>
                         <TableBody>
-                            <TableRow>
-                                <TableCell className="font-semibold p-2 w-[120px]">Tasks Active</TableCell>
-                                {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-right p-2">{row['Tasks Active']}</TableCell>
-                                ))}
-                            </TableRow>
-                             <TableRow>
-                                <TableCell className="font-semibold p-2 w-[120px]">Tasks Completed</TableCell>
-                                {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-right p-2">{row['Tasks Completed']}</TableCell>
-                                ))}
-                            </TableRow>
+                            {tableData.map(({ metric, color }) => (
+                                <TableRow key={metric}>
+                                    <TableCell className="font-semibold p-2 w-[150px]">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></span>
+                                            {metric}
+                                        </div>
+                                    </TableCell>
+                                    {data.map((row) => (
+                                        <TableCell key={`${row.name}-${metric}`} className="text-right p-2 font-mono text-sm">{row[metric]}</TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </div>
@@ -451,7 +456,7 @@ function DayOfWeekCompletionChart({ tasks }) {
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed">
-                            <LabelList dataKey="count" position="top" className="fill-foreground" fontSize={12} />
+                            <LabelList dataKey="count" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -699,34 +704,38 @@ export default function DashboardPage() {
         if (!dateRange.from || !dateRange.to) {
             return { filteredActiveTasks: activeTasks, filteredCompletedTasks: completedTasks };
         }
+        
+        const start = startOfDay(dateRange.from);
+        const end = endOfDay(dateRange.to);
 
         const filteredActive = activeTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
-            return (isAfter(taskDate, dateRange.from) || isSameDay(taskDate, dateRange.from)) &&
-                   (isBefore(taskDate, dateRange.to) || isSameDay(taskDate, dateRange.to));
+            return isAfter(taskDate, start) && isBefore(taskDate, end);
         });
 
         const filteredCompleted = completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
-            return (isAfter(completionDate, dateRange.from) || isSameDay(completionDate, dateRange.from)) &&
-                   (isBefore(completionDate, dateRange.to) || isSameDay(completionDate, dateRange.to));
+            return isAfter(completionDate, start) && isBefore(completionDate, end);
         });
 
-        return { filteredActiveTasks: filteredActive, filteredCompletedTasks: filteredCompleted };
+        return { filteredActiveTasks, filteredCompletedTasks };
     }, [activeTasks, completedTasks, dateRange]);
 
 
-    const { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts } = useMemo(() => {
+    const { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts, allTasksForCharts } = useMemo(() => {
         const tasksForStats = filterScope.stats ? filteredActiveTasks : activeTasks;
         const completedTasksForStats = filterScope.stats ? filteredCompletedTasks : completedTasks;
         
         const tasksForCharts = filterScope.charts ? filteredActiveTasks : activeTasks;
         const completedTasksForCharts = filterScope.charts ? filteredCompletedTasks : completedTasks;
 
-        return { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts };
-    }, [filterScope, activeTasks, completedTasks, filteredActiveTasks, filteredCompletedTasks]);
+        const allTasksForCharts = filterScope.charts ? [...tasksForCharts, ...completedTasksForCharts] : allTasks;
+
+
+        return { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts, allTasksForCharts };
+    }, [filterScope, activeTasks, completedTasks, filteredActiveTasks, filteredCompletedTasks, allTasks]);
     
     
     const handleOpenModal = () => {
@@ -839,7 +848,7 @@ export default function DashboardPage() {
                             )}
                             {visibleCharts.dailyActivity && (
                                 <TabsContent value="trend" className="flex-grow">
-                                    <DailyActivityChart allTasks={filterScope.charts ? allTasks.filter(t => tasksForCharts.includes(t) || completedTasksForCharts.includes(t)) : allTasks} startDate={dateRange.from} endDate={dateRange.to} />
+                                    <DailyActivityChart allTasks={allTasksForCharts} startDate={dateRange.from} endDate={dateRange.to} />
                                 </TabsContent>
                             )}
                             {visibleCharts.performanceBySource && (
