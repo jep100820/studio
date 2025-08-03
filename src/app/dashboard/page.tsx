@@ -253,8 +253,12 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                             <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                             <Legend iconSize={10} />
-                            <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created" />
-                            <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed" />
+                            <Bar dataKey="Created" barSize={20} fill="#3b82f6" name="Newly Created">
+                                <LabelList dataKey="Created" position="top" className="fill-foreground" fontSize={12} />
+                            </Bar>
+                            <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed">
+                                <LabelList dataKey="Completed" position="top" className="fill-foreground" fontSize={12} />
+                            </Bar>
                             <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" />
                         </ComposedChart>
                     </ResponsiveContainer>
