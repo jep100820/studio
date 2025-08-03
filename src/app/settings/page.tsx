@@ -721,7 +721,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
-        { key: 'performanceBySource', label: 'Performance by Source' },
         { key: 'weeklyProgress', label: 'Weekly Progress' },
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
     ];
@@ -743,26 +742,9 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
-    const performanceChartSource = settings?.dashboardSettings?.performanceChartSource || '';
 
     return (
         <CardContent className="space-y-6">
-             <div className="rounded-lg border p-4">
-                <Label className="text-base">Performance by Source Chart</Label>
-                <SettingsCardDescription>Select a custom tag category to use as the data source for this chart.</SettingsCardDescription>
-                <div className="mt-4">
-                    <select 
-                        value={performanceChartSource} 
-                        onChange={handleSelectChange}
-                        className="w-full border rounded px-2 py-2 bg-input"
-                    >
-                        <option value="">-- Select a Source --</option>
-                        {settings.customTags?.map(tagCat => (
-                            <option key={tagCat.id} value={tagCat.name}>{tagCat.name}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
                 <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
@@ -885,9 +867,8 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, dailyActivity: true, performanceBySource: true, weeklyProgress: true, dayOfWeekCompletion: true },
+                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true },
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
-                        performanceChartSource: data.customTags?.[0]?.name || ''
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];

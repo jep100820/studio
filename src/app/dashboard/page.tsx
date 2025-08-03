@@ -271,74 +271,6 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
     );
 }
 
-function PerformanceBySourceChart({ tasks, settings }) {
-    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
-    
-    const sourceCategoryName = settings?.dashboardSettings?.performanceChartSource;
-    
-    const data = useMemo(() => {
-        if (!sourceCategoryName) return [];
-
-        const sourceCounts = tasks
-            .filter(task => task.status !== 'Completed' && task.tags && task.tags[sourceCategoryName])
-            .reduce((acc, task) => {
-                const source = task.tags[sourceCategoryName];
-                acc[source] = (acc[source] || 0) + 1;
-                return acc;
-            }, {});
-        
-        return Object.entries(sourceCounts).map(([name, value], index) => ({ 
-            name, 
-            value,
-            fill: COLORS[index % COLORS.length]
-        }));
-    }, [tasks, sourceCategoryName]);
-
-    return (
-        <Card className="h-full flex flex-col">
-            <CardHeader>
-                <CardTitle className="text-lg">Performance by Source</CardTitle>
-                 <CardDescription>
-                    {sourceCategoryName 
-                        ? `Distribution of active tasks by '${sourceCategoryName}'.`
-                        : 'Select a data source in dashboard settings.'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                 {data.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie 
-                                data={data} 
-                                dataKey="value" 
-                                nameKey="name" 
-                                cx="50%" 
-                                cy="50%" 
-                                outerRadius="80%"
-                                label={({ value, fill }) => (
-                                    <text fill={isColorLight(fill) ? '#000' : '#fff'} textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
-                                        {value > 0 ? value : ''}
-                                    </text>
-                                )}
-                            >
-                                {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                ) : (
-                     <div className="flex items-center justify-center h-full text-muted-foreground">
-                        <p>No data available for the selected source.</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
 const CustomizedLabel = (props) => {
     const { x, y, width, height, value, dataKey, fill } = props;
     
@@ -802,7 +734,6 @@ export default function DashboardPage() {
         if (visibleCharts.taskStatus) return "status";
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
-        if (visibleCharts.performanceBySource) return "source";
         if (visibleCharts.weeklyProgress) return "weekly";
         return "";
     }, [visibleCharts]);
@@ -875,7 +806,6 @@ export default function DashboardPage() {
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Overview</TabsTrigger>}
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
-                                {visibleCharts.performanceBySource && <TabsTrigger value="source">Performance</TabsTrigger>}
                                 {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
@@ -886,11 +816,6 @@ export default function DashboardPage() {
                             {visibleCharts.dailyActivity && (
                                 <TabsContent value="trend" className="flex-grow">
                                     <DailyActivityChart allTasks={allTasksForCharts} startDate={dateRange.from} endDate={dateRange.to} />
-                                </TabsContent>
-                            )}
-                            {visibleCharts.performanceBySource && (
-                                <TabsContent value="source" className="flex-grow">
-                                    <PerformanceBySourceChart tasks={tasksForCharts} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.weeklyProgress && (
