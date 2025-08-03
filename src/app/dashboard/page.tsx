@@ -367,6 +367,9 @@ function WeeklyProgressChart({ allTasks }) {
         });
     }, [allTasks]);
     
+    const activeColor = '#8884d8';
+    const completedColor = '#82ca9d';
+
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
@@ -379,37 +382,35 @@ function WeeklyProgressChart({ allTasks }) {
                         <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor={completedColor} stopOpacity={0}/>
                                 </linearGradient>
                                 <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor={activeColor} stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor={activeColor} stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0}} />
-                            <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
-                            <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
+                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0, right: 30}} />
+                            <Area type="monotone" dataKey="Tasks Active" stroke={activeColor} fillOpacity={1} fill="url(#colorActive)" />
+                            <Area type="monotone" dataKey="Tasks Completed" stroke={completedColor} fillOpacity={1} fill="url(#colorCompleted)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
                 <div className="flex-shrink-0 overflow-x-auto">
                     <Table>
                         <TableBody>
-                            <TableRow>
-                                <TableCell className="p-1 font-semibold text-xs text-left text-foreground">Tasks Completed</TableCell>
+                            <TableRow style={{ backgroundColor: activeColor }}>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm text-foreground">{row['Tasks Completed']}</TableCell>
+                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm" style={{ color: isColorLight(activeColor) ? '#000' : '#fff' }}>{row['Tasks Active']}</TableCell>
                                 ))}
                             </TableRow>
-                             <TableRow>
-                                 <TableCell className="p-1 font-semibold text-xs text-left text-foreground">Tasks Active</TableCell>
+                             <TableRow style={{ backgroundColor: completedColor }}>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm text-foreground">{row['Tasks Active']}</TableCell>
+                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm" style={{ color: isColorLight(completedColor) ? '#000' : '#fff' }}>{row['Tasks Completed']}</TableCell>
                                 ))}
                             </TableRow>
                         </TableBody>
