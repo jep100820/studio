@@ -223,7 +223,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
             }).length;
 
             const activeCount = allTasks.filter(task => {
-                const taskStartDate = toDate(task.date);
+                 const taskStartDate = toDate(task.date);
                 if (!taskStartDate || isAfter(taskStartDate, day)) {
                     return false; // Not created yet
                 }
@@ -390,7 +390,9 @@ function DayOfWeekCompletionChart({ tasks }) {
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed">
-                            <Text dataKey="count" position="top" offset={5} className="text-sm" />
+                            {data.map((entry, index) => (
+                                <Text key={`text-${index}`} x={index * 80 + 40} y={20} dy={-10} textAnchor="middle" fill="#000" className="text-xs" angle={0} dx={0}>{entry.count}</Text>
+                            ))}
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -710,7 +712,7 @@ export default function DashboardPage() {
             </header>
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
-                    <div className="flex-grow">
+                    <div className="flex-grow min-h-0">
                         <StatsDisplay tasks={tasks} completedTasks={completedTasks} settings={settings} />
                     </div>
                 </div>
@@ -771,7 +773,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
-                     <div className="flex-grow">
+                     <div className="flex-grow min-h-0">
                         <CompletedTasksList tasks={completedTasks} settings={settings} />
                     </div>
                 </div>
