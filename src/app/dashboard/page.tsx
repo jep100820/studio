@@ -327,7 +327,6 @@ function PerformanceBySourceChart({ tasks, settings }) {
 
 const CustomizedLabel = (props) => {
     const { x, y, width, height, value, dataKey, fill } = props;
-    const isLight = isColorLight(fill);
     
     if (value === 0) return null;
 
@@ -337,7 +336,7 @@ const CustomizedLabel = (props) => {
              <RechartsText
                 x={x + width / 2}
                 y={y + height / 2}
-                fill={isLight ? '#000' : '#fff'}
+                fill={'#000'}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="font-mono text-xs"
@@ -403,7 +402,7 @@ function WeeklyProgressChart({ allTasks }) {
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                     <ComposedChart data={data} margin={{ top: 20, right: 30, left: -20, bottom: 40 }}>
+                     <ComposedChart data={data} margin={{ top: 20, right: 30, left: -32, bottom: 40 }}>
                          <defs>
                             <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
