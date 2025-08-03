@@ -208,7 +208,7 @@ function TaskPriorityChart({ tasks }) {
                         <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={12}>
                              {data.map((entry, index) => {
                                 const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
