@@ -961,7 +961,8 @@ export default function SettingsPage() {
             
             current.forEach((item) => {
                 const originalName = originalMap.get(item.id);
-                // A rename happened if the name exists in the original map but is different now.
+                const originalItem = original.find(o => o.id === item.id);
+
                 if (originalName && originalName !== item.name) {
                     changes.push({ 
                         from: originalName, 
@@ -970,27 +971,33 @@ export default function SettingsPage() {
                         id: item.id
                     });
                 }
-
-                // Recursively check for sub-items if they exist (e.g., sub-statuses, sub-tags)
-                if(item.subStatuses) {
-                    const originalItem = original.find(o => o.id === item.id);
-                    // Use the *new* name as context for sub-status changes
-                    changes.push(...findRenames(originalItem?.subStatuses, item.subStatuses, 'Sub-Status', item.name));
+        
+                if (item.subStatuses && originalItem?.subStatuses) {
+                     // Use the *new* name as context for sub-status changes
+                    changes.push(...findRenames(originalItem.subStatuses, item.subStatuses, 'Sub-Status', item.name));
                 }
-                if(item.tags) {
-                    const originalItem = original.find(o => o.id === item.id);
+                if (item.tags && originalItem?.tags) {
                      // Use the *new* name as context for tag changes
-                    changes.push(...findRenames(originalItem?.tags, item.tags, 'Tag', item.name));
+                    changes.push(...findRenames(originalItem.tags, item.tags, 'Tag', item.name));
                 }
             });
             return changes;
-        }
+        };
 
         const detectedChanges = [
             ...findRenames(originalSettings.workflowCategories, settings.workflowCategories, 'Status'),
             ...findRenames(originalSettings.importanceLevels, settings.importanceLevels, 'Importance'),
-            ...findRenames(originalSettings.customTags, settings.customTags, 'Tag Category')
+            ...findRenames(originalSettings.customTags, settings.customTags, 'Tag Category'),
         ];
+        
+        // This is a special check for sub-status renames where the parent status was NOT renamed.
+        originalSettings.workflowCategories?.forEach(originalCat => {
+            const currentCat = settings.workflowCategories.find(c => c.id === originalCat.id);
+            if(currentCat && originalCat.name === currentCat.name) { // Status not renamed
+                 detectedChanges.push(...findRenames(originalCat.subStatuses, currentCat.subStatuses, 'Sub-Status', currentCat.name));
+            }
+        });
+
 
         if (detectedChanges.length > 0) {
             setRenameChanges(detectedChanges);
@@ -1002,7 +1009,6 @@ export default function SettingsPage() {
     
     const updateSettingsInDb = async (settingsToSave) => {
         const settingsRef = doc(db, 'settings', 'workflow');
-        // Cleanse IDs before saving to Firestore
         const cleanseIds = (data) => {
             const cleansedData = JSON.parse(JSON.stringify(data));
             const walker = (obj) => {
@@ -1010,6 +1016,7 @@ export default function SettingsPage() {
                     obj.forEach(walker);
                 } else if (obj && typeof obj === 'object') {
                     delete obj.id;
+                    delete obj.isExpanded; // Ensure this is also removed
                     Object.values(obj).forEach(walker);
                 }
             };
@@ -1021,10 +1028,6 @@ export default function SettingsPage() {
 
     const handleConfirmUpdate = async () => {
         const settingsToSave = JSON.parse(JSON.stringify(settings));
-        if (settingsToSave.workflowCategories) {
-            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
-        }
-        
         await updateSettingsInDb(settingsToSave);
 
         const batch = writeBatch(db);
@@ -1061,16 +1064,19 @@ export default function SettingsPage() {
                         break;
                      default:
                         if (change.type.startsWith('Sub-Status in')) {
-                            const categoryName = change.type.replace('Sub-Status in ', '');
-                            if (taskData.status === categoryName && taskData.subStatus === change.from) {
+                            // Find original status name for comparison, because it might have been renamed too
+                            const statusChange = renameChanges.find(c => c.type === 'Status' && c.to === change.type.replace('Sub-Status in ', ''));
+                            const originalStatusName = statusChange ? statusChange.from : change.type.replace('Sub-Status in ', '');
+
+                            if (taskData.status === originalStatusName && taskData.subStatus === change.from) {
                                 updates.subStatus = change.to;
                                 needsUpdate = true;
                             }
                         } else if (change.type.startsWith('Tag in')) {
-                            const categoryName = change.type.replace('Tag in ', '');
-                            const originalCategory = originalSettings.customTags.find(c => settings.customTags.find(s => s.id === c.id && s.name === categoryName));
-                            const originalCategoryName = originalCategory ? originalCategory.name : categoryName;
-
+                            // This logic remains complex, but we can simplify by finding the original category name via ID
+                            const tagCategoryChange = renameChanges.find(c => c.type === 'Tag Category' && c.to === change.type.replace('Tag in ', ''));
+                            const originalCategoryName = tagCategoryChange ? tagCategoryChange.from : change.type.replace('Tag in ', '');
+                            
                             if (taskData.tags && taskData.tags[originalCategoryName] === change.from) {
                                if(!updates.tags) updates.tags = { ...taskData.tags };
                                updates.tags[originalCategoryName] = change.to;
@@ -1095,9 +1101,6 @@ export default function SettingsPage() {
     const handleCancelConfirmation = async () => {
         // Just save the settings without updating tasks
         const settingsToSave = JSON.parse(JSON.stringify(settings));
-        if (settingsToSave.workflowCategories) {
-            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
-        }
         await updateSettingsInDb(settingsToSave);
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
