@@ -13,7 +13,7 @@ import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, L
 import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart, LabelList } from 'recharts';
 import { Text as RechartsText } from 'recharts';
 import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
@@ -213,6 +213,7 @@ function TaskPriorityChart({ tasks }) {
                                 const colors = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name]} />;
                             })}
+                            <LabelList dataKey="count" position="right" className="fill-foreground" fontSize={12} />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -251,7 +252,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 
-                // Active if not yet completed OR completed after the current day
+                // Active if not yet completed OR completed on or after the current day
                 if (completionDate && isBefore(completionDate, day)) {
                     return false; // Already completed *before* this day
                 }
@@ -420,9 +421,7 @@ function DayOfWeekCompletionChart({ tasks }) {
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed">
-                            {data.map((entry, index) => (
-                                <RechartsText key={`text-${index}`} x={index * (100/7) + '%'} y={20} dy={-10} textAnchor="middle" fill="hsl(var(--foreground))" className="text-xs">{entry.count}</RechartsText>
-                            ))}
+                            <LabelList dataKey="count" position="top" className="fill-foreground" fontSize={12} />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
