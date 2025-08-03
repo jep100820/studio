@@ -13,7 +13,7 @@ import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, L
 import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart, LabelList, AreaChart, Area } from 'recharts';
 import { Text as RechartsText } from 'recharts';
 import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
@@ -321,46 +321,74 @@ function PerformanceBySourceChart({ tasks, settings }) {
 }
 
 
-function WeeklyCompletionChart({ tasks }) {
+function WeeklyProgressChart({ allTasks }) {
     const data = useMemo(() => {
         const weeks = Array.from({ length: 12 }, (_, i) => subWeeks(new Date(), i)).reverse();
         
         return weeks.map(weekStartInput => {
-            const weekStart = startOfWeek(weekStartInput);
-            const weekEnd = endOfWeek(weekStartInput);
+            const weekStart = startOfWeek(weekStartInput, { weekStartsOn: 1 }); // Assuming Monday start
+            const weekEnd = endOfWeek(weekStartInput, { weekStartsOn: 1 });
             const weekLabel = `W${getWeek(weekStart)}`;
             
-            const completedCount = tasks.filter(task => {
+            const completedCount = allTasks.filter(task => {
                 const completionDate = toDate(task.completionDate);
                 if (!completionDate) return false;
                 
                 return (isAfter(completionDate, weekStart) || isSameDay(completionDate, weekStart)) && 
                        (isBefore(completionDate, weekEnd) || isSameDay(completionDate, weekEnd));
             }).length;
+
+            const activeCount = allTasks.filter(task => {
+                 const startDate = toDate(task.date);
+                 const completionDate = toDate(task.completionDate);
+
+                 // Must have been created before the end of the week
+                 if (!startDate || isAfter(startDate, weekEnd)) {
+                     return false;
+                 }
+
+                 // Must either not be completed, or completed after this week ended
+                 if (!completionDate || isAfter(completionDate, weekEnd)) {
+                     return true;
+                 }
+                 return false;
+            }).length;
             
             return {
                 name: weekLabel,
-                'Tasks Completed': completedCount
+                'Tasks Completed': completedCount,
+                'Tasks Active': activeCount,
             };
         });
-    }, [tasks]);
+    }, [allTasks]);
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Weekly Completion Trend</CardTitle>
-                <CardDescription>Tasks completed per week over the last 12 weeks.</CardDescription>
+                <CardTitle className="text-lg">Weekly Progress</CardTitle>
+                <CardDescription>Active vs. completed tasks over the last 12 weeks.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}>
+                    <AreaChart data={data}>
+                        <defs>
+                            <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" fontSize={12} />
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                         <Legend />
-                        <Line type="monotone" dataKey="Tasks Completed" stroke="#8884d8" />
-                    </LineChart>
+                        <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
+                        <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
+                    </AreaChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
@@ -704,7 +732,7 @@ export default function DashboardPage() {
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         if (visibleCharts.performanceBySource) return "source";
-        if (visibleCharts.weeklyCompletion) return "weekly";
+        if (visibleCharts.weeklyProgress) return "weekly";
         return "";
     }, [visibleCharts]);
 
@@ -777,7 +805,7 @@ export default function DashboardPage() {
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                 {visibleCharts.performanceBySource && <TabsTrigger value="source">Performance</TabsTrigger>}
-                                {visibleCharts.weeklyCompletion && <TabsTrigger value="weekly">Weekly Trend</TabsTrigger>}
+                                {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
@@ -794,9 +822,9 @@ export default function DashboardPage() {
                                     <PerformanceBySourceChart tasks={tasksForCharts} settings={settings} />
                                 </TabsContent>
                             )}
-                            {visibleCharts.weeklyCompletion && (
+                            {visibleCharts.weeklyProgress && (
                                 <TabsContent value="weekly" className="flex-grow">
-                                    <WeeklyCompletionChart tasks={completedTasks} />
+                                    <WeeklyProgressChart allTasks={allTasks} />
                                 </TabsContent>
                             )}
                              {visibleCharts.dayOfWeekCompletion && (
