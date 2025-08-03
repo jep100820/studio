@@ -125,7 +125,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     };
 
     const toggleEdit = () => {
-        setIsEditing(true);
+        setIsEditing(prev => !prev);
     };
 
     useEffect(() => {
@@ -145,25 +145,26 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
 
     return (
         <div className="mb-3">
-             <div ref={setNodeRef} style={style} className="flex items-center gap-2">
-                <div {...attributes} {...listeners} className="cursor-grab p-2 self-stretch flex items-center bg-card rounded-l-lg border-y border-l">
+             <div ref={setNodeRef} style={{...style, backgroundColor: bgColor}} className="flex items-center gap-0 rounded-lg shadow-sm border">
+                <div {...attributes} {...listeners} className="cursor-grab p-3 self-stretch flex items-center bg-card rounded-l-md">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                <div 
-                    className="flex-grow flex items-center p-3 rounded-r-lg shadow-sm"
-                    style={{ backgroundColor: bgColor }}
-                >
+                <div className="flex-grow flex items-center p-2">
                     {isEditing ? (
                         <Input
                             ref={inputRef}
                             value={name}
                             onChange={handleNameChange}
                             onBlur={handleBlur}
-                            className={cn("flex-grow font-semibold border-2 border-primary", !isColorLight(item.color) ? "text-foreground" : "")}
+                            onKeyDown={(e) => e.key === 'Enter' && handleBlur()}
+                            className={cn(
+                                "flex-grow font-semibold h-9",
+                                !isColorLight(item.color) ? "text-foreground bg-background" : ""
+                            )}
                         />
                     ) : (
-                        <span className={cn("flex-grow font-semibold", textColor)}>{item.name}</span>
+                        <span className={cn("flex-grow font-semibold px-2", textColor)}>{item.name}</span>
                     )}
 
                     <span className={cn("text-xs mx-4", textColor, "opacity-80")}>
@@ -346,7 +347,22 @@ function CustomTagsSection({ settings, onUpdate }) {
         newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.map(st => st.id === subId ? updatedSubTag : st);
         onUpdate('customTags', newCustomTags);
     };
-
+    
+    const handleDragEnd = (event, mainTagId) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const newCustomTags = [...customTags];
+            const mainTagIndex = newCustomTags.findIndex(t => t.id === mainTagId);
+            if (mainTagIndex === -1) return;
+            
+            const oldIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === active.id);
+            const newIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
+            newCustomTags[mainTagIndex].tags = arrayMove(newCustomTags[mainTagIndex].tags, oldIndex, newIndex);
+            
+            onUpdate('customTags', newCustomTags);
+        }
+    };
+    
     return (
         <Card>
             <CardContent className="pt-6">
@@ -362,17 +378,21 @@ function CustomTagsSection({ settings, onUpdate }) {
                                 hasSubStatuses={false}
                             />
                             <div className="pl-10 mt-4 space-y-2">
-                                {mainTag.tags.map(subTag => (
-                                    <SortableItem
-                                        key={subTag.id}
-                                        id={subTag.id}
-                                        item={subTag}
-                                        onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
-                                        onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
-                                        hasColor={false}
-                                        hasSubStatuses={false}
-                                    />
-                                ))}
+                                <DndContext onDragEnd={(e) => handleDragEnd(e, mainTag.id)}>
+                                     <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                        {mainTag.tags.map(subTag => (
+                                            <SortableItem
+                                                key={subTag.id}
+                                                id={subTag.id}
+                                                item={subTag}
+                                                onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
+                                                onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
+                                                hasColor={false}
+                                                hasSubStatuses={false}
+                                            />
+                                        ))}
+                                     </SortableContext>
+                                </DndContext>
                                 {mainTag.tags.length < 10 && (
                                      <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
                                         <Plus className="h-4 w-4 mr-2" />
@@ -693,7 +713,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     };
 
     const chartConfig = [
-        { key: 'taskStatus', label: 'Active Task Distribution' },
+        { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'taskPriority', label: 'Completed by Priority' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
         { key: 'bidOrigin', label: 'Performance by Bid Origin' },
@@ -719,17 +739,17 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     const statSettings = settings?.dashboardSettings?.stats || {};
     
     const checkedChartsCount = useMemo(() => Object.values(chartSettings).filter(Boolean).length, [chartSettings]);
-    const checkedStatsCount = useMemo(() => Object.values(statSettings).filter(Boolean).length, [statSettings]);
+    const isChartLimitReached = checkedChartsCount >= 6; // Increased limit
 
-    const isChartLimitReached = checkedChartsCount >= 3;
-    const isStatLimitReached = checkedStatsCount >= 6;
+    const checkedStatsCount = useMemo(() => Object.values(statSettings).filter(Boolean).length, [statSettings]);
+    const isStatLimitReached = checkedStatsCount >= 11; // Increased limit
 
 
     return (
         <CardContent className="space-y-6">
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
-                <SettingsCardDescription>Select which charts to display on the dashboard (up to 3).</SettingsCardDescription>
+                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {chartConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
@@ -741,7 +761,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
             </div>
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
-                <SettingsCardDescription>Select which stats to display in the Project Snapshot (up to 6).</SettingsCardDescription>
+                <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {statConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
