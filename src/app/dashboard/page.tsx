@@ -260,7 +260,9 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                             <Bar dataKey="Completed" barSize={20} fill="#22c55e" name="Completed">
                                 <LabelList dataKey="Completed" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
                             </Bar>
-                            <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" dot={false} />
+                            <Line type="monotone" dataKey="Active" stroke="#f97316" strokeWidth={2} name="Total Active Tasks" dot={false}>
+                                <LabelList dataKey="Active" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
+                            </Line>
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
