@@ -726,9 +726,7 @@ export default function DashboardPage() {
                     </div>
                     {defaultTab && (
                         <Tabs defaultValue={defaultTab} className="h-full flex flex-col flex-grow">
-                            <TabsList className={cn("grid w-full", 
-                                `grid-cols-${activeCharts.length}`
-                            )}>
+                            <TabsList className="mb-4">
                                 {visibleCharts.taskStatus && <TabsTrigger value="status">Task Status</TabsTrigger>}
                                 {visibleCharts.taskPriority && <TabsTrigger value="priority">Task Priority</TabsTrigger>}
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
