@@ -367,7 +367,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <div className="space-y-2">
+                  <div className={cn("space-y-2", currentSubStatuses.length === 0 && "md:col-span-2")}>
                       <Label htmlFor="status">Status</Label>
                        <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
                            {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
