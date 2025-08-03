@@ -75,7 +75,7 @@ function isColorLight(hexColor) {
     return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
 }
 
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, value, fill }) => {
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, value, fill, name }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -83,8 +83,8 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
     const textColor = isColorLight(fill) ? '#000' : '#fff';
 
     return (
-        <text x={x} y={y} fill={textColor} textAnchor="middle" dominantBaseline="central" className="text-sm font-bold">
-            {value > 0 ? value : ''}
+        <text x={x} y={y} fill={textColor} textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
+            {value > 0 ? `${name} (${value})` : ''}
         </text>
     );
 };
@@ -161,8 +161,8 @@ function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
                                 innerRadius="60%"
                                 outerRadius="100%"
                                 paddingAngle={2}
-                                label={renderCustomizedLabel}
                                 labelLine={false}
+                                label={renderCustomizedLabel}
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -367,21 +367,16 @@ function WeeklyProgressChart({ allTasks }) {
         });
     }, [allTasks]);
     
-    const tableData = [
-        { metric: 'Tasks Active', color: '#8884d8' },
-        { metric: 'Tasks Completed', color: '#82ca9d' }
-    ];
-
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle className="text-lg">Weekly Progress</CardTitle>
                 <CardDescription>Active vs. completed tasks over the last 12 weeks.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col gap-4">
+            <CardContent className="flex-grow flex flex-col gap-2">
                 <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+                        <AreaChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
@@ -401,22 +396,19 @@ function WeeklyProgressChart({ allTasks }) {
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="flex-shrink-0 overflow-auto border rounded-lg">
+                <div className="flex-shrink-0 overflow-x-auto">
                     <Table>
                         <TableBody>
-                            {tableData.map(({ metric, color }) => (
-                                <TableRow key={metric}>
-                                    <TableCell className="font-semibold p-2 w-[150px]">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }}></span>
-                                            {metric}
-                                        </div>
-                                    </TableCell>
-                                    {data.map((row) => (
-                                        <TableCell key={`${row.name}-${metric}`} className="text-right p-2 font-mono text-sm">{row[metric]}</TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
+                            <TableRow style={{'--border-color': '#82ca9d'}} className="border-y-2 border-[var(--border-color)]">
+                                {data.map((row) => (
+                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm">{row['Tasks Completed']}</TableCell>
+                                ))}
+                            </TableRow>
+                             <TableRow style={{'--border-color': '#8884d8'}} className="border-y-2 border-[var(--border-color)]">
+                                {data.map((row) => (
+                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm">{row['Tasks Active']}</TableCell>
+                                ))}
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </div>
