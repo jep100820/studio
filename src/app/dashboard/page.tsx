@@ -88,7 +88,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-function TaskStatusOverviewChart({ tasks, settings }) {
+function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
     const COLORS = {
         Completed: '#a78bfa',
         Overdue: '#ef4444',
@@ -102,12 +102,11 @@ function TaskStatusOverviewChart({ tasks, settings }) {
     const data = useMemo(() => {
         const today = startOfDay(new Date());
         
+        // Process active tasks
         const statusCounts = tasks.reduce((acc, task) => {
             const isOverdue = toDate(task.dueDate) && isBefore(toDate(task.dueDate), today) && task.status !== 'Completed';
             
-            if (task.status === 'Completed') {
-                acc['Completed'] = (acc['Completed'] || 0) + 1;
-            } else if (isOverdue) {
+            if (isOverdue) {
                 acc['Overdue'] = (acc['Overdue'] || 0) + 1;
             } else {
                 acc[task.status] = (acc[task.status] || 0) + 1;
@@ -115,6 +114,11 @@ function TaskStatusOverviewChart({ tasks, settings }) {
             return acc;
         }, {});
         
+        // Add completed tasks count
+        if (completedTasks.length > 0) {
+            statusCounts['Completed'] = completedTasks.length;
+        }
+
         return Object.entries(statusCounts).map(([name, value]) => {
             const workflowColor = settings.workflowCategories?.find(cat => cat.name === name)?.color;
             return { 
@@ -123,7 +127,8 @@ function TaskStatusOverviewChart({ tasks, settings }) {
                 fill: COLORS[name] || workflowColor || '#8884d8'
             };
         });
-    }, [tasks, settings]);
+    }, [tasks, completedTasks, settings]);
+
 
     const totalValue = useMemo(() => data.reduce((sum, entry) => sum + entry.value, 0), [data]);
 
@@ -214,7 +219,6 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 
-                // Active if it was created on or before this day, AND it was either not completed yet, or was completed on or after this day.
                 if (completionDate && isBefore(completionDate, day)) {
                     return false; // Already completed *before* this day
                 }
@@ -621,9 +625,10 @@ export default function DashboardPage() {
 
     const filteredTasks = useMemo(() => {
         if (!dateRange.from || !dateRange.to) {
-            return allTasks;
+            return allTasks.filter(task => task.status !== 'Completed');
         }
         return allTasks.filter(task => {
+            if (task.status === 'Completed') return false;
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
             // A task is within the range if its creation date is within the range.
@@ -748,7 +753,7 @@ export default function DashboardPage() {
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
-                                    <TaskStatusOverviewChart tasks={filteredTasks} settings={settings} />
+                                    <TaskStatusOverviewChart tasks={filteredTasks} completedTasks={filteredCompletedTasks} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.dailyActivity && (
