@@ -495,6 +495,11 @@ function ImportExportCard() {
     const handleExportCsv = async () => {
         const tasksQuery = query(collection(db, 'tasks'));
         const querySnapshot = await getDocs(tasksQuery);
+        
+        const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
+        const settings = settingsDoc.data();
+        const customTagKeys = settings.customTags?.map(t => t.name) || [];
+
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
             const convertedData = { ...data };
@@ -505,8 +510,8 @@ function ImportExportCard() {
             }
             // Flatten tags
             if (convertedData.tags) {
-                for(const tagName in convertedData.tags) {
-                    convertedData[tagName] = convertedData.tags[tagName];
+                for(const tagName of customTagKeys) {
+                    convertedData[tagName] = convertedData.tags[tagName] || "";
                 }
                 delete convertedData.tags;
             }
@@ -946,7 +951,7 @@ export default function SettingsPage() {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
 
-        const findRenames = (original, current, type) => {
+        const findRenames = (original, current, type, context = '') => {
             const changes = [];
             if (!original || !current) return changes;
         
@@ -956,28 +961,23 @@ export default function SettingsPage() {
                 const originalName = originalMap.get(item.id);
                 // A rename happened if the name exists in the original map but is different now.
                 if (originalName && originalName !== item.name) {
-                    changes.push({ from: originalName, to: item.name, type, id: item.id });
+                    changes.push({ 
+                        from: originalName, 
+                        to: item.name, 
+                        type: context ? `${type} in ${context}` : type,
+                        id: item.id
+                    });
                 }
-            });
-            return changes;
-        }
-        
-        const findTagRenames = (original, current) => {
-            let changes = [];
-            if (!original || !current) return changes;
-            
-            // Main tag category renames
-            const mainTagRenames = findRenames(original, current, 'Tag Category');
-            changes = changes.concat(mainTagRenames);
-            
-            // Sub-tag renames
-            current.forEach((tagCategory) => {
-                const originalCategory = original.find(c => c.id === tagCategory.id);
-                 if (originalCategory) {
-                    const subTagRenames = findRenames(originalCategory.tags, tagCategory.tags, `Tag in ${tagCategory.name}`);
-                    // Prefix with category name to handle sub-tags under a renamed category
-                    const finalSubTagRenames = subTagRenames.map(change => ({...change, type: `Tag in ${originalCategory.name}`}))
-                    changes = changes.concat(finalSubTagRenames);
+
+                // Recursively check for sub-items if they exist (e.g., sub-statuses, sub-tags)
+                if(item.subStatuses) {
+                    const originalItem = original.find(o => o.id === item.id);
+                    changes.push(...findRenames(originalItem?.subStatuses, item.subStatuses, 'Sub-Status', item.name));
+                }
+                if(item.tags) {
+                    const originalItem = original.find(o => o.id === item.id);
+                    const originalContextName = originalItem ? originalItem.name : item.name;
+                    changes.push(...findRenames(originalItem?.tags, item.tags, 'Tag', originalContextName));
                 }
             });
             return changes;
@@ -986,7 +986,7 @@ export default function SettingsPage() {
         const detectedChanges = [
             ...findRenames(originalSettings.workflowCategories, settings.workflowCategories, 'Status'),
             ...findRenames(originalSettings.importanceLevels, settings.importanceLevels, 'Importance'),
-            ...findTagRenames(originalSettings.customTags, settings.customTags)
+            ...findRenames(originalSettings.customTags, settings.customTags, 'Tag Category')
         ];
 
         if (detectedChanges.length > 0) {
@@ -1033,8 +1033,7 @@ export default function SettingsPage() {
             const taskData = taskDoc.data();
             let needsUpdate = false;
             const updates = {};
-            let newTags = taskData.tags ? { ...taskData.tags } : {};
-
+            
             for (const change of renameChanges) {
                 switch(change.type) {
                     case 'Status':
@@ -1050,18 +1049,20 @@ export default function SettingsPage() {
                         }
                         break;
                     case 'Tag Category':
-                        if (newTags && typeof newTags[change.from] !== 'undefined') {
-                            newTags[change.to] = newTags[change.from];
-                            delete newTags[change.from];
-                            needsUpdate = true; // The tags object itself will be updated
+                        if (taskData.tags && typeof taskData.tags[change.from] !== 'undefined') {
+                            if(!updates.tags) updates.tags = { ...taskData.tags };
+                            updates.tags[change.to] = updates.tags[change.from];
+                            delete updates.tags[change.from];
+                            needsUpdate = true;
                         }
                         break;
                     default: 
                          if (change.type.startsWith('Tag in')) {
                             const categoryName = change.type.replace('Tag in ', '');
-                             if (newTags && newTags[categoryName] === change.from) {
-                                newTags[categoryName] = change.to;
-                                needsUpdate = true;
+                            if (taskData.tags && taskData.tags[categoryName] === change.from) {
+                               if(!updates.tags) updates.tags = { ...taskData.tags };
+                               updates.tags[categoryName] = change.to;
+                               needsUpdate = true;
                             }
                         }
                         break;
@@ -1069,9 +1070,6 @@ export default function SettingsPage() {
             }
 
             if (needsUpdate) {
-                if (!isEqual(taskData.tags, newTags)) {
-                    updates.tags = newTags;
-                }
                 batch.update(taskDoc.ref, updates);
             }
         });
