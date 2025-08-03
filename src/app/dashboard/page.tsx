@@ -379,8 +379,8 @@ function WeeklyProgressChart({ allTasks }) {
             <CardContent className="flex-grow flex flex-col gap-2">
                 <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                            <defs>
+                        <AreaChart data={data} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                             <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
                                     <stop offset="95%" stopColor={completedColor} stopOpacity={0}/>
@@ -394,23 +394,23 @@ function WeeklyProgressChart({ allTasks }) {
                             <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0, right: 30}} />
+                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0, right: 20, paddingTop: '4px'}} />
                             <Area type="monotone" dataKey="Tasks Active" stroke={activeColor} fillOpacity={1} fill="url(#colorActive)" />
                             <Area type="monotone" dataKey="Tasks Completed" stroke={completedColor} fillOpacity={1} fill="url(#colorCompleted)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="flex-shrink-0 overflow-x-auto">
+                <div className="flex-shrink-0 overflow-x-auto -mt-4">
                     <Table>
                         <TableBody>
                             <TableRow style={{ backgroundColor: activeColor }}>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm" style={{ color: isColorLight(activeColor) ? '#000' : '#fff' }}>{row['Tasks Active']}</TableCell>
+                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-xs" style={{ color: isColorLight(activeColor) ? '#000' : '#fff' }}>{row['Tasks Active']}</TableCell>
                                 ))}
                             </TableRow>
                              <TableRow style={{ backgroundColor: completedColor }}>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm" style={{ color: isColorLight(completedColor) ? '#000' : '#fff' }}>{row['Tasks Completed']}</TableCell>
+                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-xs" style={{ color: isColorLight(completedColor) ? '#000' : '#fff' }}>{row['Tasks Completed']}</TableCell>
                                 ))}
                             </TableRow>
                         </TableBody>
