@@ -737,13 +737,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
-    
-    const checkedChartsCount = useMemo(() => Object.values(chartSettings).filter(Boolean).length, [chartSettings]);
-    const isChartLimitReached = checkedChartsCount >= 6; // Increased limit
-
-    const checkedStatsCount = useMemo(() => Object.values(statSettings).filter(Boolean).length, [statSettings]);
-    const isStatLimitReached = checkedStatsCount >= 11; // Increased limit
-
 
     return (
         <CardContent className="space-y-6">
@@ -753,7 +746,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {chartConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
-                            <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} disabled={!chartSettings[key] && isChartLimitReached} />
+                            <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
                             <Label htmlFor={`chart-${key}`}>{label}</Label>
                         </div>
                     ))}
@@ -765,7 +758,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {statConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
-                            <Checkbox id={`stat-${key}`} checked={!!statSettings[key]} onCheckedChange={(c) => handleStatVisibilityChange(key, c)} disabled={!statSettings[key] && isStatLimitReached} />
+                            <Checkbox id={`stat-${key}`} checked={!!statSettings[key]} onCheckedChange={(c) => handleStatVisibilityChange(key, c)} />
                             <Label htmlFor={`stat-${key}`}>{label}</Label>
                         </div>
                     ))}

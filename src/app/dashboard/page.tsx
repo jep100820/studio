@@ -245,14 +245,17 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
 
             const activeCount = allTasks.filter(task => {
                 const taskStartDate = toDate(task.date);
+                const completionDate = toDate(task.completionDate);
+
                 if (!taskStartDate || isAfter(taskStartDate, day)) {
                     return false; // Not created yet
                 }
-                const completionDate = toDate(task.completionDate);
-                // Correct logic: Active if it's not completed OR completed after the current day.
+                
+                // Active if not yet completed OR completed after the current day
                 if (completionDate && isBefore(completionDate, day)) {
                     return false; // Already completed *before* this day
                 }
+                
                 return true; // Is active on this day
             }).length;
 
@@ -603,7 +606,7 @@ function StatsDisplay({ tasks, completedTasks, settings }) {
 }
 
 export default function DashboardPage() {
-    const [tasks, setTasks] = useState([]);
+    const [allTasks, setAllTasks] = useState([]);
     const [settings, setSettings] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const { theme, setTheme } = useTheme();
@@ -623,7 +626,7 @@ export default function DashboardPage() {
                 const data = doc.data();
                 return { ...data, id: doc.id };
             });
-            setTasks(fetchedTasks);
+            setAllTasks(fetchedTasks);
             
             if (fetchedTasks.length > 0 && !dateRange.from && !dateRange.to) {
                 const earliestDate = fetchedTasks
@@ -646,34 +649,44 @@ export default function DashboardPage() {
         }
     }, []);
 
+    const filteredTasks = useMemo(() => {
+        if (!dateRange.from || !dateRange.to) {
+            return allTasks;
+        }
+        return allTasks.filter(task => {
+            const taskDate = toDate(task.date);
+            if (!taskDate) return false;
+            return isAfter(taskDate, dateRange.from) && isBefore(taskDate, dateRange.to);
+        });
+    }, [allTasks, dateRange]);
+
     const completedTasks = useMemo(() => {
-        return tasks
+        return allTasks
             .filter(t => t.status === 'Completed')
             .sort((a, b) => {
-                const aHasDate = !!a.completionDate;
-                const bHasDate = !!b.completionDate;
-                if (!aHasDate && bHasDate) return -1; // a without date comes first
-                if (aHasDate && !bHasDate) return 1;  // b without date comes first
-                if (!aHasDate && !bHasDate) return 0; // both without dates, order doesn't matter
-
-                const dateA = toDate(a.completionDate);
-                const dateB = toDate(b.completionDate);
-                if (!dateA && dateB) return 1;
-                if (dateA && !dateB) return -1;
-                if (!dateA && !dateB) return 0;
-                return dateB.getTime() - dateA.getTime();
+                const dateA = toDate(a.completionDate) || 0;
+                const dateB = toDate(b.completionDate) || 0;
+                return dateB - dateA;
             });
-    }, [tasks]);
+    }, [allTasks]);
+
+    const filteredCompletedTasks = useMemo(() => {
+        if (!dateRange.from || !dateRange.to) {
+            return completedTasks;
+        }
+        return completedTasks.filter(task => {
+            const completionDate = toDate(task.completionDate);
+            if (!completionDate) return false;
+            return isAfter(completionDate, dateRange.from) && isBefore(completionDate, dateRange.to);
+        });
+    }, [completedTasks, dateRange]);
     
     const handleOpenModal = () => {
-        // This is a placeholder for a potential "Add Task" modal on the dashboard
-        // For now, it will navigate to the main page to add a task.
         router.push('/');
     };
 
     const handleDateChange = (e, part) => {
         const { value } = e.target;
-        // The input type="date" provides value in "YYYY-MM-DD" format
         const newDate = toDate(value);
         if (newDate) {
             setDateRange(prev => ({ ...prev, [part]: part === 'from' ? startOfDay(newDate) : endOfDay(newDate) }));
@@ -690,10 +703,6 @@ export default function DashboardPage() {
         if (!settings?.dashboardSettings?.charts) return defaultCharts;
         return settings.dashboardSettings.charts;
     }, [settings]);
-
-    const activeCharts = useMemo(() => {
-        return Object.entries(visibleCharts).filter(([key, value]) => value).map(([key]) => key);
-    }, [visibleCharts]);
 
     const defaultTab = useMemo(() => {
         if (visibleCharts.taskStatus) return "status";
@@ -740,7 +749,7 @@ export default function DashboardPage() {
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
                     <div className="flex-grow min-h-0">
-                        <StatsDisplay tasks={tasks} completedTasks={completedTasks} settings={settings} />
+                        <StatsDisplay tasks={filteredTasks} completedTasks={filteredCompletedTasks} settings={settings} />
                     </div>
                 </div>
                 
@@ -767,22 +776,22 @@ export default function DashboardPage() {
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
-                                    <TaskStatusOverviewChart tasks={tasks} settings={settings} />
+                                    <TaskStatusOverviewChart tasks={filteredTasks} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.taskPriority && (
                                 <TabsContent value="priority" className="flex-grow">
-                                    <TaskPriorityChart tasks={completedTasks} />
+                                    <TaskPriorityChart tasks={filteredCompletedTasks} />
                                 </TabsContent>
                             )}
                             {visibleCharts.dailyActivity && (
                                 <TabsContent value="trend" className="flex-grow">
-                                    <DailyActivityChart allTasks={tasks} startDate={dateRange.from} endDate={dateRange.to} />
+                                    <DailyActivityChart allTasks={allTasks} startDate={dateRange.from} endDate={dateRange.to} />
                                 </TabsContent>
                             )}
                             {visibleCharts.bidOrigin && (
                                 <TabsContent value="origin" className="flex-grow">
-                                    <BidOriginChart tasks={tasks} settings={settings} />
+                                    <BidOriginChart tasks={filteredTasks} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.weeklyCompletion && (
@@ -792,7 +801,7 @@ export default function DashboardPage() {
                             )}
                              {visibleCharts.dayOfWeekCompletion && (
                                 <TabsContent value="dayOfWeek" className="flex-grow">
-                                    <DayOfWeekCompletionChart tasks={completedTasks} />
+                                    <DayOfWeekCompletionChart tasks={filteredCompletedTasks} />
                                 </TabsContent>
                             )}
                         </Tabs>
@@ -801,7 +810,7 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
                      <div className="flex-grow min-h-0">
-                        <CompletedTasksList tasks={completedTasks} settings={settings} />
+                        <CompletedTasksList tasks={filteredCompletedTasks} settings={settings} />
                     </div>
                 </div>
             </main>
