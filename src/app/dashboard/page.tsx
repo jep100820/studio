@@ -379,7 +379,7 @@ function WeeklyProgressChart({ allTasks }) {
             <CardContent className="flex-grow flex flex-col gap-2">
                 <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                        <AreaChart data={data} margin={{ top: 20, right: 20, left: -32, bottom: 0 }}>
                              <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor={completedColor} stopOpacity={0.8}/>
@@ -704,20 +704,20 @@ export default function DashboardPage() {
         const start = startOfDay(dateRange.from);
         const end = endOfDay(dateRange.to);
 
-        const filteredActiveTasks = activeTasks.filter(task => {
+        const filteredActive = activeTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
             // A task is considered "active" in the range if it was created within it
             return isAfter(taskDate, start) && isBefore(taskDate, end);
         });
 
-        const filteredCompletedTasks = completedTasks.filter(task => {
+        const filteredCompleted = completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
             return isAfter(completionDate, start) && isBefore(completionDate, end);
         });
 
-        return { filteredActive: filteredActiveTasks, filteredCompleted: filteredCompletedTasks };
+        return { filteredActive, filteredCompleted };
     }, [activeTasks, completedTasks, dateRange]);
 
 
