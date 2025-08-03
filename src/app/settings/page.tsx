@@ -474,6 +474,7 @@ function ImportExportCard() {
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
             const convertedData = { ...data };
+            // Convert Firestore Timestamps to ISO strings for JSON compatibility
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
@@ -503,12 +504,13 @@ function ImportExportCard() {
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
             const convertedData = { ...data };
+            // Convert Timestamps to ISO strings
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
             }
-            // Flatten tags
+            // Flatten tags object into separate columns for CSV
             if (convertedData.tags) {
                 for(const tagName of customTagKeys) {
                     convertedData[tagName] = convertedData.tags[tagName] || "";
@@ -972,12 +974,13 @@ export default function SettingsPage() {
                 // Recursively check for sub-items if they exist (e.g., sub-statuses, sub-tags)
                 if(item.subStatuses) {
                     const originalItem = original.find(o => o.id === item.id);
+                    // Use the *new* name as context for sub-status changes
                     changes.push(...findRenames(originalItem?.subStatuses, item.subStatuses, 'Sub-Status', item.name));
                 }
                 if(item.tags) {
                     const originalItem = original.find(o => o.id === item.id);
-                    const originalContextName = originalItem ? originalItem.name : item.name;
-                    changes.push(...findRenames(originalItem?.tags, item.tags, 'Tag', originalContextName));
+                     // Use the *new* name as context for tag changes
+                    changes.push(...findRenames(originalItem?.tags, item.tags, 'Tag', item.name));
                 }
             });
             return changes;
@@ -1056,12 +1059,21 @@ export default function SettingsPage() {
                             needsUpdate = true;
                         }
                         break;
-                    default: 
-                         if (change.type.startsWith('Tag in')) {
+                     default:
+                        if (change.type.startsWith('Sub-Status in')) {
+                            const categoryName = change.type.replace('Sub-Status in ', '');
+                            if (taskData.status === categoryName && taskData.subStatus === change.from) {
+                                updates.subStatus = change.to;
+                                needsUpdate = true;
+                            }
+                        } else if (change.type.startsWith('Tag in')) {
                             const categoryName = change.type.replace('Tag in ', '');
-                            if (taskData.tags && taskData.tags[categoryName] === change.from) {
+                            const originalCategory = originalSettings.customTags.find(c => settings.customTags.find(s => s.id === c.id && s.name === categoryName));
+                            const originalCategoryName = originalCategory ? originalCategory.name : categoryName;
+
+                            if (taskData.tags && taskData.tags[originalCategoryName] === change.from) {
                                if(!updates.tags) updates.tags = { ...taskData.tags };
-                               updates.tags[categoryName] = change.to;
+                               updates.tags[originalCategoryName] = change.to;
                                needsUpdate = true;
                             }
                         }

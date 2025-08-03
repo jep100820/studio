@@ -215,14 +215,18 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                         <p className="text-sm mt-1">{formatDate(task.completionDate, displayFormat)}</p>
                     </>
                 )}
-                 {task.tags && Object.entries(task.tags).map(([key, value]) => (
-                    value && (
-                        <div key={key}>
-                            <p className="text-sm font-semibold mt-2">{key}:</p>
-                            <p className="text-sm mt-1">{value}</p>
-                        </div>
-                    )
-                 ))}
+                 {task.tags && Object.keys(task.tags).length > 0 && (
+                    <div className="mt-2">
+                        {Object.entries(task.tags).map(([key, value]) => (
+                            value && (
+                                <div key={key} className="mt-2">
+                                    <p className="text-sm font-semibold">{key}:</p>
+                                    <p className="text-sm mt-1">{value}</p>
+                                </div>
+                            )
+                        ))}
+                    </div>
+                 )}
                 
                 <div className="mt-4 flex justify-end">
                     <Button 
