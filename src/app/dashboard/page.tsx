@@ -376,7 +376,7 @@ function WeeklyProgressChart({ allTasks }) {
             <CardContent className="flex-grow flex flex-col gap-2">
                 <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                        <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
@@ -391,6 +391,7 @@ function WeeklyProgressChart({ allTasks }) {
                             <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                            <Legend verticalAlign="top" align="right" wrapperStyle={{top: 0}} />
                             <Area type="monotone" dataKey="Tasks Active" stroke="#8884d8" fillOpacity={1} fill="url(#colorActive)" />
                             <Area type="monotone" dataKey="Tasks Completed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompleted)" />
                         </AreaChart>
@@ -399,16 +400,16 @@ function WeeklyProgressChart({ allTasks }) {
                 <div className="flex-shrink-0 overflow-x-auto">
                     <Table>
                         <TableBody>
-                            <TableRow style={{ backgroundColor: 'rgba(130, 202, 157, 0.2)', color: isColorLight('#82ca9d') ? '#000' : '#fff' }}>
-                                <TableCell className="p-1 font-semibold text-xs text-left">Tasks Completed</TableCell>
+                            <TableRow>
+                                <TableCell className="p-1 font-semibold text-xs text-left text-foreground">Tasks Completed</TableCell>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm">{row['Tasks Completed']}</TableCell>
+                                    <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm text-foreground">{row['Tasks Completed']}</TableCell>
                                 ))}
                             </TableRow>
-                             <TableRow style={{ backgroundColor: 'rgba(136, 132, 216, 0.2)', color: isColorLight('#8884d8') ? '#000' : '#fff' }}>
-                                 <TableCell className="p-1 font-semibold text-xs text-left">Tasks Active</TableCell>
+                             <TableRow>
+                                 <TableCell className="p-1 font-semibold text-xs text-left text-foreground">Tasks Active</TableCell>
                                 {data.map((row) => (
-                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm">{row['Tasks Active']}</TableCell>
+                                    <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm text-foreground">{row['Tasks Active']}</TableCell>
                                 ))}
                             </TableRow>
                         </TableBody>
