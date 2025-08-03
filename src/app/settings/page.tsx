@@ -479,7 +479,6 @@ function ImportExportCard() {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
             }
-            delete convertedData.id;
             return convertedData;
         });
 
@@ -507,12 +506,11 @@ function ImportExportCard() {
             // Flatten tags
             if (convertedData.tags) {
                 for(const tagName in convertedData.tags) {
-                    convertedData[`tag_${tagName}`] = convertedData.tags[tagName];
+                    convertedData[tagName] = convertedData.tags[tagName];
                 }
                 delete convertedData.tags;
             }
 
-            delete convertedData.id;
             return convertedData;
         });
 
@@ -567,17 +565,23 @@ function ImportExportCard() {
 
                     const taskData = { ...task };
                     
-                    // Re-hydrate tags from CSV columns
-                    if(fileType === 'csv') {
+                    // On CSV import, group custom fields back into a 'tags' object
+                    if (fileType === 'csv') {
+                        const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
+                        const settings = settingsDoc.data();
+                        const customTagKeys = settings.customTags?.map(t => t.name) || [];
+                        
                         taskData.tags = {};
-                        for(const key in taskData) {
-                            if(key.startsWith('tag_')) {
-                                const tagName = key.substring(4);
-                                taskData.tags[tagName] = taskData[key];
+                        for (const key in taskData) {
+                            if (customTagKeys.includes(key)) {
+                                if (taskData[key]) {
+                                   taskData.tags[key] = taskData[key];
+                                }
                                 delete taskData[key];
                             }
                         }
                     }
+
 
                     taskData.date = parseDateString(task.date);
                     taskData.dueDate = parseDateString(task.dueDate);
@@ -969,11 +973,11 @@ export default function SettingsPage() {
             // Sub-tag renames
             current.forEach((tagCategory) => {
                 const originalCategory = original.find(c => c.id === tagCategory.id);
-                 // Only check sub-tags if the main category was NOT renamed
-                 // If the main category was renamed, that's a different, bigger update.
-                if (originalCategory && originalCategory.name === tagCategory.name) {
+                 if (originalCategory) {
                     const subTagRenames = findRenames(originalCategory.tags, tagCategory.tags, `Tag in ${tagCategory.name}`);
-                    changes = changes.concat(subTagRenames);
+                    // Prefix with category name to handle sub-tags under a renamed category
+                    const finalSubTagRenames = subTagRenames.map(change => ({...change, type: `Tag in ${originalCategory.name}`}))
+                    changes = changes.concat(finalSubTagRenames);
                 }
             });
             return changes;
@@ -1023,8 +1027,6 @@ export default function SettingsPage() {
         const batch = writeBatch(db);
         const tasksRef = collection(db, 'tasks');
         
-        // This is a simplified approach. For large datasets, this could be slow/costly.
-        // A better approach for production would be a Cloud Function triggered on setting change.
         const tasksSnapshot = await getDocs(tasksRef);
 
         tasksSnapshot.forEach(taskDoc => {
@@ -1054,7 +1056,7 @@ export default function SettingsPage() {
                             needsUpdate = true; // The tags object itself will be updated
                         }
                         break;
-                    default: // Handles sub-tag renames like "Tag in Bid Origin"
+                    default: 
                          if (change.type.startsWith('Tag in')) {
                             const categoryName = change.type.replace('Tag in ', '');
                              if (newTags && newTags[categoryName] === change.from) {
@@ -1067,7 +1069,6 @@ export default function SettingsPage() {
             }
 
             if (needsUpdate) {
-                // If tags were modified, add them to the updates object
                 if (!isEqual(taskData.tags, newTags)) {
                     updates.tags = newTags;
                 }

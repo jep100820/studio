@@ -215,12 +215,14 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                         <p className="text-sm mt-1">{formatDate(task.completionDate, displayFormat)}</p>
                     </>
                 )}
-                 {task.bidOrigin && (
-                    <>
-                        <p className="text-sm font-semibold mt-2">Bid Origin:</p>
-                        <p className="text-sm mt-1">{task.bidOrigin}</p>
-                    </>
-                )}
+                 {task.tags && Object.entries(task.tags).map(([key, value]) => (
+                    value && (
+                        <div key={key}>
+                            <p className="text-sm font-semibold mt-2">{key}:</p>
+                            <p className="text-sm mt-1">{value}</p>
+                        </div>
+                    )
+                 ))}
                 
                 <div className="mt-4 flex justify-end">
                     <Button 
@@ -394,7 +396,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                          </select>
                     </div>
                   )}
-                  {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.slice(0, 1).map(mainTag => (
+                  {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
                     <div className="space-y-2" key={mainTag.name}>
                         <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
                         <select 
