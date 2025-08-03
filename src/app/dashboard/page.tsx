@@ -18,6 +18,7 @@ import { Text as RechartsText } from 'recharts';
 import { useTheme } from "next-themes";
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 // A robust, unified date parsing function
@@ -114,7 +115,7 @@ function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
             return acc;
         }, {});
         
-        // Add completed tasks count
+        // Add completed tasks count from the pre-filtered list
         if (completedTasks.length > 0) {
             statusCounts['Completed'] = completedTasks.length;
         }
@@ -219,11 +220,12 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
                     return false; // Not created yet
                 }
                 
-                if (completionDate && isBefore(completionDate, day)) {
-                    return false; // Already completed *before* this day
+                // Active if it's not completed, OR if it was completed on or after this day
+                if (!completionDate || isAfter(completionDate, day) || isSameDay(completionDate, day)) {
+                    return true;
                 }
                 
-                return true; // Is active on this day
+                return false; // Completed before this day
             }).length;
 
 
@@ -586,6 +588,8 @@ export default function DashboardPage() {
     const { theme, setTheme } = useTheme();
     const router = useRouter();
     const [dateRange, setDateRange] = useState({ from: null, to: null });
+    const [filterScope, setFilterScope] = useState({ charts: true, stats: true });
+
 
     useEffect(() => {
         const settingsUnsub = onSnapshot(doc(db, 'settings', 'workflow'), (doc) => {
@@ -623,42 +627,52 @@ export default function DashboardPage() {
         }
     }, []);
 
-    const filteredTasks = useMemo(() => {
-        if (!dateRange.from || !dateRange.to) {
-            return allTasks.filter(task => task.status !== 'Completed');
-        }
-        return allTasks.filter(task => {
-            if (task.status === 'Completed') return false;
-            const taskDate = toDate(task.date);
-            if (!taskDate) return false;
-            // A task is within the range if its creation date is within the range.
-            return (isAfter(taskDate, dateRange.from) || isSameDay(taskDate, dateRange.from)) && 
-                   (isBefore(taskDate, dateRange.to) || isSameDay(taskDate, dateRange.to));
-        });
-    }, [allTasks, dateRange]);
-
-    const completedTasks = useMemo(() => {
-        return allTasks
+    const { activeTasks, completedTasks } = useMemo(() => {
+        const active = allTasks.filter(task => task.status !== 'Completed');
+        const completed = allTasks
             .filter(t => t.status === 'Completed')
             .sort((a, b) => {
                 const dateA = toDate(a.completionDate) || 0;
                 const dateB = toDate(b.completionDate) || 0;
                 return dateB - dateA;
             });
+        return { activeTasks: active, completedTasks: completed };
     }, [allTasks]);
 
-    const filteredCompletedTasks = useMemo(() => {
+
+    const { filteredActiveTasks, filteredCompletedTasks } = useMemo(() => {
         if (!dateRange.from || !dateRange.to) {
-            return completedTasks;
+            return { filteredActiveTasks: activeTasks, filteredCompletedTasks: completedTasks };
         }
-        return completedTasks.filter(task => {
+
+        const filteredActive = activeTasks.filter(task => {
+            const taskDate = toDate(task.date);
+            if (!taskDate) return false;
+            return (isAfter(taskDate, dateRange.from) || isSameDay(taskDate, dateRange.from)) &&
+                   (isBefore(taskDate, dateRange.to) || isSameDay(taskDate, dateRange.to));
+        });
+
+        const filteredCompleted = completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
-            // A completed task is within the range if its completion date is within the range.
-            return (isAfter(completionDate, dateRange.from) || isSameDay(completionDate, dateRange.from)) && 
+            return (isAfter(completionDate, dateRange.from) || isSameDay(completionDate, dateRange.from)) &&
                    (isBefore(completionDate, dateRange.to) || isSameDay(completionDate, dateRange.to));
         });
-    }, [completedTasks, dateRange]);
+
+        return { filteredActiveTasks: filteredActive, filteredCompletedTasks: filteredCompleted };
+    }, [activeTasks, completedTasks, dateRange]);
+
+
+    const { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts } = useMemo(() => {
+        const tasksForStats = filterScope.stats ? filteredActiveTasks : activeTasks;
+        const completedTasksForStats = filterScope.stats ? filteredCompletedTasks : completedTasks;
+        
+        const tasksForCharts = filterScope.charts ? filteredActiveTasks : activeTasks;
+        const completedTasksForCharts = filterScope.charts ? filteredCompletedTasks : completedTasks;
+
+        return { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts };
+    }, [filterScope, activeTasks, completedTasks, filteredActiveTasks, filteredCompletedTasks]);
+    
     
     const handleOpenModal = () => {
         router.push('/');
@@ -727,19 +741,31 @@ export default function DashboardPage() {
             <main className="flex-grow p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-9 gap-6 lg:gap-8 overflow-y-auto">
                  <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8 min-h-0">
                     <div className="flex-grow min-h-0">
-                        <StatsDisplay tasks={filteredTasks} completedTasks={filteredCompletedTasks} settings={settings} />
+                        <StatsDisplay tasks={tasksForStats} completedTasks={completedTasksForStats} settings={settings} />
                     </div>
                 </div>
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="from-date">From</Label>
-                            <Input id="from-date" type="date" value={formatDateForInput(dateRange.from)} onChange={(e) => handleDateChange(e, 'from')} />
+                    <div className="p-4 border rounded-lg mb-4 space-y-4">
+                        <div className="flex items-center gap-4">
+                            <div className="space-y-1 flex-grow">
+                                <Label htmlFor="from-date">From</Label>
+                                <Input id="from-date" type="date" value={formatDateForInput(dateRange.from)} onChange={(e) => handleDateChange(e, 'from')} />
+                            </div>
+                            <div className="space-y-1 flex-grow">
+                                <Label htmlFor="to-date">To</Label>
+                                <Input id="to-date" type="date" value={formatDateForInput(dateRange.to)} onChange={(e) => handleDateChange(e, 'to')} />
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="to-date">To</Label>
-                            <Input id="to-date" type="date" value={formatDateForInput(dateRange.to)} onChange={(e) => handleDateChange(e, 'to')} />
+                        <div className="flex items-center space-x-4">
+                             <div className="flex items-center space-x-2">
+                                <Checkbox id="filter-charts" checked={filterScope.charts} onCheckedChange={(checked) => setFilterScope(prev => ({...prev, charts: checked}))} />
+                                <Label htmlFor="filter-charts" className="text-sm font-normal">Filter Charts</Label>
+                             </div>
+                             <div className="flex items-center space-x-2">
+                                <Checkbox id="filter-stats" checked={filterScope.stats} onCheckedChange={(checked) => setFilterScope(prev => ({...prev, stats: checked}))} />
+                                <Label htmlFor="filter-stats" className="text-sm font-normal">Filter Stats</Label>
+                             </div>
                         </div>
                     </div>
                     {defaultTab && (
@@ -753,17 +779,17 @@ export default function DashboardPage() {
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
-                                    <TaskStatusOverviewChart tasks={filteredTasks} completedTasks={filteredCompletedTasks} settings={settings} />
+                                    <TaskStatusOverviewChart tasks={tasksForCharts} completedTasks={completedTasksForCharts} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.dailyActivity && (
                                 <TabsContent value="trend" className="flex-grow">
-                                    <DailyActivityChart allTasks={allTasks} startDate={dateRange.from} endDate={dateRange.to} />
+                                    <DailyActivityChart allTasks={filterScope.charts ? allTasks.filter(t => tasksForCharts.includes(t) || completedTasksForCharts.includes(t)) : allTasks} startDate={dateRange.from} endDate={dateRange.to} />
                                 </TabsContent>
                             )}
                             {visibleCharts.performanceBySource && (
                                 <TabsContent value="source" className="flex-grow">
-                                    <PerformanceBySourceChart tasks={filteredTasks} settings={settings} />
+                                    <PerformanceBySourceChart tasks={tasksForCharts} settings={settings} />
                                 </TabsContent>
                             )}
                             {visibleCharts.weeklyCompletion && (
@@ -773,7 +799,7 @@ export default function DashboardPage() {
                             )}
                              {visibleCharts.dayOfWeekCompletion && (
                                 <TabsContent value="dayOfWeek" className="flex-grow">
-                                    <DayOfWeekCompletionChart tasks={filteredCompletedTasks} />
+                                    <DayOfWeekCompletionChart tasks={completedTasksForCharts} />
                                 </TabsContent>
                             )}
                         </Tabs>
@@ -782,7 +808,7 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
                      <div className="flex-grow min-h-0">
-                        <CompletedTasksList tasks={filteredCompletedTasks} settings={settings} />
+                        <CompletedTasksList tasks={filterScope.stats ? filteredCompletedTasks : completedTasks} settings={settings} />
                     </div>
                 </div>
             </main>
