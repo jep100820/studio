@@ -399,12 +399,14 @@ function WeeklyProgressChart({ allTasks }) {
                 <div className="flex-shrink-0 overflow-x-auto">
                     <Table>
                         <TableBody>
-                            <TableRow style={{'--border-color': '#82ca9d'}} className="border-y-2 border-[var(--border-color)]">
+                            <TableRow style={{ backgroundColor: 'rgba(130, 202, 157, 0.2)', color: isColorLight('#82ca9d') ? '#000' : '#fff' }}>
+                                <TableCell className="p-1 font-semibold text-xs text-left">Tasks Completed</TableCell>
                                 {data.map((row) => (
                                     <TableCell key={`${row.name}-completed`} className="text-center p-1 font-mono text-sm">{row['Tasks Completed']}</TableCell>
                                 ))}
                             </TableRow>
-                             <TableRow style={{'--border-color': '#8884d8'}} className="border-y-2 border-[var(--border-color)]">
+                             <TableRow style={{ backgroundColor: 'rgba(136, 132, 216, 0.2)', color: isColorLight('#8884d8') ? '#000' : '#fff' }}>
+                                 <TableCell className="p-1 font-semibold text-xs text-left">Tasks Active</TableCell>
                                 {data.map((row) => (
                                     <TableCell key={`${row.name}-active`} className="text-center p-1 font-mono text-sm">{row['Tasks Active']}</TableCell>
                                 ))}
