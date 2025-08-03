@@ -941,29 +941,18 @@ export default function SettingsPage() {
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
-        // Also remove IDs as they are client-side only for now
-        const removeIds = (obj) => {
-             if (Array.isArray(obj)) {
-                obj.forEach(removeIds);
-            } else if (obj !== null && typeof obj === 'object') {
-                delete obj.id;
-                Object.values(obj).forEach(removeIds);
-            }
-            return obj;
-        };
 
         const findRenames = (original, current, type) => {
             const changes = [];
             if (!original || !current) return changes;
-
+        
             const originalMap = new Map(original.map(item => [item.id, item.name]));
             
             current.forEach((item) => {
                 const originalName = originalMap.get(item.id);
+                // A rename happened if the name exists in the original map but is different now.
                 if (originalName && originalName !== item.name) {
-                    if (!current.some(i => i.name === originalName)) {
-                        changes.push({ from: originalName, to: item.name, type, id: item.id });
-                    }
+                    changes.push({ from: originalName, to: item.name, type, id: item.id });
                 }
             });
             return changes;
@@ -980,7 +969,9 @@ export default function SettingsPage() {
             // Sub-tag renames
             current.forEach((tagCategory) => {
                 const originalCategory = original.find(c => c.id === tagCategory.id);
-                if (originalCategory && originalCategory.name === tagCategory.name) { // Only check sub-tags if main tag name is same
+                 // Only check sub-tags if the main category was NOT renamed
+                 // If the main category was renamed, that's a different, bigger update.
+                if (originalCategory && originalCategory.name === tagCategory.name) {
                     const subTagRenames = findRenames(originalCategory.tags, tagCategory.tags, `Tag in ${tagCategory.name}`);
                     changes = changes.concat(subTagRenames);
                 }
@@ -1031,12 +1022,16 @@ export default function SettingsPage() {
 
         const batch = writeBatch(db);
         const tasksRef = collection(db, 'tasks');
+        
+        // This is a simplified approach. For large datasets, this could be slow/costly.
+        // A better approach for production would be a Cloud Function triggered on setting change.
         const tasksSnapshot = await getDocs(tasksRef);
 
         tasksSnapshot.forEach(taskDoc => {
             const taskData = taskDoc.data();
             let needsUpdate = false;
             const updates = {};
+            let newTags = taskData.tags ? { ...taskData.tags } : {};
 
             for (const change of renameChanges) {
                 switch(change.type) {
@@ -1053,41 +1048,29 @@ export default function SettingsPage() {
                         }
                         break;
                     case 'Tag Category':
-                        // This case is tricky. We'd need to know the ID mapping.
-                        // Assuming we handle rename by changing the key in tags object.
-                        if (taskData.tags && typeof taskData.tags[change.from] !== 'undefined') {
-                            updates[`tags.${change.to}`] = taskData.tags[change.from];
-                            // This would require a field deletion which is special
-                            // For simplicity, we can set it to null or an empty string if deletion is complex.
-                            // updates[`tags.${change.from}`] = deleteField(); // Firestore specific
-                            needsUpdate = true;
+                        if (newTags && typeof newTags[change.from] !== 'undefined') {
+                            newTags[change.to] = newTags[change.from];
+                            delete newTags[change.from];
+                            needsUpdate = true; // The tags object itself will be updated
                         }
                         break;
-                    default: // Sub-tag
+                    default: // Handles sub-tag renames like "Tag in Bid Origin"
                          if (change.type.startsWith('Tag in')) {
                             const categoryName = change.type.replace('Tag in ', '');
-                             if (taskData.tags && taskData.tags[categoryName] === change.from) {
-                                updates[`tags.${categoryName}`] = change.to;
+                             if (newTags && newTags[categoryName] === change.from) {
+                                newTags[categoryName] = change.to;
                                 needsUpdate = true;
                             }
                         }
                         break;
                 }
             }
-             // For tag category renames, we need a more robust way to update the keys in the `tags` map.
-             // The above `tags.${change.to}` works for adding, but not renaming a key.
-             // A read-modify-write is safer here.
-            const tagCategoryChange = renameChanges.find(c => c.type === 'Tag Category' && taskData.tags && taskData.tags.hasOwnProperty(c.from));
-            if (tagCategoryChange) {
-                const newTags = { ...taskData.tags };
-                newTags[tagCategoryChange.to] = newTags[tagCategoryChange.from];
-                delete newTags[tagCategoryChange.from];
-                updates.tags = newTags;
-                needsUpdate = true;
-            }
-
 
             if (needsUpdate) {
+                // If tags were modified, add them to the updates object
+                if (!isEqual(taskData.tags, newTags)) {
+                    updates.tags = newTags;
+                }
                 batch.update(taskDoc.ref, updates);
             }
         });
@@ -1099,6 +1082,7 @@ export default function SettingsPage() {
     };
     
     const handleCancelConfirmation = async () => {
+        // Just save the settings without updating tasks
         const settingsToSave = JSON.parse(JSON.stringify(settings));
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
