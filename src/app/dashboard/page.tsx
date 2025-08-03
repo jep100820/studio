@@ -700,42 +700,42 @@ export default function DashboardPage() {
     }, [allTasks]);
 
 
-    const { filteredActiveTasks, filteredCompletedTasks } = useMemo(() => {
+    const { filteredActive, filteredCompleted } = useMemo(() => {
         if (!dateRange.from || !dateRange.to) {
-            return { filteredActiveTasks: activeTasks, filteredCompletedTasks: completedTasks };
+            return { filteredActive: activeTasks, filteredCompleted: completedTasks };
         }
         
         const start = startOfDay(dateRange.from);
         const end = endOfDay(dateRange.to);
 
-        const filteredActive = activeTasks.filter(task => {
+        const filteredActiveTasks = activeTasks.filter(task => {
             const taskDate = toDate(task.date);
             if (!taskDate) return false;
             return isAfter(taskDate, start) && isBefore(taskDate, end);
         });
 
-        const filteredCompleted = completedTasks.filter(task => {
+        const filteredCompletedTasks = completedTasks.filter(task => {
             const completionDate = toDate(task.completionDate);
             if (!completionDate) return false;
             return isAfter(completionDate, start) && isBefore(completionDate, end);
         });
 
-        return { filteredActiveTasks, filteredCompletedTasks };
+        return { filteredActive: filteredActiveTasks, filteredCompleted: filteredCompletedTasks };
     }, [activeTasks, completedTasks, dateRange]);
 
 
     const { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts, allTasksForCharts } = useMemo(() => {
-        const tasksForStats = filterScope.stats ? filteredActiveTasks : activeTasks;
-        const completedTasksForStats = filterScope.stats ? filteredCompletedTasks : completedTasks;
+        const tasksForStats = filterScope.stats ? filteredActive : activeTasks;
+        const completedTasksForStats = filterScope.stats ? filteredCompleted : completedTasks;
         
-        const tasksForCharts = filterScope.charts ? filteredActiveTasks : activeTasks;
-        const completedTasksForCharts = filterScope.charts ? filteredCompletedTasks : completedTasks;
+        const tasksForCharts = filterScope.charts ? filteredActive : activeTasks;
+        const completedTasksForCharts = filterScope.charts ? filteredCompleted : completedTasks;
 
         const allTasksForCharts = filterScope.charts ? [...tasksForCharts, ...completedTasksForCharts] : allTasks;
 
 
         return { tasksForStats, completedTasksForStats, tasksForCharts, completedTasksForCharts, allTasksForCharts };
-    }, [filterScope, activeTasks, completedTasks, filteredActiveTasks, filteredCompletedTasks, allTasks]);
+    }, [filterScope, activeTasks, completedTasks, filteredActive, filteredCompleted, allTasks]);
     
     
     const handleOpenModal = () => {
@@ -872,7 +872,7 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
                      <div className="flex-grow min-h-0">
-                        <CompletedTasksList tasks={filterScope.stats ? filteredCompletedTasks : completedTasks} settings={settings} />
+                        <CompletedTasksList tasks={filterScope.stats ? filteredCompleted : completedTasks} settings={settings} />
                     </div>
                 </div>
             </main>
