@@ -785,16 +785,18 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
                     {chartConfig.map(({ key, label }) => {
                         const isCustomTagChart = key === 'customTagBreakdown';
+                        const isVisible = !!chartSettings[key];
                         return (
-                            <div key={key} className="flex items-center space-x-2">
-                                <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
-                                <Label htmlFor={`chart-${key}`}>{label}</Label>
-                                {isCustomTagChart && chartSettings[key] && customTags.length > 0 && (
+                            <div key={key} className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id={`chart-${key}`} checked={isVisible} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
+                                    <Label htmlFor={`chart-${key}`}>{label}</Label>
+                                </div>
+                                {isCustomTagChart && isVisible && customTags.length > 0 && (
                                      <select
                                         value={settings.dashboardSettings?.defaultCustomTagId || ''}
                                         onChange={handleDefaultTagChange}
                                         className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
-                                        onClick={(e) => e.stopPropagation()} // Prevent label click from toggling checkbox
                                     >
                                         <option value="">Select Tag...</option>
                                         {customTags.map(tag => (
