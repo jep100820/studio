@@ -983,6 +983,19 @@ export default function SettingsPage() {
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
+
+                 // Initialize custom tag chart visibility if not set
+                if (data.customTags && data.customTags.length > 0) {
+                    if (!data.dashboardSettings.charts) {
+                        data.dashboardSettings.charts = {};
+                    }
+                    data.customTags.forEach(tag => {
+                        const chartKey = `customTag_${tag.id}`;
+                        if (data.dashboardSettings.charts[chartKey] === undefined) {
+                            data.dashboardSettings.charts[chartKey] = true; // default to visible
+                        }
+                    });
+                }
                 
                 const dataWithIds = addIdsToData(data);
                 
