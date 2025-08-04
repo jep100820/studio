@@ -810,7 +810,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                                         onChange={handleDefaultTagChange}
                                         className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
                                     >
-                                        <option value="">Select Tag...</option>
                                         {customTags.map(tag => (
                                             <option key={tag.id} value={tag.id}>
                                                 {tag.name}
@@ -1091,7 +1090,10 @@ export default function SettingsPage() {
             };
             
             // Validate defaultCustomTagId before returning
-            if (cleansedData.dashboardSettings?.charts?.customTagBreakdown && cleansedData.customTags?.length > 0) {
+            if (
+                cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
+                cleansedData.customTags?.length > 0
+            ) {
                 const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
                 if (!validTag) {
                     cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
