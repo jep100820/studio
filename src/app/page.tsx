@@ -672,12 +672,6 @@ function KanbanPageContent() {
             const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setTasks(fetchedTasks);
             setIsLoading(false);
-            
-            const taskIdFromUrl = searchParams.get('taskId');
-            if (taskIdFromUrl) {
-                handleSummaryTaskClick(taskIdFromUrl);
-                router.replace('/', {scroll: false});
-            }
         });
 
         return () => {
@@ -707,14 +701,35 @@ function KanbanPageContent() {
   };
   
   useEffect(() => {
-    const editTaskId = searchParams.get('edit');
-    if (editTaskId && tasks.length > 0) {
-      const taskToEdit = tasks.find(t => t.id === editTaskId);
-      if (taskToEdit) {
-        handleOpenModal(taskToEdit);
-        // Clean up URL
+    const taskId = searchParams.get('taskId');
+    const edit = searchParams.get('edit');
+
+    if (taskId && tasks.length > 0) {
+        let taskToHandle = tasks.find(t => t.id === taskId);
+        
+        // If task not in active list, check completed tasks (or full list)
+        if (!taskToHandle) {
+             const allTasks = [...tasks]; 
+             taskToHandle = allTasks.find(t => t.id === taskId);
+        }
+
+        if (taskToHandle) {
+            const isCompleted = taskToHandle.status === 'Completed';
+            const canEdit = edit === 'true';
+
+            if (isCompleted && !canEdit) {
+                // For completed tasks, just open the modal to view
+                 handleOpenModal(taskToHandle);
+            } else if (canEdit) {
+                // For editing (either from dashboard dbl-click or direct link)
+                 handleOpenModal(taskToHandle);
+            } else if (!isCompleted) {
+                // For active tasks from summary click
+                handleSummaryTaskClick(taskId);
+            }
+        }
+        // Clean up URL to prevent re-triggering
         router.replace('/', {scroll: false});
-      }
     }
   }, [searchParams, tasks, router]);
 
