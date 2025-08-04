@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 
@@ -207,7 +205,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                     subStatuses={item.subStatuses || []}
                     onUpdate={onSubStatusUpdate}
                 />
-             )}
+            )}
         </div>
     );
 }
@@ -233,13 +231,13 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
             const oldIndex = items.findIndex(item => item.id === active.id);
             const newIndex = items.findIndex(item => item.id === over.id);
             const newItems = arrayMove(items, oldIndex, newIndex);
-            onUpdate(fieldName, newItems);
+            onUpdate({ [fieldName]: newItems });
         }
     };
     
     const handleItemUpdate = (itemId, newItem) => {
         const newItems = items.map(item => (item.id === itemId ? newItem : item));
-        onUpdate(fieldName, newItems);
+        onUpdate({ [fieldName]: newItems });
     }
     
     const handleSubStatusUpdate = (parentItemId, newSubStatuses) => {
@@ -248,7 +246,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
                 ? { ...item, subStatuses: newSubStatuses }
                 : item
         );
-        onUpdate(fieldName, newItems);
+        onUpdate({ [fieldName]: newItems });
     };
 
     const handleToggleExpand = (itemId) => {
@@ -257,12 +255,12 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
                 ? { ...item, isExpanded: !item.isExpanded }
                 : item
         );
-        onUpdate(fieldName, newItems);
+        onUpdate({ [fieldName]: newItems });
     }
     
     const handleRemoveItem = (itemId) => {
         const newItems = items.filter((item) => item.id !== itemId);
-        onUpdate(fieldName, newItems);
+        onUpdate({ [fieldName]: newItems });
     };
 
     const itemIds = useMemo(() => displayedItems?.map(it => it.id) || [], [displayedItems]);
@@ -273,7 +271,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                         <div>
-                           {displayedItems?.map((item, index) => (
+                           {displayedItems?.map((item) => (
                                 <SortableItem
                                     key={item.id}
                                     id={item.id}
@@ -298,7 +296,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
     );
 }
 
-function CustomTagsSection({ settings, onSettingsUpdate }) {
+function CustomTagsSection({ settings, onUpdate }) {
     const customTags = settings.customTags || [];
 
     const handleAddMainTag = () => {
@@ -308,14 +306,13 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
             name: `New Tag Category ${customTags.length + 1}`,
             tags: [],
         };
-        onSettingsUpdate({ customTags: [...customTags, newMainTag] });
+        onUpdate({ customTags: [...customTags, newMainTag] });
     };
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        const updatedSettings = { ...settings, customTags: newCustomTags };
+        const updatedSettings = { customTags: newCustomTags };
 
-        // If the deleted tag was the default, reset the default
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
             updatedSettings.dashboardSettings = {
                 ...settings.dashboardSettings,
@@ -323,40 +320,43 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
             };
         }
         
-        onSettingsUpdate(updatedSettings);
+        onUpdate(updatedSettings);
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
         const newCustomTags = customTags.map(t => t.id === id ? updatedMainTag : t);
-        onSettingsUpdate({ customTags: newCustomTags });
+        onUpdate({ customTags: newCustomTags });
     };
 
     const handleAddSubTag = (mainId) => {
-        const newCustomTags = [...customTags];
-        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
-        if (mainTagIndex === -1 || newCustomTags[mainTagIndex].tags.length >= 10) return;
-        
-        const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
-        newCustomTags[mainTagIndex].tags.push(newSubTag);
-        onSettingsUpdate({ customTags: newCustomTags });
+        const newCustomTags = customTags.map(tag => {
+            if (tag.id === mainId && tag.tags.length < 10) {
+                const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
+                return { ...tag, tags: [...tag.tags, newSubTag] };
+            }
+            return tag;
+        });
+        onUpdate({ customTags: newCustomTags });
     };
 
     const handleRemoveSubTag = (mainId, subId) => {
-        const newCustomTags = [...customTags];
-        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
-        if (mainTagIndex === -1) return;
-
-        newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.filter((st) => st.id !== subId);
-        onSettingsUpdate({ customTags: newCustomTags });
+        const newCustomTags = customTags.map(tag => {
+            if (tag.id === mainId) {
+                return { ...tag, tags: tag.tags.filter(st => st.id !== subId) };
+            }
+            return tag;
+        });
+        onUpdate({ customTags: newCustomTags });
     };
 
     const handleSubTagUpdate = (mainId, subId, updatedSubTag) => {
-        const newCustomTags = [...customTags];
-        const mainTagIndex = newCustomTags.findIndex(t => t.id === mainId);
-        if (mainTagIndex === -1) return;
-        
-        newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.map(st => st.id === subId ? updatedSubTag : st);
-        onSettingsUpdate({ customTags: newCustomTags });
+        const newCustomTags = customTags.map(tag => {
+            if (tag.id === mainId) {
+                return { ...tag, tags: tag.tags.map(st => st.id === subId ? updatedSubTag : st) };
+            }
+            return tag;
+        });
+        onUpdate({ customTags: newCustomTags });
     };
     
     const handleDragEnd = (event, mainTagId) => {
@@ -370,7 +370,7 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
             const newIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
             newCustomTags[mainTagIndex].tags = arrayMove(newCustomTags[mainTagIndex].tags, oldIndex, newIndex);
             
-            onSettingsUpdate({ customTags: newCustomTags });
+            onUpdate({ customTags: newCustomTags });
         }
     };
     
@@ -390,7 +390,7 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
                             />
                             <div className="pl-10 mt-4 space-y-2">
                                 <DndContext onDragEnd={(e) => handleDragEnd(e, mainTag.id)}>
-                                     <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                    <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
                                         {mainTag.tags.map(subTag => (
                                             <SortableItem
                                                 key={subTag.id}
@@ -402,7 +402,7 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
                                                 hasSubStatuses={false}
                                             />
                                         ))}
-                                     </SortableContext>
+                                    </SortableContext>
                                 </DndContext>
                                 {mainTag.tags.length < 10 && (
                                      <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
@@ -449,6 +449,163 @@ function AccordionSection({ title, children, summary }) {
     );
 }
 
+function GeneralSettingsCard({ settings, onUpdate }) {
+    const handleSwitchChange = (fieldName, checked) => {
+        onUpdate({ [fieldName]: checked });
+    };
+    
+    const handleWorkWeekChange = (day, checked) => {
+        const currentWeek = settings.workWeek || [];
+        let newWeek;
+        if (checked) {
+            newWeek = [...currentWeek, day];
+        } else {
+            newWeek = currentWeek.filter(d => d !== day);
+        }
+        onUpdate({ workWeek: newWeek });
+    }
+    
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    return (
+        <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                    <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
+                    <SettingsCardDescription>
+                        Enable to use date and time pickers for due dates and completion dates.
+                    </SettingsCardDescription>
+                </div>
+                <Switch
+                    id="time-tracking"
+                    checked={settings?.enableTimeTracking || false}
+                    onCheckedChange={(checked) => handleSwitchChange('enableTimeTracking', checked)}
+                />
+            </div>
+             <div className="rounded-lg border p-4">
+                <div className="space-y-2">
+                   <Label className="text-base">Work Week Configuration</Label>
+                    <SettingsCardDescription>
+                       Select the days to be considered 'workdays' for 'Due this Week' calculations.
+                    </SettingsCardDescription>
+                </div>
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {daysOfWeek.map(day => (
+                        <div key={day} className="flex items-center space-x-2">
+                             <Checkbox
+                                id={`workday-${day}`}
+                                checked={settings?.workWeek?.includes(day) || false}
+                                onCheckedChange={(checked) => handleWorkWeekChange(day, checked)}
+                            />
+                            <Label htmlFor={`workday-${day}`}>{day}</Label>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </CardContent>
+    );
+}
+
+function DashboardSettingsCard({ settings, onUpdate }) {
+    const handleChartVisibilityChange = (chartName, checked) => {
+        const newCharts = { ...settings.dashboardSettings.charts, [chartName]: checked };
+        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, charts: newCharts } });
+    };
+
+    const handleStatVisibilityChange = (statName, checked) => {
+        const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
+        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
+    };
+    
+    const handleDefaultTagChange = (e) => {
+        const { value } = e.target;
+        onUpdate({ 
+            dashboardSettings: { 
+                ...settings.dashboardSettings, 
+                defaultCustomTagId: value 
+            } 
+        });
+    };
+
+    const chartConfig = [
+        { key: 'taskStatus', label: 'Task Status Overview' },
+        { key: 'dailyActivity', label: 'Daily Activity Trend' },
+        { key: 'weeklyProgress', label: 'Weekly Progress' },
+        { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
+        { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
+        { key: 'activeWorkload', label: 'Active Workload by Importance' },
+        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
+    ];
+
+    const statConfig = [
+        { key: 'totalTasks', label: 'Total Tasks' },
+        { key: 'totalCompleted', label: 'Total Completed' },
+        { key: 'overdue', label: 'Tasks Overdue' },
+        { key: 'active', label: 'Active Tasks' },
+        { key: 'avgTime', label: 'Avg. Completion Time' },
+        { key: 'last7', label: 'Completed Last 7d' },
+        { key: 'completedToday', label: 'Completed Today' },
+        { key: 'createdToday', label: 'Created Today' },
+        { key: 'completionRate', label: 'Completion Rate (7d)' },
+        { key: 'inReview', label: 'Tasks in Review' },
+        { key: 'stale', label: 'Stale Tasks (>7d)' },
+        { key: 'avgSubStatusChanges', label: 'Avg. Sub-status Changes' },
+    ];
+
+    const chartSettings = settings?.dashboardSettings?.charts || {};
+    const statSettings = settings?.dashboardSettings?.stats || {};
+    const customTags = settings?.customTags || [];
+
+    return (
+        <CardContent className="space-y-6">
+            <div className="rounded-lg border p-4">
+                <Label className="text-base">Visible Charts</Label>
+                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+                    {chartConfig.map(({ key, label }) => {
+                        const isCustomTagChart = key === 'customTagBreakdown';
+                        const isVisible = !!chartSettings[key];
+                        return (
+                            <div key={key} className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id={`chart-${key}`} checked={isVisible} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
+                                    <Label htmlFor={`chart-${key}`}>{label}</Label>
+                                </div>
+                                {isCustomTagChart && isVisible && customTags.length > 0 && (
+                                     <select
+                                        value={settings.dashboardSettings?.defaultCustomTagId || ''}
+                                        onChange={handleDefaultTagChange}
+                                        className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
+                                    >
+                                        <option value="">Select Tag...</option>
+                                        {customTags.map(tag => (
+                                            <option key={tag.id} value={tag.id}>
+                                                {tag.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+            
+            <div className="rounded-lg border p-4">
+                <Label className="text-base">Visible Statistics</Label>
+                <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
+                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {statConfig.map(({ key, label }) => (
+                         <div key={key} className="flex items-center space-x-2">
+                            <Checkbox id={`stat-${key}`} checked={!!statSettings[key]} onCheckedChange={(c) => handleStatVisibilityChange(key, c)} />
+                            <Label htmlFor={`stat-${key}`}>{label}</Label>
+                        </div>
+                    ))}
+                 </div>
+            </div>
+        </CardContent>
+    );
+}
 
 function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileType }) {
     if (!isOpen) return null;
@@ -485,7 +642,6 @@ function ImportExportCard() {
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
             const convertedData = { ...data };
-            // Convert Firestore Timestamps to ISO strings for JSON compatibility
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
@@ -683,167 +839,6 @@ function ImportExportCard() {
         </>
     );
 }
-
-function GeneralSettingsCard({ settings, onUpdate }) {
-    const handleSwitchChange = (fieldName, checked) => {
-        onUpdate({ ...settings, [fieldName]: checked });
-    };
-    
-    const handleWorkWeekChange = (day, checked) => {
-        const currentWeek = settings.workWeek || [];
-        let newWeek;
-        if (checked) {
-            newWeek = [...currentWeek, day];
-        } else {
-            newWeek = currentWeek.filter(d => d !== day);
-        }
-        onUpdate({ ...settings, workWeek: newWeek });
-    }
-    
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-    return (
-        <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                    <Label htmlFor="time-tracking" className="text-base">Track time alongside date</Label>
-                     <SettingsCardDescription>
-                        Enable to use date and time pickers for due dates and completion dates.
-                    </SettingsCardDescription>
-                </div>
-                <Switch
-                    id="time-tracking"
-                    checked={settings?.enableTimeTracking || false}
-                    onCheckedChange={(checked) => handleSwitchChange('enableTimeTracking', checked)}
-                />
-            </div>
-             <div className="rounded-lg border p-4">
-                <div className="space-y-2">
-                   <Label className="text-base">Work Week Configuration</Label>
-                    <SettingsCardDescription>
-                       Select the days to be considered 'workdays' for 'Due this Week' calculations.
-                    </SettingsCardDescription>
-                </div>
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {daysOfWeek.map(day => (
-                        <div key={day} className="flex items-center space-x-2">
-                             <Checkbox
-                                id={`workday-${day}`}
-                                checked={settings?.workWeek?.includes(day) || false}
-                                onCheckedChange={(checked) => handleWorkWeekChange(day, checked)}
-                            />
-                            <Label htmlFor={`workday-${day}`}>{day}</Label>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </CardContent>
-    );
-}
-
-function DashboardSettingsCard({ settings, onUpdate }) {
-    const dashboardSettings = settings?.dashboardSettings || { charts: {}, stats: {} };
-    const customTags = settings?.customTags || [];
-
-    const handleChartVisibilityChange = (chartName, checked) => {
-        const newCharts = { ...dashboardSettings.charts, [chartName]: checked };
-        onUpdate({ ...settings, dashboardSettings: { ...dashboardSettings, charts: newCharts } });
-    };
-
-    const handleStatVisibilityChange = (statName, checked) => {
-        const newStats = { ...dashboardSettings.stats, [statName]: checked };
-        onUpdate({ ...settings, dashboardSettings: { ...dashboardSettings, stats: newStats } });
-    };
-    
-    const handleDefaultTagChange = (e) => {
-        const { value } = e.target;
-        onUpdate({ 
-            ...settings,
-            dashboardSettings: { 
-                ...dashboardSettings,
-                defaultCustomTagId: value 
-            }
-        });
-    };
-
-    const chartConfig = [
-        { key: 'taskStatus', label: 'Task Status Overview' },
-        { key: 'dailyActivity', label: 'Daily Activity Trend' },
-        { key: 'weeklyProgress', label: 'Weekly Progress' },
-        { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
-        { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
-        { key: 'activeWorkload', label: 'Active Workload by Importance' },
-        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
-    ];
-
-    const statConfig = [
-        { key: 'totalTasks', label: 'Total Tasks' },
-        { key: 'totalCompleted', label: 'Total Completed' },
-        { key: 'overdue', label: 'Tasks Overdue' },
-        { key: 'active', label: 'Active Tasks' },
-        { key: 'avgTime', label: 'Avg. Completion Time' },
-        { key: 'last7', label: 'Completed Last 7d' },
-        { key: 'completedToday', label: 'Completed Today' },
-        { key: 'createdToday', label: 'Created Today' },
-        { key: 'completionRate', label: 'Completion Rate (7d)' },
-        { key: 'inReview', label: 'Tasks in Review' },
-        { key: 'stale', label: 'Stale Tasks (>7d)' },
-        { key: 'avgSubStatusChanges', label: 'Avg. Sub-status Changes' },
-    ];
-
-    const chartSettings = dashboardSettings.charts || {};
-    const statSettings = dashboardSettings.stats || {};
-
-    return (
-        <CardContent className="space-y-6">
-            <div className="rounded-lg border p-4">
-                <Label className="text-base">Visible Charts</Label>
-                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-                    {chartConfig.map(({ key, label }) => {
-                        const isCustomTagChart = key === 'customTagBreakdown';
-                        const isVisible = !!chartSettings[key];
-                        return (
-                            <div key={key} className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id={`chart-${key}`} checked={isVisible} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
-                                    <Label htmlFor={`chart-${key}`}>{label}</Label>
-                                </div>
-                                {isCustomTagChart && isVisible && customTags.length > 0 && (
-                                     <select
-                                        value={dashboardSettings?.defaultCustomTagId || ''}
-                                        onChange={handleDefaultTagChange}
-                                        className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
-                                    >
-                                        {customTags.map(tag => (
-                                            <option key={tag.id} value={tag.id}>
-                                                {tag.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        )
-                    })}
-                </div>
-            </div>
-            
-            <div className="rounded-lg border p-4">
-                <Label className="text-base">Visible Statistics</Label>
-                <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
-                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {statConfig.map(({ key, label }) => (
-                         <div key={key} className="flex items-center space-x-2">
-                            <Checkbox id={`stat-${key}`} checked={!!statSettings[key]} onCheckedChange={(c) => handleStatVisibilityChange(key, c)} />
-                            <Label htmlFor={`stat-${key}`}>{label}</Label>
-                        </div>
-                    ))}
-                 </div>
-            </div>
-        </CardContent>
-    );
-}
-
 
 function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes, isUpdating }) {
     if (!isOpen) return null;
@@ -1200,7 +1195,7 @@ export default function SettingsPage() {
                         >
                             <SettingsSection
                                 items={settings?.workflowCategories}
-                                onUpdate={(fieldName, updatedItems) => handleSettingsUpdate({ [fieldName]: updatedItems })}
+                                onUpdate={handleSettingsUpdate}
                                 onAddItem={handleAddNewItem}
                                 fieldName="workflowCategories"
                                 hasSubStatuses={true}
@@ -1213,7 +1208,7 @@ export default function SettingsPage() {
                         >
                             <SettingsSection
                                 items={settings?.importanceLevels}
-                                onUpdate={(fieldName, updatedItems) => handleSettingsUpdate({ [fieldName]: updatedItems })}
+                                onUpdate={handleSettingsUpdate}
                                 onAddItem={handleAddNewItem}
                                 fieldName="importanceLevels"
                             />
@@ -1225,7 +1220,7 @@ export default function SettingsPage() {
                         >
                             <CustomTagsSection
                                 settings={settings}
-                                onSettingsUpdate={handleSettingsUpdate}
+                                onUpdate={handleSettingsUpdate}
                             />
                         </AccordionSection>
 
