@@ -955,7 +955,7 @@ export default function SettingsPage() {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
 
-        const findRenames = (original, current, type) => {
+        const findRenames = (original, current, type, parentName = null) => {
             const changes = [];
             if (!original || !current) return changes;
         
@@ -964,21 +964,16 @@ export default function SettingsPage() {
             current.forEach(currentItem => {
                 const originalItem = originalMap.get(currentItem.id);
                 if (originalItem && originalItem.name !== currentItem.name) {
-                    changes.push({ from: originalItem.name, to: currentItem.name, type: type });
+                    changes.push({ from: originalItem.name, to: currentItem.name, type: type, parent: parentName });
                 }
                 
                 if (type === 'Status' && originalItem && currentItem.subStatuses) {
-                    const originalSubStatusMap = new Map(originalItem.subStatuses.map(sub => [sub.id, sub]));
-                    currentItem.subStatuses.forEach(currentSub => {
-                        const originalSub = originalSubStatusMap.get(currentSub.id);
-                        if (originalSub && originalSub.name !== currentSub.name) {
-                            changes.push({ from: originalSub.name, to: currentSub.name, type: 'Sub-Status' });
-                        }
-                    });
+                     const subStatusChanges = findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status', currentItem.name);
+                     changes.push(...subStatusChanges);
                 }
 
                  if (type === 'Tag Category' && originalItem && currentItem.tags) {
-                     const tagChanges = findRenames(originalItem.tags, currentItem.tags, 'Tag').map(c => ({...c, category: currentItem.name}));
+                     const tagChanges = findRenames(originalItem.tags, currentItem.tags, 'Tag', currentItem.name);
                      changes.push(...tagChanges);
                 }
             });
@@ -1043,7 +1038,7 @@ export default function SettingsPage() {
                         break;
                     case 'Tag Category':
                         q = query(collection(db, "tasks"), where(`tags.${change.from}`, "!=", null));
-                        break;
+                        break; // Special handling for map keys
                     default:
                         q = null;
                 }
@@ -1059,15 +1054,17 @@ export default function SettingsPage() {
                         if (change.type === 'Tag Category') {
                             const taskData = taskDoc.data();
                             const newTags = { ...taskData.tags };
-                            newTags[change.to] = newTags[change.from];
-                            delete newTags[change.from];
-                            batch.update(taskDoc.ref, { tags: newTags });
+                            if (newTags[change.from] !== undefined) {
+                                newTags[change.to] = newTags[change.from];
+                                delete newTags[change.from];
+                                batch.update(taskDoc.ref, { tags: newTags });
+                            }
                         } else {
                             batch.update(taskDoc.ref, updateData);
                         }
                         
                         operationCount++;
-                        if (operationCount === 499) {
+                        if (operationCount >= 499) { // Use >= to be safe
                             await batch.commit();
                             batch = writeBatch(db);
                             operationCount = 0;
