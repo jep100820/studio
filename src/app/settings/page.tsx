@@ -489,6 +489,7 @@ function ImportExportCard() {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
+            }
             return convertedData;
         });
 
@@ -519,6 +520,7 @@ function ImportExportCard() {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
+            }
             
             // Flatten tags object into separate columns with descriptive headers
             const tags = convertedData.tags || {};
@@ -1268,3 +1270,5 @@ export default function SettingsPage() {
 }
 
     
+
+
