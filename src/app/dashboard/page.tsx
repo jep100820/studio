@@ -495,15 +495,15 @@ function CompletionPerformanceChart({ completedTasks }) {
 }
 
 function BidOriginChart({ allTasks, settings }) {
-    const bidOriginTagName = useMemo(() => {
-        return settings?.customTags?.find(tag => tag.name.toLowerCase().includes('bid origin'))?.name;
+    const bidOriginTag = useMemo(() => {
+        return settings?.customTags?.[0];
     }, [settings]);
 
     const data = useMemo(() => {
-        if (!bidOriginTagName) return [];
+        if (!bidOriginTag) return [];
 
         const counts = allTasks.reduce((acc, task) => {
-            const origin = task.tags?.[bidOriginTagName] || 'Not Set';
+            const origin = task.tags?.[bidOriginTag.name] || 'Not Set';
             acc[origin] = (acc[origin] || 0) + 1;
             return acc;
         }, {});
@@ -512,16 +512,16 @@ function BidOriginChart({ allTasks, settings }) {
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
             
-    }, [allTasks, bidOriginTagName]);
+    }, [allTasks, bidOriginTag]);
 
-    if (!bidOriginTagName) {
+    if (!bidOriginTag) {
         return (
             <Card className="h-full flex flex-col items-center justify-center">
                 <CardHeader>
-                    <CardTitle>Bid Origin Chart</CardTitle>
+                    <CardTitle>Task Breakdown by Tag</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">Please configure a custom tag category named "Bid Origin" in settings.</p>
+                    <p className="text-muted-foreground text-center">Please configure a custom tag category in settings to use this chart.</p>
                 </CardContent>
             </Card>
         );
@@ -530,8 +530,8 @@ function BidOriginChart({ allTasks, settings }) {
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Tasks by Bid Origin</CardTitle>
-                <CardDescription>Distribution of tasks from different sources.</CardDescription>
+                <CardTitle className="text-lg">Tasks by {bidOriginTag.name}</CardTitle>
+                <CardDescription>Distribution of tasks based on the first custom tag category.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1084,7 +1084,7 @@ export default function DashboardPage() {
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                 {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                 {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
-                                {visibleCharts.bidOrigin && <TabsTrigger value="origin">Bid Origin</TabsTrigger>}
+                                {visibleCharts.bidOrigin && <TabsTrigger value="origin">Tag Breakdown</TabsTrigger>}
                                 {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
@@ -1144,5 +1144,7 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    
 
     
