@@ -512,10 +512,10 @@ function ImportExportCard() {
                 }
             }
             
-            // Flatten tags object into separate columns
+            // Flatten tags object into separate columns with descriptive headers
             const tags = convertedData.tags || {};
             customTagCategories.forEach((category, index) => {
-                const header = `CustomTag${index + 1}`;
+                const header = `CustomTag${index + 1}: ${category.name}`;
                 convertedData[header] = tags[category.name] || "";
             });
             delete convertedData.tags;
@@ -580,15 +580,22 @@ function ImportExportCard() {
 
                     let taskData = { ...task };
                     
-                    if (fileType === 'csv') {
+                     if (fileType === 'csv') {
                         taskData.tags = {};
-                        customTagCategories.forEach((category, index) => {
-                            const header = `CustomTag${index + 1}`;
-                            if (taskData[header]) {
-                                taskData.tags[category.name] = taskData[header];
+                        for (const header in taskData) {
+                            const match = header.match(/^(CustomTag(\d+)):/);
+                            if (match) {
+                                const tagIndex = parseInt(match[2], 10) - 1;
+                                if (customTagCategories[tagIndex]) {
+                                    const currentCategoryName = customTagCategories[tagIndex].name;
+                                    const value = taskData[header];
+                                    if (value) {
+                                        taskData.tags[currentCategoryName] = value;
+                                    }
+                                }
+                                delete taskData[header];
                             }
-                            delete taskData[header];
-                        });
+                        }
                     }
 
                     taskData.date = parseDateString(task.date);
@@ -960,11 +967,16 @@ export default function SettingsPage() {
                     changes.push({ from: originalItem.name, to: currentItem.name, type: type });
                 }
                 
-                // Recursively check for sub-status renames
                 if (type === 'Status' && originalItem && currentItem.subStatuses) {
-                    changes.push(...findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status'));
+                    const originalSubStatusMap = new Map(originalItem.subStatuses.map(sub => [sub.id, sub]));
+                    currentItem.subStatuses.forEach(currentSub => {
+                        const originalSub = originalSubStatusMap.get(currentSub.id);
+                        if (originalSub && originalSub.name !== currentSub.name) {
+                            changes.push({ from: originalSub.name, to: currentSub.name, type: 'Sub-Status' });
+                        }
+                    });
                 }
-                // Recursively check for tag renames
+
                  if (type === 'Tag Category' && originalItem && currentItem.tags) {
                      const tagChanges = findRenames(originalItem.tags, currentItem.tags, 'Tag').map(c => ({...c, category: currentItem.name}));
                      changes.push(...tagChanges);
@@ -1030,7 +1042,6 @@ export default function SettingsPage() {
                         updateData = { importance: change.to };
                         break;
                     case 'Tag Category':
-                        // This requires a different approach since we rename a key in a map
                         q = query(collection(db, "tasks"), where(`tags.${change.from}`, "!=", null));
                         break;
                     default:
@@ -1081,7 +1092,6 @@ export default function SettingsPage() {
     };
     
     const handleCancelConfirmation = async () => {
-        // Just save the settings without updating tasks
         const settingsToSave = JSON.parse(JSON.stringify(settings));
         await updateSettingsInDb(settingsToSave);
         setIsConfirmModalOpen(false);
