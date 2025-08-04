@@ -274,7 +274,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
 }
 
 const CustomizedLabel = (props) => {
-    const { x, y, width, height, value, dataKey, fill } = props;
+    const { x, y, width, height, value, dataKey, fill } => props;
     
     if (value === 0) return null;
 
@@ -434,6 +434,171 @@ function DayOfWeekCompletionChart({ tasks, onBarClick }) {
         </Card>
     );
 }
+
+function CompletionPerformanceChart({ completedTasks }) {
+    const data = useMemo(() => {
+        const stats = {
+            'On-Time': 0,
+            'Overdue': 0,
+            'No Due Date': 0,
+        };
+
+        completedTasks.forEach(task => {
+            const dueDate = toDate(task.dueDate);
+            const completionDate = toDate(task.completionDate);
+
+            if (!dueDate) {
+                stats['No Due Date']++;
+            } else if (completionDate && isAfter(completionDate, dueDate)) {
+                stats['Overdue']++;
+            } else {
+                stats['On-Time']++;
+            }
+        });
+
+        return [
+            { name: 'On-Time', value: stats['On-Time'], fill: '#22c55e' },
+            { name: 'Overdue', value: stats['Overdue'], fill: '#ef4444' },
+            { name: 'No Due Date', value: stats['No Due Date'], fill: '#d1d5db' },
+        ];
+    }, [completedTasks]);
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Completion Performance</CardTitle>
+                <CardDescription>Breakdown of how tasks are completed against their deadlines.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={data}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius="80%"
+                            label
+                        >
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Legend />
+                    </PieChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+function BidOriginChart({ allTasks, settings }) {
+    const bidOriginTagName = useMemo(() => {
+        return settings?.customTags?.find(tag => tag.name.toLowerCase().includes('bid origin'))?.name;
+    }, [settings]);
+
+    const data = useMemo(() => {
+        if (!bidOriginTagName) return [];
+
+        const counts = allTasks.reduce((acc, task) => {
+            const origin = task.tags?.[bidOriginTagName] || 'Not Set';
+            acc[origin] = (acc[origin] || 0) + 1;
+            return acc;
+        }, {});
+
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+            
+    }, [allTasks, bidOriginTagName]);
+
+    if (!bidOriginTagName) {
+        return (
+            <Card className="h-full flex flex-col items-center justify-center">
+                <CardHeader>
+                    <CardTitle>Bid Origin Chart</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Please configure a custom tag category named "Bid Origin" in settings.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Tasks by Bid Origin</CardTitle>
+                <CardDescription>Distribution of tasks from different sources.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data} layout="vertical" margin={{ left: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false}/>
+                        <YAxis type="category" dataKey="name" width={80} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="count" fill="#3b82f6" name="Task Count">
+                            <LabelList dataKey="count" position="right" className="fill-foreground" />
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+function ActiveWorkloadChart({ activeTasks, settings }) {
+     const data = useMemo(() => {
+        const counts = activeTasks.reduce((acc, task) => {
+            const importance = task.importance || 'Not Set';
+            acc[importance] = (acc[importance] || 0) + 1;
+            return acc;
+        }, {});
+         
+        const importanceOrder = ['High', 'Medium', 'Low', 'Not Set'];
+        const importanceColors = settings.importanceLevels?.reduce((acc, level) => {
+            acc[level.name] = level.color;
+            return acc;
+        }, { 'Not Set': '#d1d5db' });
+
+
+        return importanceOrder.map(name => ({
+            name,
+            count: counts[name] || 0,
+            fill: importanceColors[name]
+        }));
+            
+    }, [activeTasks, settings]);
+    
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <CardTitle className="text-lg">Active Workload by Importance</CardTitle>
+                <CardDescription>Current open tasks prioritized by importance.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                        <Bar dataKey="count" name="Active Tasks">
+                             {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                            <LabelList dataKey="count" position="top" className="fill-foreground" />
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 function FilteredTasksDisplay({ title, tasks, onClearFilter, settings }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -843,6 +1008,9 @@ export default function DashboardPage() {
         if (visibleCharts.dailyActivity) return "trend";
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         if (visibleCharts.weeklyProgress) return "weekly";
+        if (visibleCharts.completionPerformance) return "performance";
+        if (visibleCharts.bidOrigin) return "origin";
+        if (visibleCharts.activeWorkload) return "workload";
         return "";
     }, [visibleCharts]);
 
@@ -915,6 +1083,9 @@ export default function DashboardPage() {
                                 {visibleCharts.dailyActivity && <TabsTrigger value="trend">Daily Activity</TabsTrigger>}
                                 {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                 {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
+                                {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
+                                {visibleCharts.bidOrigin && <TabsTrigger value="origin">Bid Origin</TabsTrigger>}
+                                {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
@@ -934,6 +1105,21 @@ export default function DashboardPage() {
                              {visibleCharts.dayOfWeekCompletion && (
                                 <TabsContent value="dayOfWeek" className="flex-grow">
                                     <DayOfWeekCompletionChart tasks={completedTasksForCharts} onBarClick={handleSetFilter} />
+                                </TabsContent>
+                            )}
+                             {visibleCharts.completionPerformance && (
+                                <TabsContent value="performance" className="flex-grow">
+                                    <CompletionPerformanceChart completedTasks={completedTasksForCharts} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.bidOrigin && (
+                                <TabsContent value="origin" className="flex-grow">
+                                    <BidOriginChart allTasks={allTasksForCharts} settings={settings} />
+                                </TabsContent>
+                            )}
+                            {visibleCharts.activeWorkload && (
+                                <TabsContent value="workload" className="flex-grow">
+                                    <ActiveWorkloadChart activeTasks={tasksForCharts} settings={settings} />
                                 </TabsContent>
                             )}
                         </Tabs>

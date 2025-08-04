@@ -746,6 +746,9 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
         { key: 'weeklyProgress', label: 'Weekly Progress' },
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
+        { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
+        { key: 'bidOrigin', label: 'Breakdown by Bid Origin' },
+        { key: 'activeWorkload', label: 'Active Workload by Importance' },
     ];
 
     const statConfig = [
