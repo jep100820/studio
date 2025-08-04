@@ -981,7 +981,8 @@ export default function SettingsPage() {
                         data.dashboardSettings.defaultCustomTagChartId1 = data.customTags[0].id;
                     }
                     if (!data.dashboardSettings.hasOwnProperty('defaultCustomTagChartId2')) {
-                        data.dashboardSettings.defaultCustomTagChartId2 = data.customTags[0].id;
+                        // Default to the second tag if it exists, otherwise fall back to the first.
+                        data.dashboardSettings.defaultCustomTagChartId2 = data.customTags.length > 1 ? data.customTags[1].id : data.customTags[0].id;
                     }
                  }
 
@@ -1055,7 +1056,7 @@ export default function SettingsPage() {
             settings.customTags?.length > 0 &&
             !settings.dashboardSettings.defaultCustomTagChartId2
         ) {
-            settings.dashboardSettings.defaultCustomTagChartId2 = settings.customTags[0].id;
+            settings.dashboardSettings.defaultCustomTagChartId2 = settings.customTags.length > 1 ? settings.customTags[1].id : settings.customTags[0].id;
         }
 
         const findRenames = (originalItems, currentItems, type) => {
