@@ -313,7 +313,7 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        const updatedSettings = { customTags: newCustomTags };
+        const updatedSettings = { ...settings, customTags: newCustomTags };
 
         // If the deleted tag was the default, reset the default
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
@@ -686,7 +686,7 @@ function ImportExportCard() {
 
 function GeneralSettingsCard({ settings, onUpdate }) {
     const handleSwitchChange = (fieldName, checked) => {
-        onUpdate({ [fieldName]: checked });
+        onUpdate({ ...settings, [fieldName]: checked });
     };
     
     const handleWorkWeekChange = (day, checked) => {
@@ -697,7 +697,7 @@ function GeneralSettingsCard({ settings, onUpdate }) {
         } else {
             newWeek = currentWeek.filter(d => d !== day);
         }
-        onUpdate({ workWeek: newWeek });
+        onUpdate({ ...settings, workWeek: newWeek });
     }
     
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -742,23 +742,28 @@ function GeneralSettingsCard({ settings, onUpdate }) {
 }
 
 function DashboardSettingsCard({ settings, onUpdate }) {
+    const dashboardSettings = settings?.dashboardSettings || { charts: {}, stats: {} };
+    const customTags = settings?.customTags || [];
+
     const handleChartVisibilityChange = (chartName, checked) => {
-        const newCharts = { ...settings.dashboardSettings.charts, [chartName]: checked };
-        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, charts: newCharts } });
+        const newCharts = { ...dashboardSettings.charts, [chartName]: checked };
+        onUpdate({ ...settings, dashboardSettings: { ...dashboardSettings, charts: newCharts } });
     };
 
     const handleStatVisibilityChange = (statName, checked) => {
-        const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
-        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
+        const newStats = { ...dashboardSettings.stats, [statName]: checked };
+        onUpdate({ ...settings, dashboardSettings: { ...dashboardSettings, stats: newStats } });
     };
     
     const handleDefaultTagChange = (e) => {
         const { value } = e.target;
-        const newDashboardSettings = { 
-            ...settings.dashboardSettings,
-            defaultCustomTagId: value 
-        };
-        onUpdate({ dashboardSettings: newDashboardSettings });
+        onUpdate({ 
+            ...settings,
+            dashboardSettings: { 
+                ...dashboardSettings,
+                defaultCustomTagId: value 
+            }
+        });
     };
 
     const chartConfig = [
@@ -786,9 +791,8 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         { key: 'avgSubStatusChanges', label: 'Avg. Sub-status Changes' },
     ];
 
-    const chartSettings = settings?.dashboardSettings?.charts || {};
-    const statSettings = settings?.dashboardSettings?.stats || {};
-    const customTags = settings?.customTags || [];
+    const chartSettings = dashboardSettings.charts || {};
+    const statSettings = dashboardSettings.stats || {};
 
     return (
         <CardContent className="space-y-6">
@@ -807,7 +811,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                                 </div>
                                 {isCustomTagChart && isVisible && customTags.length > 0 && (
                                      <select
-                                        value={settings.dashboardSettings?.defaultCustomTagId || ''}
+                                        value={dashboardSettings?.defaultCustomTagId || ''}
                                         onChange={handleDefaultTagChange}
                                         className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
                                     >
@@ -877,12 +881,11 @@ function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes, is
 }
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState(null); // Local, editable settings
-    const [originalSettings, setOriginalSettings] = useState(null); // Settings from Firestore
+    const [settings, setSettings] = useState(null);
+    const [originalSettings, setOriginalSettings] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
     const { theme, setTheme } = useTheme();
-    const router = useRouter();
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [isUpdatingTasks, setIsUpdatingTasks] = useState(false);
     const [renameChanges, setRenameChanges] = useState([]);
@@ -892,26 +895,61 @@ export default function SettingsPage() {
         nextIdCounter.current += 1;
         return `${prefix}-${nextIdCounter.current}`;
     };
+    
+    const cleanseIdsForSave = (data) => {
+        if (!data) return null;
+        const cleansedData = JSON.parse(JSON.stringify(data));
+        
+        // --- Start Validation ---
+        if (
+            cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
+            cleansedData.customTags?.length > 0
+        ) {
+            const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
+            if (!validTag) {
+                cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
+            }
+        } else if (!cleansedData.customTags || cleansedData.customTags.length === 0) {
+            if (cleansedData.dashboardSettings) {
+                cleansedData.dashboardSettings.defaultCustomTagId = '';
+            }
+        }
+        // --- End Validation ---
+
+        const walker = (obj) => {
+            if (Array.isArray(obj)) {
+                obj.forEach(walker);
+            } else if (obj && typeof obj === 'object') {
+                delete obj.id;
+                delete obj.isExpanded;
+                Object.values(obj).forEach(walker);
+            }
+        };
+        walker(cleansedData);
+        return cleansedData;
+    };
 
     const addIdsToData = (data) => {
-        if (data.workflowCategories) {
-            data.workflowCategories = data.workflowCategories.map(cat => ({
+        const dataCopy = JSON.parse(JSON.stringify(data)); // Deep copy to avoid mutation
+        if (dataCopy.workflowCategories) {
+            dataCopy.workflowCategories = dataCopy.workflowCategories.map(cat => ({
                 ...cat,
                 id: cat.id || getNextId('cat'),
+                isExpanded: false,
                 subStatuses: (cat.subStatuses || []).map(sub => ({ ...sub, id: sub.id || getNextId('sub') }))
             }));
         }
-        if (data.importanceLevels) {
-            data.importanceLevels = data.importanceLevels.map(imp => ({ ...imp, id: imp.id || getNextId('imp') }));
+        if (dataCopy.importanceLevels) {
+            dataCopy.importanceLevels = dataCopy.importanceLevels.map(imp => ({ ...imp, id: imp.id || getNextId('imp') }));
         }
-        if (data.customTags) {
-            data.customTags = data.customTags.map(tag => ({
+        if (dataCopy.customTags) {
+            dataCopy.customTags = dataCopy.customTags.map(tag => ({
                 ...tag,
                 id: tag.id || getNextId('tag'),
                 tags: (tag.tags || []).map(subTag => ({ ...subTag, id: subTag.id || getNextId('subtag') }))
             }));
         }
-        return data;
+        return dataCopy;
     };
 
 
@@ -922,26 +960,21 @@ export default function SettingsPage() {
                 let data = doc.data();
                 let needsUpdateInDb = false;
 
-                if (data.workflowCategories) {
-                    data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
-                }
+                // --- Default and migration logic ---
                 if (!data.hasOwnProperty('enableTimeTracking')) data.enableTimeTracking = false;
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
                         charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, customTagBreakdown: true, activeWorkload: true },
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
+                        defaultCustomTagId: '',
                     };
                 }
-                if (!data.hasOwnProperty('customTags')) data.customTags = [];
+                 if (!data.hasOwnProperty('customTags')) data.customTags = [];
                 
                 const dataWithIds = addIdsToData(data);
                 
-                if (
-                    dataWithIds.dashboardSettings?.charts?.customTagBreakdown &&
-                    dataWithIds.customTags?.length > 0 &&
-                    !dataWithIds.dashboardSettings.defaultCustomTagId
-                ) {
+                if (dataWithIds.dashboardSettings?.charts?.customTagBreakdown && dataWithIds.customTags?.length > 0 && !dataWithIds.dashboardSettings.defaultCustomTagId) {
                     dataWithIds.dashboardSettings.defaultCustomTagId = dataWithIds.customTags[0].id;
                     needsUpdateInDb = true;
                 }
@@ -956,42 +989,23 @@ export default function SettingsPage() {
             }
             setIsLoading(false);
         });
-
         return () => unsubscribe();
     }, []);
     
     useEffect(() => {
         if (settings && originalSettings) {
-            const cleanSettings = JSON.parse(JSON.stringify(settings));
-            const cleanOriginalSettings = JSON.parse(JSON.stringify(originalSettings));
-
-            if (cleanSettings.workflowCategories) {
-                cleanSettings.workflowCategories.forEach(cat => delete cat.isExpanded);
-            }
-            if (cleanOriginalSettings.workflowCategories) {
-                cleanOriginalSettings.workflowCategories.forEach(cat => delete cat.isExpanded);
-            }
-            setIsDirty(!isEqual(cleanSettings, cleanOriginalSettings));
+            const cleanSettings = cleanseIdsForSave(settings);
+            const cleanOriginal = cleanseIdsForSave(originalSettings);
+            setIsDirty(!isEqual(cleanSettings, cleanOriginal));
         }
     }, [settings, originalSettings]);
 
+    // A single, unified update handler
     const handleSettingsUpdate = (updates) => {
-        setSettings(prev => {
-            // A smarter merge for nested objects like dashboardSettings
-            const newSettings = { ...prev };
-            for (const key in updates) {
-                if (key === 'dashboardSettings' && typeof updates[key] === 'object' && !Array.isArray(updates[key])) {
-                     newSettings[key] = { ...prev[key], ...updates[key] };
-                } else {
-                    newSettings[key] = updates[key];
-                }
-            }
-            return newSettings;
-        });
+        setSettings(prev => ({ ...prev, ...updates }));
     };
     
     const handleAddNewItem = (fieldName) => {
-        if (!settings) return;
         const currentItems = settings[fieldName] || [];
         
         let i = 1;
@@ -1010,40 +1024,9 @@ export default function SettingsPage() {
             newItem.color = '#cccccc';
         }
 
-        const newItems = [...currentItems, newItem];
-        handleSettingsUpdate({ [fieldName]: newItems });
+        handleSettingsUpdate({ [fieldName]: [...currentItems, newItem] });
     };
 
-    const cleanseIdsForSave = (data) => {
-        const cleansedData = JSON.parse(JSON.stringify(data));
-        
-        // --- Start Validation ---
-        if (
-            cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
-            cleansedData.customTags?.length > 0
-        ) {
-            const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
-            if (!validTag) {
-                cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
-            }
-        } else if (!cleansedData.customTags || cleansedData.customTags.length === 0) {
-            cleansedData.dashboardSettings.defaultCustomTagId = '';
-        }
-        // --- End Validation ---
-
-        const walker = (obj) => {
-            if (Array.isArray(obj)) {
-                obj.forEach(walker);
-            } else if (obj && typeof obj === 'object') {
-                delete obj.id;
-                delete obj.isExpanded;
-                Object.values(obj).forEach(walker);
-            }
-        };
-        walker(cleansedData);
-        return cleansedData;
-    };
-    
     const updateSettingsInDb = async (settingsToSave) => {
         const settingsRef = doc(db, 'settings', 'workflow');
         const finalData = cleanseIdsForSave(settingsToSave);
