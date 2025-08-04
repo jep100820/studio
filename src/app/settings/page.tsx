@@ -911,7 +911,10 @@ export default function SettingsPage() {
         const unsubscribe = onSnapshot(settingsRef, (doc) => {
             if (doc.exists()) {
                 let data = doc.data();
-                 if (data.workflowCategories) {
+                let needsUpdateInDb = false; // Flag to check if we need to write back
+
+                // --- Default and migration logic ---
+                if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
                 }
                 if (!data.hasOwnProperty('enableTimeTracking')) data.enableTimeTracking = false;
@@ -922,18 +925,45 @@ export default function SettingsPage() {
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                     };
                 }
-                 if (!data.hasOwnProperty('customTags')) data.customTags = [];
+                if (!data.hasOwnProperty('customTags')) data.customTags = [];
                 
                 const dataWithIds = addIdsToData(data);
                 
-                // Ensure defaultCustomTagId is set if needed
-                if (dataWithIds.dashboardSettings?.charts?.customTagBreakdown && dataWithIds.customTags?.length > 0 && !dataWithIds.dashboardSettings.defaultCustomTagId) {
+                // --- THIS IS THE CRITICAL FIX ---
+                // If the setting is missing, set it and prepare to update the database
+                if (
+                    dataWithIds.dashboardSettings?.charts?.customTagBreakdown &&
+                    dataWithIds.customTags?.length > 0 &&
+                    !dataWithIds.dashboardSettings.defaultCustomTagId
+                ) {
                     dataWithIds.dashboardSettings.defaultCustomTagId = dataWithIds.customTags[0].id;
+                    needsUpdateInDb = true; // Mark that we need to save this change
                 }
 
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
                 setOriginalSettings(JSON.parse(JSON.stringify(dataWithIds)));
+
+                // If we added a default ID, write it back to Firestore immediately
+                if (needsUpdateInDb) {
+                    // We call a function to update the DB without the temporary 'id' fields
+                    // This avoids the race condition entirely.
+                    const cleanseIds = (dataToCleanse) => {
+                        const cleansedData = JSON.parse(JSON.stringify(dataToCleanse));
+                        const walker = (obj) => {
+                            if (Array.isArray(obj)) {
+                                obj.forEach(walker);
+                            } else if (obj && typeof obj === 'object') {
+                                delete obj.id;
+                                delete obj.isExpanded;
+                                Object.values(obj).forEach(walker);
+                            }
+                        };
+                        walker(cleansedData);
+                        return cleansedData;
+                    };
+                    updateDoc(settingsRef, cleanseIds(dataWithIds));
+                }
             }
             setIsLoading(false);
         });
@@ -1000,21 +1030,23 @@ export default function SettingsPage() {
             const changes = [];
             if (!original || !current) return changes;
         
-            const originalMap = new Map(original.map(item => [item.id, item]));
+            const originalMap = new Map(original.map(item => [item.id, item.name]));
             
             current.forEach(currentItem => {
-                const originalItem = originalMap.get(currentItem.id);
-                if (originalItem && originalItem.name !== currentItem.name) {
-                    changes.push({ from: originalItem.name, to: currentItem.name, type: type, parent: parentName });
+                const originalItemName = originalMap.get(currentItem.id);
+                if (originalItemName && originalItemName !== currentItem.name) {
+                    changes.push({ from: originalItemName, to: currentItem.name, type: type, parent: parentName });
                 }
                 
-                if (type === 'Status' && originalItem && currentItem.subStatuses) {
-                     const subStatusChanges = findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status', currentItem.name);
+                if (type === 'Status' && currentItem.subStatuses && originalSettings.workflowCategories.find(c => c.id === currentItem.id)?.subStatuses) {
+                     const originalSubStatuses = originalSettings.workflowCategories.find(c => c.id === currentItem.id).subStatuses;
+                     const subStatusChanges = findRenames(originalSubStatuses, currentItem.subStatuses, 'Sub-Status', currentItem.name);
                      changes.push(...subStatusChanges);
                 }
 
-                 if (type === 'Tag Category' && originalItem && currentItem.tags) {
-                     const tagChanges = findRenames(originalItem.tags, currentItem.tags, 'Tag', currentItem.name);
+                 if (type === 'Tag Category' && currentItem.tags && originalSettings.customTags.find(t => t.id === currentItem.id)?.tags) {
+                    const originalTags = originalSettings.customTags.find(t => t.id === currentItem.id).tags;
+                     const tagChanges = findRenames(originalTags, currentItem.tags, 'Tag', currentItem.name);
                      changes.push(...tagChanges);
                 }
             });
