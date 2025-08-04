@@ -185,21 +185,6 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
               <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
           </div>
           
-          {!isExpanded && (
-            <div className="mt-2 space-y-1 text-xs opacity-80">
-                {(task.desc) && (
-                    <p className="truncate">
-                        <span className="font-semibold">Desc:</span> {task.desc}
-                    </p>
-                )}
-                {(task.remarks) && (
-                    <p className="truncate">
-                        <span className="font-semibold">Remarks:</span> {task.remarks}
-                    </p>
-                )}
-            </div>
-          )}
-
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
             {importance && (
