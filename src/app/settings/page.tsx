@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -228,39 +229,49 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
     const handleDragEnd = (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = items.findIndex(item => item.id === active.id);
-            const newIndex = items.findIndex(item => item.id === over.id);
-            const newItems = arrayMove(items, oldIndex, newIndex);
-            onUpdate({ [fieldName]: newItems });
+            onUpdate(prev => {
+                const oldIndex = prev[fieldName].findIndex(item => item.id === active.id);
+                const newIndex = prev[fieldName].findIndex(item => item.id === over.id);
+                const newItems = arrayMove(prev[fieldName], oldIndex, newIndex);
+                return { ...prev, [fieldName]: newItems };
+            });
         }
     };
     
     const handleItemUpdate = (itemId, newItem) => {
-        const newItems = items.map(item => (item.id === itemId ? newItem : item));
-        onUpdate({ [fieldName]: newItems });
-    }
+        onUpdate(prev => {
+            const newItems = prev[fieldName].map(item => (item.id === itemId ? newItem : item));
+            return { ...prev, [fieldName]: newItems };
+        });
+    };
     
     const handleSubStatusUpdate = (parentItemId, newSubStatuses) => {
-        const newItems = items.map(item =>
-            item.id === parentItemId
-                ? { ...item, subStatuses: newSubStatuses }
-                : item
-        );
-        onUpdate({ [fieldName]: newItems });
+        onUpdate(prev => {
+            const newItems = prev[fieldName].map(item =>
+                item.id === parentItemId
+                    ? { ...item, subStatuses: newSubStatuses }
+                    : item
+            );
+            return { ...prev, [fieldName]: newItems };
+        });
     };
 
     const handleToggleExpand = (itemId) => {
-        const newItems = items.map(item =>
-            item.id === itemId
-                ? { ...item, isExpanded: !item.isExpanded }
-                : item
-        );
-        onUpdate({ [fieldName]: newItems });
-    }
+        onUpdate(prev => {
+            const newItems = prev[fieldName].map(item =>
+                item.id === itemId
+                    ? { ...item, isExpanded: !item.isExpanded }
+                    : item
+            );
+            return { ...prev, [fieldName]: newItems };
+        });
+    };
     
     const handleRemoveItem = (itemId) => {
-        const newItems = items.filter((item) => item.id !== itemId);
-        onUpdate({ [fieldName]: newItems });
+        onUpdate(prev => {
+            const newItems = prev[fieldName].filter((item) => item.id !== itemId);
+            return { ...prev, [fieldName]: newItems };
+        });
     };
 
     const itemIds = useMemo(() => displayedItems?.map(it => it.id) || [], [displayedItems]);
@@ -301,77 +312,90 @@ function CustomTagsSection({ settings, onUpdate }) {
 
     const handleAddMainTag = () => {
         if (customTags.length >= 4) return;
-        const newMainTag = {
-            id: `tagcat-${Date.now()}`,
-            name: `New Tag Category ${customTags.length + 1}`,
-            tags: [],
-        };
-        onUpdate({ customTags: [...customTags, newMainTag] });
+        onUpdate(prev => {
+            const newMainTag = {
+                id: `tagcat-${Date.now()}`,
+                name: `New Tag Category ${prev.customTags.length + 1}`,
+                tags: [],
+            };
+            return { ...prev, customTags: [...prev.customTags, newMainTag] };
+        });
     };
 
     const handleRemoveMainTag = (idToRemove) => {
-        const newCustomTags = customTags.filter((t) => t.id !== idToRemove);
-        const updatedSettings = { customTags: newCustomTags };
-        
-        // Also remove the chart setting for the deleted tag
-        const newChartSettings = { ...settings.dashboardSettings.charts };
-        delete newChartSettings[`customTag_${idToRemove}`];
-        updatedSettings.dashboardSettings = {
-            ...settings.dashboardSettings,
-            charts: newChartSettings,
-        };
-
-        onUpdate(updatedSettings);
+        onUpdate(prev => {
+            const newCustomTags = prev.customTags.filter((t) => t.id !== idToRemove);
+            const newSettings = { ...prev, customTags: newCustomTags };
+            
+            const newChartSettings = { ...prev.dashboardSettings.charts };
+            delete newChartSettings[`customTag_${idToRemove}`];
+            newSettings.dashboardSettings = {
+                ...prev.dashboardSettings,
+                charts: newChartSettings,
+            };
+    
+            return newSettings;
+        });
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
-        const newCustomTags = customTags.map(t => t.id === id ? updatedMainTag : t);
-        onUpdate({ customTags: newCustomTags });
+        onUpdate(prev => {
+            const newCustomTags = prev.customTags.map(t => t.id === id ? updatedMainTag : t);
+            return { ...prev, customTags: newCustomTags };
+        });
     };
 
     const handleAddSubTag = (mainId) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId && tag.tags.length < 10) {
-                const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
-                return { ...tag, tags: [...tag.tags, newSubTag] };
-            }
-            return tag;
+        onUpdate(prev => {
+            const newCustomTags = prev.customTags.map(tag => {
+                if (tag.id === mainId && tag.tags.length < 10) {
+                    const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
+                    return { ...tag, tags: [...tag.tags, newSubTag] };
+                }
+                return tag;
+            });
+            return { ...prev, customTags: newCustomTags };
         });
-        onUpdate({ customTags: newCustomTags });
     };
 
     const handleRemoveSubTag = (mainId, subId) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId) {
-                return { ...tag, tags: tag.tags.filter(st => st.id !== subId) };
-            }
-            return tag;
+        onUpdate(prev => {
+            const newCustomTags = prev.customTags.map(tag => {
+                if (tag.id === mainId) {
+                    return { ...tag, tags: tag.tags.filter(st => st.id !== subId) };
+                }
+                return tag;
+            });
+            return { ...prev, customTags: newCustomTags };
         });
-        onUpdate({ customTags: newCustomTags });
     };
 
     const handleSubTagUpdate = (mainId, subId, updatedSubTag) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId) {
-                return { ...tag, tags: tag.tags.map(st => st.id === subId ? updatedSubTag : st) };
-            }
-            return tag;
+        onUpdate(prev => {
+            const newCustomTags = prev.customTags.map(tag => {
+                if (tag.id === mainId) {
+                    return { ...tag, tags: tag.tags.map(st => st.id === subId ? updatedSubTag : st) };
+                }
+                return tag;
+            });
+            return { ...prev, customTags: newCustomTags };
         });
-        onUpdate({ customTags: newCustomTags });
     };
     
     const handleDragEnd = (event, mainTagId) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const newCustomTags = [...customTags];
-            const mainTagIndex = newCustomTags.findIndex(t => t.id === mainTagId);
-            if (mainTagIndex === -1) return;
-            
-            const oldIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === active.id);
-            const newIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
-            newCustomTags[mainTagIndex].tags = arrayMove(newCustomTags[mainTagIndex].tags, oldIndex, newIndex);
-            
-            onUpdate({ customTags: newCustomTags });
+            onUpdate(prev => {
+                const newCustomTags = [...prev.customTags];
+                const mainTagIndex = newCustomTags.findIndex(t => t.id === mainTagId);
+                if (mainTagIndex === -1) return prev;
+                
+                const oldIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === active.id);
+                const newIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
+                newCustomTags[mainTagIndex].tags = arrayMove(newCustomTags[mainTagIndex].tags, oldIndex, newIndex);
+                
+                return { ...prev, customTags: newCustomTags };
+            });
         }
     };
     
@@ -428,18 +452,20 @@ function CustomTagsSection({ settings, onUpdate }) {
 
 function GeneralSettingsCard({ settings, onUpdate }) {
     const handleSwitchChange = (fieldName, checked) => {
-        onUpdate({ [fieldName]: checked });
+        onUpdate(prev => ({ ...prev, [fieldName]: checked }));
     };
     
     const handleWorkWeekChange = (day, checked) => {
-        const currentWeek = settings.workWeek || [];
-        let newWeek;
-        if (checked) {
-            newWeek = [...currentWeek, day];
-        } else {
-            newWeek = currentWeek.filter(d => d !== day);
-        }
-        onUpdate({ workWeek: newWeek });
+        onUpdate(prev => {
+            const currentWeek = prev.workWeek || [];
+            let newWeek;
+            if (checked) {
+                newWeek = [...currentWeek, day];
+            } else {
+                newWeek = currentWeek.filter(d => d !== day);
+            }
+            return { ...prev, workWeek: newWeek };
+        });
     }
     
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -485,13 +511,29 @@ function GeneralSettingsCard({ settings, onUpdate }) {
 
 function DashboardSettingsCard({ settings, onUpdate }) {
     const handleChartVisibilityChange = (chartName, checked) => {
-        const newCharts = { ...settings.dashboardSettings.charts, [chartName]: checked };
-        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, charts: newCharts } });
+        onUpdate(prev => {
+            const newCharts = { ...prev.dashboardSettings.charts, [chartName]: checked };
+            return {
+                ...prev,
+                dashboardSettings: {
+                    ...prev.dashboardSettings,
+                    charts: newCharts,
+                },
+            };
+        });
     };
 
     const handleStatVisibilityChange = (statName, checked) => {
-        const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
-        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
+        onUpdate(prev => {
+            const newStats = { ...prev.dashboardSettings.stats, [statName]: checked };
+            return {
+                ...prev,
+                dashboardSettings: {
+                    ...prev.dashboardSettings,
+                    stats: newStats,
+                },
+            };
+        });
     };
 
     const chartConfig = [
@@ -963,31 +1005,33 @@ export default function SettingsPage() {
         }
     }, [settings, originalSettings]);
 
-    // The single, unified update handler
-    const handleSettingsUpdate = (updates) => {
-        setSettings(prev => ({ ...prev, ...updates }));
+    // The single, unified update handler that accepts a function
+    const handleSettingsUpdate = (updater) => {
+        setSettings(updater);
     };
     
     const handleAddNewItem = (fieldName) => {
-        const currentItems = settings[fieldName] || [];
-        
-        let i = 1;
-        let newItemName = 'New Item';
-        while (currentItems.some(item => item.name === newItemName)) {
-            newItemName = `New Item ${i++}`;
-        }
-        
-        let newItem = { id: getNextId(fieldName), name: newItemName };
-
-        if(fieldName === 'workflowCategories') {
-            newItem.color = '#cccccc';
-            newItem.subStatuses = [];
-            newItem.isExpanded = false;
-        } else if (fieldName === 'importanceLevels') {
-            newItem.color = '#cccccc';
-        }
-
-        handleSettingsUpdate({ [fieldName]: [...currentItems, newItem] });
+        handleSettingsUpdate(prev => {
+            const currentItems = prev[fieldName] || [];
+            
+            let i = 1;
+            let newItemName = 'New Item';
+            while (currentItems.some(item => item.name === newItemName)) {
+                newItemName = `New Item ${i++}`;
+            }
+            
+            let newItem = { id: getNextId(fieldName), name: newItemName };
+    
+            if(fieldName === 'workflowCategories') {
+                newItem.color = '#cccccc';
+                newItem.subStatuses = [];
+                newItem.isExpanded = false;
+            } else if (fieldName === 'importanceLevels') {
+                newItem.color = '#cccccc';
+            }
+    
+            return { ...prev, [fieldName]: [...currentItems, newItem] };
+        });
     };
 
     const updateSettingsInDb = async (settingsToSave) => {
