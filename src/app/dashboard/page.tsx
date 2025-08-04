@@ -274,7 +274,7 @@ function DailyActivityChart({ allTasks, startDate, endDate }) {
 }
 
 const CustomizedLabel = (props) => {
-    const { x, y, width, height, value, dataKey, fill } => props;
+    const { x, y, width, height, value, dataKey, fill } = props;
     
     if (value === 0) return null;
 
@@ -1144,3 +1144,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    
