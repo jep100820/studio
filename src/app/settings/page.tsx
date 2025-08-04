@@ -606,7 +606,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -830,7 +830,7 @@ function ImportExportCard() {
     );
 }
 
-function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes, isUpdating }) {
+function UpdateTasksDialog({ isOpen, onClose, onConfirm, changes, isUpdating }) {
     if (!isOpen) return null;
 
     return (
@@ -1240,7 +1240,7 @@ export default function SettingsPage() {
                     </div>
                 </main>
             </div>
-            <UpdateTasksConfirmationDialog
+            <UpdateTasksDialog
                 isOpen={isConfirmModalOpen}
                 onClose={handleCancelConfirmation}
                 onConfirm={handleConfirmUpdate}
