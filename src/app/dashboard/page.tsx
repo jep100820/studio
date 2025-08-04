@@ -1001,17 +1001,6 @@ export default function DashboardPage() {
         return settings.dashboardSettings.charts;
     }, [settings]);
 
-    const defaultTab = useMemo(() => {
-        if (visibleCharts.taskStatus) return "status";
-        if (visibleCharts.dailyActivity) return "trend";
-        if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
-        if (visibleCharts.weeklyProgress) return "weekly";
-        if (visibleCharts.completionPerformance) return "performance";
-        if (visibleCharts.customTagBreakdown) return "origin";
-        if (visibleCharts.activeWorkload) return "workload";
-        return "";
-    }, [visibleCharts]);
-    
     const selectedTagCategory = useMemo(() => {
         if (!settings?.customTags || settings.customTags.length === 0) {
             return null; // No custom tags exist
@@ -1026,6 +1015,17 @@ export default function DashboardPage() {
         // --- NEW: Fallback to the first custom tag if no default is set ---
         return settings.customTags[0];
     }, [settings]);
+
+    const defaultTab = useMemo(() => {
+        if (visibleCharts.taskStatus) return "status";
+        if (visibleCharts.dailyActivity) return "trend";
+        if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
+        if (visibleCharts.weeklyProgress) return "weekly";
+        if (visibleCharts.completionPerformance) return "performance";
+        if (visibleCharts.customTagBreakdown) return "origin";
+        if (visibleCharts.activeWorkload) return "workload";
+        return "";
+    }, [visibleCharts]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -1098,7 +1098,11 @@ export default function DashboardPage() {
                                     {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                     {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                     {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
-                                    {visibleCharts.customTagBreakdown && <TabsTrigger value="origin">Tag Breakdown</TabsTrigger>}
+                                    {visibleCharts.customTagBreakdown && (
+                                        <TabsTrigger value="origin">
+                                            {selectedTagCategory ? `By: ${selectedTagCategory.name}` : 'Tag Breakdown'}
+                                        </TabsTrigger>
+                                    )}
                                     {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                                 </TabsList>
                             </div>
