@@ -499,24 +499,26 @@ function ImportExportCard() {
         
         const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
         const settings = settingsDoc.data();
-        const customTagKeys = settings.customTags?.map(t => t.name) || [];
+        const customTagCategories = settings.customTags || [];
 
         const tasksToExport = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            const convertedData = { ...data };
+            let convertedData = { ...data };
+            
             // Convert Timestamps to ISO strings
             for (const key in convertedData) {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
             }
-            // Flatten tags object into separate columns for CSV
-            if (convertedData.tags) {
-                for(const tagName of customTagKeys) {
-                    convertedData[tagName] = convertedData.tags[tagName] || "";
-                }
-                delete convertedData.tags;
-            }
+            
+            // Flatten tags object into separate columns
+            const tags = convertedData.tags || {};
+            customTagCategories.forEach((category, index) => {
+                const header = `CustomTag${index + 1}`;
+                convertedData[header] = tags[category.name] || "";
+            });
+            delete convertedData.tags;
 
             return convertedData;
         });
@@ -568,7 +570,7 @@ function ImportExportCard() {
 
                 const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
                 const settings = settingsDoc.data();
-                const customTagKeys = settings.customTags?.map(t => t.name) || [];
+                const customTagCategories = settings.customTags || [];
 
                 let batch = writeBatch(db);
                 let operationCount = 0;
@@ -576,18 +578,17 @@ function ImportExportCard() {
                 for (const task of importedTasks) {
                     if (!task.taskid) continue;
 
-                    const taskData = { ...task };
+                    let taskData = { ...task };
                     
                     if (fileType === 'csv') {
                         taskData.tags = {};
-                        for (const key in taskData) {
-                            if (customTagKeys.includes(key)) {
-                                if (taskData[key]) {
-                                   taskData.tags[key] = taskData[key];
-                                }
-                                delete taskData[key];
+                        customTagCategories.forEach((category, index) => {
+                            const header = `CustomTag${index + 1}`;
+                            if (taskData[header]) {
+                                taskData.tags[category.name] = taskData[header];
                             }
-                        }
+                            delete taskData[header];
+                        });
                     }
 
                     taskData.date = parseDateString(task.date);
