@@ -742,14 +742,18 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
     };
 
+    const handleDefaultTagChange = (tagId) => {
+        onUpdate('dashboardSettings', { ...settings.dashboardSettings, defaultCustomTagId: tagId });
+    };
+
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
         { key: 'weeklyProgress', label: 'Weekly Progress' },
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
         { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
-        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
         { key: 'activeWorkload', label: 'Active Workload by Importance' },
+        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
     ];
 
     const statConfig = [
@@ -769,17 +773,29 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
+    const customTags = settings?.customTags || [];
 
     return (
         <CardContent className="space-y-6">
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
                 <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-2">
                     {chartConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
                             <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
                             <Label htmlFor={`chart-${key}`}>{label}</Label>
+                            {key === 'customTagBreakdown' && chartSettings[key] && customTags.length > 0 && (
+                                <select
+                                    value={settings.dashboardSettings.defaultCustomTagId || ''}
+                                    onChange={(e) => handleDefaultTagChange(e.target.value)}
+                                    className="ml-auto w-1/2 border rounded px-2 py-1 bg-input text-xs"
+                                >
+                                    {customTags.map(tag => (
+                                        <option key={tag.id} value={tag.id}>{tag.name}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -894,6 +910,12 @@ export default function SettingsPage() {
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
                 
                 const dataWithIds = addIdsToData(data);
+                
+                // Ensure defaultCustomTagId is set if needed
+                if (dataWithIds.dashboardSettings?.charts?.customTagBreakdown && dataWithIds.customTags?.length > 0 && !dataWithIds.dashboardSettings.defaultCustomTagId) {
+                    dataWithIds.dashboardSettings.defaultCustomTagId = dataWithIds.customTags[0].id;
+                }
+
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
                 setOriginalSettings(JSON.parse(JSON.stringify(dataWithIds)));

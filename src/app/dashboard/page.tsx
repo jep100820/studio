@@ -849,7 +849,6 @@ export default function DashboardPage() {
     const [dateRange, setDateRange] = useState({ from: null, to: null });
     const [filterScope, setFilterScope] = useState({ charts: true, stats: true });
     const [activeFilter, setActiveFilter] = useState(null);
-    const [selectedTagCategoryId, setSelectedTagCategoryId] = useState(null);
 
 
     useEffect(() => {
@@ -857,9 +856,6 @@ export default function DashboardPage() {
             if (doc.exists()) {
                 const settingsData = doc.data();
                 setSettings(settingsData);
-                if (settingsData?.customTags?.length > 0 && !selectedTagCategoryId) {
-                    setSelectedTagCategoryId(settingsData.customTags[0].id);
-                }
             }
         });
 
@@ -890,7 +886,7 @@ export default function DashboardPage() {
             unsubscribe();
             settingsUnsub();
         }
-    }, [selectedTagCategoryId]);
+    }, []);
 
     const { activeTasks, completedTasks } = useMemo(() => {
         const active = allTasks.filter(task => task.status !== 'Completed');
@@ -1017,9 +1013,9 @@ export default function DashboardPage() {
     }, [visibleCharts]);
     
     const selectedTagCategory = useMemo(() => {
-        if (!settings?.customTags || !selectedTagCategoryId) return null;
-        return settings.customTags.find(tag => tag.id === selectedTagCategoryId);
-    }, [settings?.customTags, selectedTagCategoryId]);
+        if (!settings?.customTags || !settings?.dashboardSettings?.defaultCustomTagId) return null;
+        return settings.customTags.find(tag => tag.id === settings.dashboardSettings.defaultCustomTagId);
+    }, [settings]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -1095,19 +1091,6 @@ export default function DashboardPage() {
                                     {visibleCharts.customTagBreakdown && <TabsTrigger value="origin">Tag Breakdown</TabsTrigger>}
                                     {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                                 </TabsList>
-                                 {settings?.customTags?.length > 0 && visibleCharts.customTagBreakdown && (
-                                    <div className="space-y-1">
-                                        <select
-                                            value={selectedTagCategoryId || ''}
-                                            onChange={(e) => setSelectedTagCategoryId(e.target.value)}
-                                            className="w-full border rounded px-2 py-2.5 bg-input text-sm h-10"
-                                        >
-                                            {settings.customTags.map(tag => (
-                                                <option key={tag.id} value={tag.id}>{tag.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
                             </div>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
