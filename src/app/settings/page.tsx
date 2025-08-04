@@ -298,7 +298,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
     );
 }
 
-function CustomTagsSection({ settings, onUpdate }) {
+function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
     const customTags = settings.customTags || [];
 
     const handleAddMainTag = () => {
@@ -314,6 +314,15 @@ function CustomTagsSection({ settings, onUpdate }) {
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
         onUpdate('customTags', newCustomTags);
+
+        // If the deleted tag was the default, update the dashboard setting
+        if (settings.dashboardSettings?.defaultCustomTagId === id) {
+            const newDashboardSettings = {
+                ...settings.dashboardSettings,
+                defaultCustomTagId: newCustomTags.length > 0 ? newCustomTags[0].id : '',
+            };
+            onSettingsUpdate('dashboardSettings', newDashboardSettings);
+        }
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
@@ -1080,6 +1089,17 @@ export default function SettingsPage() {
                     Object.values(obj).forEach(walker);
                 }
             };
+            
+            // Validate defaultCustomTagId before returning
+            if (cleansedData.dashboardSettings?.charts?.customTagBreakdown && cleansedData.customTags?.length > 0) {
+                const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
+                if (!validTag) {
+                    cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
+                }
+            } else if (cleansedData.customTags?.length === 0) {
+                cleansedData.dashboardSettings.defaultCustomTagId = '';
+            }
+
             walker(cleansedData);
             return cleansedData;
         };
@@ -1241,6 +1261,7 @@ export default function SettingsPage() {
                             <CustomTagsSection
                                 settings={settings}
                                 onUpdate={handleSettingsUpdate}
+                                onSettingsUpdate={handleSettingsUpdate}
                             />
                         </AccordionSection>
 
