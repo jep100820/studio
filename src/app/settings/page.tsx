@@ -312,16 +312,16 @@ function CustomTagsSection({ settings, onUpdate }) {
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        
-        let newDashboardSettings = { ...settings.dashboardSettings };
+        const updatedSettings = { customTags: newCustomTags };
+
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
-            newDashboardSettings.defaultCustomTagId = newCustomTags.length > 0 ? newCustomTags[0].id : '';
+            updatedSettings.dashboardSettings = {
+                ...settings.dashboardSettings,
+                defaultCustomTagId: newCustomTags.length > 0 ? newCustomTags[0].id : '',
+            };
         }
         
-        onUpdate({ 
-            customTags: newCustomTags,
-            dashboardSettings: newDashboardSettings
-        });
+        onUpdate(updatedSettings);
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
