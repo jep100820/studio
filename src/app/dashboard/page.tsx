@@ -1003,8 +1003,12 @@ export default function DashboardPage() {
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         if (visibleCharts.weeklyProgress) return "weekly";
         if (visibleCharts.completionPerformance) return "performance";
-        if (customTagCategories.length > 0) return `custom-tag-${customTagCategories[0].id}`;
         if (visibleCharts.activeWorkload) return "workload";
+        
+        // Find the first visible custom tag chart
+        const firstVisibleTag = customTagCategories.find(tag => visibleCharts[`customTag_${tag.id}`]);
+        if (firstVisibleTag) return `custom-tag-${firstVisibleTag.id}`;
+
         return "";
     }, [visibleCharts, customTagCategories]);
 
@@ -1080,6 +1084,7 @@ export default function DashboardPage() {
                                     {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                     {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
                                     {customTagCategories.map(tag => (
+                                        visibleCharts[`customTag_${tag.id}`] &&
                                         <TabsTrigger key={tag.id} value={`custom-tag-${tag.id}`}>
                                             By: {tag.name}
                                         </TabsTrigger>
@@ -1113,6 +1118,7 @@ export default function DashboardPage() {
                                 </TabsContent>
                             )}
                             {customTagCategories.map(tag => (
+                                visibleCharts[`customTag_${tag.id}`] &&
                                 <TabsContent key={tag.id} value={`custom-tag-${tag.id}`} className="flex-grow">
                                     <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={tag} />
                                 </TabsContent>

@@ -1,6 +1,3 @@
-
-
-
 // @ts-nocheck
 'use client';
 
@@ -513,12 +510,13 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
+    const customTags = settings?.customTags || [];
 
     return (
         <CardContent className="space-y-6">
             <div className="rounded-lg border p-4">
-                <Label className="text-base">Visible Charts</Label>
-                <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
+                <Label className="text-base">Visible Standard Charts</Label>
+                <SettingsCardDescription>Select which standard charts to display on the dashboard.</SettingsCardDescription>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
                     {chartConfig.map(({ key, label }) => (
                          <div key={key} className="flex items-center space-x-2">
@@ -529,6 +527,25 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                 </div>
             </div>
 
+            {customTags.length > 0 && (
+                <div className="rounded-lg border p-4">
+                    <Label className="text-base">Visible Custom Tag Charts</Label>
+                    <SettingsCardDescription>Toggle visibility for each custom tag breakdown chart.</SettingsCardDescription>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+                         {customTags.map(tag => (
+                            <div key={tag.id} className="flex items-center space-x-2">
+                                <Checkbox 
+                                    id={`chart-custom-${tag.id}`} 
+                                    checked={!!chartSettings[`customTag_${tag.id}`]} 
+                                    onCheckedChange={(c) => handleChartVisibilityChange(`customTag_${tag.id}`, c)} 
+                                />
+                                <Label htmlFor={`chart-custom-${tag.id}`}>Tasks by &quot;{tag.name}&quot;</Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
                 <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
