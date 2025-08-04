@@ -305,8 +305,10 @@ function CompletionZone({ isDragging }) {
     );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings }) {
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly }) {
     if (!isOpen) return null;
+    
+    const isEditing = !!task?.id;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -326,7 +328,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
     
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        // The input provides value in "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" format
         const timestamp = parseDateStringToTimestamp(value);
         setTask(prev => ({ ...prev, [name]: timestamp }));
     };
@@ -342,7 +343,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
         return category?.subStatuses || [];
     }, [task?.status, settings.workflowCategories]);
 
-    const isEditing = !!task?.id;
     const isSaveDisabled = !task?.taskid || !task?.dueDate;
     const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
   
@@ -350,9 +350,9 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Task' : 'Add Task'}</DialogTitle>
+            <DialogTitle>{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4">
+          <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 group">
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <div className="md:col-span-2 space-y-2">
@@ -375,14 +375,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <div className={cn("space-y-2", currentSubStatuses.length === 0 && "md:col-span-2")}>
                       <Label htmlFor="status">Status</Label>
-                       <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                       <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
                            {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
                        </select>
                   </div>
                   {currentSubStatuses.length > 0 && (
                     <div className="space-y-2">
                         <Label htmlFor="subStatus">Sub-Status</Label>
-                        <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                        <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
                               <option value="">None</option>
                              {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
                          </select>
@@ -394,7 +394,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div className="space-y-2">
                         <Label htmlFor="importance">Importance</Label>
-                         <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm">
+                         <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
                               <option value="">None</option>
                              {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
                          </select>
@@ -408,7 +408,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                             id={`tag-${mainTag.name}`} 
                             value={task?.tags?.[mainTag.name] || ''} 
                             onChange={handleTagChange} 
-                            className="w-full border rounded px-2 py-2.5 bg-input text-sm"
+                            className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100"
                         >
                             <option value="">None</option>
                             {mainTag.tags.map(tag => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
@@ -429,7 +429,8 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
 
               {isEditing && (
                  <div className="space-y-2">
-                    <Label htmlFor="completionDate">Completion Date</Label>                    <Input 
+                    <Label htmlFor="completionDate">Completion Date</Label>                    
+                    <Input 
                       id="completionDate" 
                       name="completionDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
@@ -442,15 +443,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
                     </p>
                 </div>
               )}
-          </div>
+          </fieldset>
           <DialogFooter className="sm:justify-between pt-4">
-            {isEditing && (
-                <Button variant="destructive" onClick={() => onDelete(task.id)}>Delete</Button>
-            )}
-            {!isEditing && <div />}
+            <div>
+                {isEditing && !isReadOnly && <Button variant="destructive" onClick={() => onDelete(task.id)}>Delete</Button>}
+                {isEditing && isReadOnly && <Button variant="secondary" onClick={() => onSetReadOnly(false)}><Pencil className="h-4 w-4 mr-2"/>Edit</Button>}
+                {!isEditing && <div />}
+            </div>
+
             <div className="flex gap-2">
               <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button onClick={onSave} disabled={isSaveDisabled}>Save changes</Button>
+              {!isReadOnly && <Button onClick={onSave} disabled={isSaveDisabled}>Save changes</Button>}
             </div>
           </DialogFooter>
         </DialogContent>
@@ -632,9 +635,11 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
 
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], customTags: [], enableTimeTracking: false, workWeek: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalReadOnly, setIsModalReadOnly] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
@@ -670,7 +675,8 @@ function KanbanPageContent() {
 
         const tasksUnsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
             const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setTasks(fetchedTasks);
+            setAllTasks(fetchedTasks); // Store all tasks
+            setTasks(fetchedTasks.filter(t => t.status !== 'Completed')); // For board display
             setIsLoading(false);
         });
 
@@ -697,6 +703,7 @@ function KanbanPageContent() {
           lastModified: Timestamp.now(),
       };
       setSelectedTask(task ? { ...task } : defaultTask);
+      setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
       setIsModalOpen(true);
   };
   
@@ -704,34 +711,17 @@ function KanbanPageContent() {
     const taskId = searchParams.get('taskId');
     const edit = searchParams.get('edit');
 
-    if (taskId && tasks.length > 0) {
-        let taskToHandle = tasks.find(t => t.id === taskId);
-        
-        // If task not in active list, check completed tasks (or full list)
-        if (!taskToHandle) {
-             const allTasks = [...tasks]; 
-             taskToHandle = allTasks.find(t => t.id === taskId);
-        }
+    if (taskId && allTasks.length > 0) {
+        const taskToHandle = allTasks.find(t => t.id === taskId);
 
         if (taskToHandle) {
-            const isCompleted = taskToHandle.status === 'Completed';
-            const canEdit = edit === 'true';
-
-            if (isCompleted && !canEdit) {
-                // For completed tasks, just open the modal to view
-                 handleOpenModal(taskToHandle);
-            } else if (canEdit) {
-                // For editing (either from dashboard dbl-click or direct link)
-                 handleOpenModal(taskToHandle);
-            } else if (!isCompleted) {
-                // For active tasks from summary click
-                handleSummaryTaskClick(taskId);
-            }
+             handleOpenModal(taskToHandle);
+             setIsModalReadOnly(edit !== 'true');
         }
         // Clean up URL to prevent re-triggering
         router.replace('/', {scroll: false});
     }
-  }, [searchParams, tasks, router]);
+  }, [searchParams, allTasks]);
 
 
   const handleDragStart = (event) => {
@@ -961,6 +951,8 @@ function KanbanPageContent() {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         settings={settings}
+        isReadOnly={isModalReadOnly}
+        onSetReadOnly={setIsModalReadOnly}
        />
         <SubStatusModal 
             isOpen={isSubStatusModalOpen}

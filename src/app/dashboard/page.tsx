@@ -514,12 +514,7 @@ function CompletedTasksList({ tasks, settings }) {
     }, [tasks, searchTerm]);
     
     const handleDoubleClick = (task) => {
-        const password = prompt('Enter password to edit task:');
-        if (password === 'abc') {
-            router.push(`/?taskId=${task.id}&edit=true`);
-        } else if (password !== null) {
-            alert('Incorrect password.');
-        }
+        router.push(`/?taskId=${task.id}&edit=true`);
     };
     
     const handleClick = (task) => {
