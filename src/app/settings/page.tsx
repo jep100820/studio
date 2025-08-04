@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 
@@ -490,11 +491,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
     };
 
-    const handleDefaultTagChange = (chartNumber, tagId) => {
-        const key = `defaultCustomTagChartId${chartNumber}`;
-        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, [key]: tagId } });
-    };
-
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
@@ -521,7 +517,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
-    const customTags = settings?.customTags || [];
 
     return (
         <CardContent className="space-y-6">
@@ -537,58 +532,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                     ))}
                 </div>
             </div>
-
-            {customTags.length > 0 && (
-                 <div className="rounded-lg border p-4 space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="chart-customTagBreakdown1" checked={!!chartSettings['customTagBreakdown1']} onCheckedChange={(c) => handleChartVisibilityChange('customTagBreakdown1', c)} />
-                        <Label htmlFor="chart-customTagBreakdown1">Custom Tag Breakdown Chart 1</Label>
-                    </div>
-                     <div className="space-y-2 pl-6">
-                        <Label htmlFor="default-tag-chart-1">Default Tag Chart 1</Label>
-                        <SettingsCardDescription>
-                            Select which custom tag category to display by default on the dashboard.
-                        </SettingsCardDescription>
-                        <select
-                            id="default-tag-chart-1"
-                            value={settings.dashboardSettings?.defaultCustomTagChartId1 || ''}
-                            onChange={(e) => handleDefaultTagChange(1, e.target.value)}
-                            className="w-full max-w-sm border rounded px-2 py-2 bg-input mt-2"
-                            disabled={!chartSettings['customTagBreakdown1']}
-                        >
-                            {customTags.map(tag => (
-                                <option key={tag.id} value={tag.id}>{tag.name}</option>
-                            ))}
-                        </select>
-                     </div>
-                 </div>
-            )}
-
-            {customTags.length > 0 && (
-                 <div className="rounded-lg border p-4 space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="chart-customTagBreakdown2" checked={!!chartSettings['customTagBreakdown2']} onCheckedChange={(c) => handleChartVisibilityChange('customTagBreakdown2', c)} />
-                        <Label htmlFor="chart-customTagBreakdown2">Custom Tag Breakdown Chart 2</Label>
-                    </div>
-                     <div className="space-y-2 pl-6">
-                        <Label htmlFor="default-tag-chart-2">Default Tag Chart 2</Label>
-                        <SettingsCardDescription>
-                            Select which custom tag category to display by default on the dashboard.
-                        </SettingsCardDescription>
-                        <select
-                            id="default-tag-chart-2"
-                            value={settings.dashboardSettings?.defaultCustomTagChartId2 || ''}
-                            onChange={(e) => handleDefaultTagChange(2, e.target.value)}
-                            className="w-full max-w-sm border rounded px-2 py-2 bg-input mt-2"
-                            disabled={!chartSettings['customTagBreakdown2']}
-                        >
-                            {customTags.map(tag => (
-                                <option key={tag.id} value={tag.id}>{tag.name}</option>
-                            ))}
-                        </select>
-                     </div>
-                 </div>
-            )}
             
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
@@ -970,21 +913,11 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, activeWorkload: true, customTagBreakdown1: true, customTagBreakdown2: true },
+                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, activeWorkload: true },
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
-
-                 if (data.customTags && data.customTags.length > 0) {
-                    if (!data.dashboardSettings.hasOwnProperty('defaultCustomTagChartId1')) {
-                        data.dashboardSettings.defaultCustomTagChartId1 = data.customTags[0].id;
-                    }
-                    if (!data.dashboardSettings.hasOwnProperty('defaultCustomTagChartId2')) {
-                        // Default to the second tag if it exists, otherwise fall back to the first.
-                        data.dashboardSettings.defaultCustomTagChartId2 = data.customTags.length > 1 ? data.customTags[1].id : data.customTags[0].id;
-                    }
-                 }
 
 
                  const dataWithIds = addIdsToData(data);
@@ -1041,23 +974,6 @@ export default function SettingsPage() {
 
     const handleSaveChanges = async () => {
         if (!originalSettings || !settings) return;
-
-        // Ensure a default custom tag chart ID is set if the chart is enabled and tags exist
-        if (
-            settings.dashboardSettings?.charts?.customTagBreakdown1 &&
-            settings.customTags?.length > 0 &&
-            !settings.dashboardSettings.defaultCustomTagChartId1
-        ) {
-            settings.dashboardSettings.defaultCustomTagChartId1 = settings.customTags[0].id;
-        }
-
-        if (
-            settings.dashboardSettings?.charts?.customTagBreakdown2 &&
-            settings.customTags?.length > 0 &&
-            !settings.dashboardSettings.defaultCustomTagChartId2
-        ) {
-            settings.dashboardSettings.defaultCustomTagChartId2 = settings.customTags.length > 1 ? settings.customTags[1].id : settings.customTags[0].id;
-        }
 
         const findRenames = (originalItems, currentItems, type) => {
             const changes = [];
