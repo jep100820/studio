@@ -348,7 +348,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
           </DialogHeader>
