@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil, Eye, BarChart2, TrendingUp, Percent, Shuffle } from 'lucide-react';
+import { Search, Calendar, Zap, AlertTriangle, CheckCircle, Clock, PlusCircle, LayoutDashboard, Settings, Moon, Sun, Pencil, Eye, BarChart2, TrendingUp, Percent, Shuffle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { format, subDays, startOfDay, differenceInDays, isValid, parseISO, parse, eachDayOfInterval, endOfToday, isSameDay, isFriday, isSaturday, isAfter, isBefore, endOfDay, startOfWeek, getWeek, subWeeks, endOfWeek } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -90,7 +90,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 
-function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
+function TaskStatusOverviewChart({ tasks, completedTasks, settings, onSegmentClick }) {
     const COLORS = {
         Completed: '#a78bfa',
         Overdue: '#ef4444',
@@ -163,6 +163,8 @@ function TaskStatusOverviewChart({ tasks, completedTasks, settings }) {
                                 paddingAngle={2}
                                 labelLine={false}
                                 label={renderCustomizedLabel}
+                                onClick={(data) => onSegmentClick('status', data.name)}
+                                className="cursor-pointer"
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -393,7 +395,7 @@ function WeeklyProgressChart({ allTasks }) {
     );
 }
 
-function DayOfWeekCompletionChart({ tasks }) {
+function DayOfWeekCompletionChart({ tasks, onBarClick }) {
     const data = useMemo(() => {
         const dayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const dayCounts = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
@@ -423,7 +425,7 @@ function DayOfWeekCompletionChart({ tasks }) {
                         <XAxis dataKey="name" fontSize={12} />
                         <YAxis allowDecimals={false} fontSize={12} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
-                        <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed">
+                        <Bar dataKey="count" fill="#82ca9d" name="Tasks Completed" onClick={(data) => onBarClick('day', data.name)} className="cursor-pointer">
                             <LabelList dataKey="count" position="top" className="fill-foreground" fontSize={12} formatter={(value) => value > 0 ? value : ''}/>
                         </Bar>
                     </BarChart>
@@ -432,6 +434,73 @@ function DayOfWeekCompletionChart({ tasks }) {
         </Card>
     );
 }
+
+function FilteredTasksDisplay({ title, tasks, onClearFilter, settings }) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const router = useRouter();
+
+    const filteredTasks = useMemo(() => {
+        if (!searchTerm) return tasks;
+        return tasks.filter(task => 
+            (task.taskid?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (task.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [tasks, searchTerm]);
+    
+    const handleTaskClick = (task) => {
+        router.push(`/?taskId=${task.id}`);
+    };
+
+    return (
+        <Card className="h-full flex flex-col">
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>{title}</CardTitle>
+                        <CardDescription>{tasks.length} task(s) found.</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={onClearFilter}>
+                        <XCircle className="h-5 w-5" />
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col min-h-0">
+                <div className="relative mb-4">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search this list..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                    />
+                </div>
+                <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+                    {filteredTasks.length > 0 ? (
+                        <div className="space-y-3">
+                            {filteredTasks.map(task => (
+                                <div 
+                                    key={task.id} 
+                                    className="p-3 bg-muted/50 rounded-lg text-sm cursor-pointer hover:bg-muted"
+                                    onClick={() => handleTaskClick(task)}
+                                >
+                                    <p className="font-semibold text-foreground">{task.taskid}</p>
+                                    <p className="text-muted-foreground mt-1 truncate">Status: {task.status}</p>
+                                    <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">Due Date: {formatDate(task.dueDate, settings?.enableTimeTracking) || 'Not set'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground py-8">
+                            <p>No tasks match your search.</p>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 function CompletedTasksList({ tasks, settings }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -617,6 +686,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const [dateRange, setDateRange] = useState({ from: null, to: null });
     const [filterScope, setFilterScope] = useState({ charts: true, stats: true });
+    const [activeFilter, setActiveFilter] = useState(null);
 
 
     useEffect(() => {
@@ -707,6 +777,44 @@ export default function DashboardPage() {
     }, [filterScope, activeTasks, completedTasks, filteredActive, filteredCompleted, allTasks]);
     
     
+    const handleSetFilter = (type, value) => {
+        if (activeFilter && activeFilter.type === type && activeFilter.value === value) {
+            setActiveFilter(null); // Toggle off if same filter is clicked
+        } else {
+            setActiveFilter({ type, value });
+        }
+    };
+    
+    const filteredTasksForDisplay = useMemo(() => {
+        if (!activeFilter) return null;
+
+        const { type, value } = activeFilter;
+        let tasksToFilter = allTasks;
+
+        if (type === 'status') {
+            const today = startOfDay(new Date());
+            if (value === 'Overdue') {
+                return tasksToFilter.filter(t => toDate(t.dueDate) && isBefore(toDate(t.dueDate), today) && t.status !== 'Completed');
+            }
+            if (value === 'Completed') {
+                return tasksToFilter.filter(t => t.status === 'Completed');
+            }
+            return tasksToFilter.filter(t => t.status === value && !(toDate(t.dueDate) && isBefore(toDate(t.dueDate), today)));
+        }
+
+        if (type === 'day') {
+            const dayMap = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+            const dayNumber = dayMap[value];
+            return tasksToFilter.filter(t => {
+                const completionDate = toDate(t.completionDate);
+                return completionDate && completionDate.getDay() === dayNumber;
+            });
+        }
+        
+        return [];
+    }, [activeFilter, allTasks]);
+
+
     const handleOpenModal = () => {
         router.push('/');
     };
@@ -810,7 +918,7 @@ export default function DashboardPage() {
                             </TabsList>
                             {visibleCharts.taskStatus && (
                                 <TabsContent value="status" className="flex-grow">
-                                    <TaskStatusOverviewChart tasks={tasksForCharts} completedTasks={completedTasksForCharts} settings={settings} />
+                                    <TaskStatusOverviewChart tasks={tasksForCharts} completedTasks={completedTasksForCharts} settings={settings} onSegmentClick={handleSetFilter} />
                                 </TabsContent>
                             )}
                             {visibleCharts.dailyActivity && (
@@ -825,7 +933,7 @@ export default function DashboardPage() {
                             )}
                              {visibleCharts.dayOfWeekCompletion && (
                                 <TabsContent value="dayOfWeek" className="flex-grow">
-                                    <DayOfWeekCompletionChart tasks={completedTasksForCharts} />
+                                    <DayOfWeekCompletionChart tasks={completedTasksForCharts} onBarClick={handleSetFilter} />
                                 </TabsContent>
                             )}
                         </Tabs>
@@ -834,7 +942,16 @@ export default function DashboardPage() {
 
                 <div className="lg:col-span-2 flex flex-col min-h-0">
                      <div className="flex-grow min-h-0">
-                        <CompletedTasksList tasks={filterScope.stats ? filteredCompleted : completedTasks} settings={settings} />
+                        {activeFilter ? (
+                            <FilteredTasksDisplay 
+                                title={`Filtered by: ${activeFilter.value}`}
+                                tasks={filteredTasksForDisplay}
+                                onClearFilter={() => setActiveFilter(null)}
+                                settings={settings}
+                            />
+                        ) : (
+                            <CompletedTasksList tasks={filterScope.stats ? filteredCompleted : completedTasks} settings={settings} />
+                        )}
                     </div>
                 </div>
             </main>

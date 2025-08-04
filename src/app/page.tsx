@@ -672,6 +672,12 @@ function KanbanPageContent() {
             const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setTasks(fetchedTasks);
             setIsLoading(false);
+            
+            const taskIdFromUrl = searchParams.get('taskId');
+            if (taskIdFromUrl) {
+                handleSummaryTaskClick(taskIdFromUrl);
+                router.replace('/', {scroll: false});
+            }
         });
 
         return () => {
