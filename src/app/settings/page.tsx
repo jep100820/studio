@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 
@@ -747,7 +748,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         { key: 'weeklyProgress', label: 'Weekly Progress' },
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
         { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
-        { key: 'bidOrigin', label: 'Breakdown by Bid Origin' },
+        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
         { key: 'activeWorkload', label: 'Active Workload by Importance' },
     ];
 
@@ -886,7 +887,7 @@ export default function SettingsPage() {
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true },
+                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, customTagBreakdown: true, activeWorkload: true },
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
                     };
                 }
