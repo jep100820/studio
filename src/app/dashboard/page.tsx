@@ -1013,8 +1013,18 @@ export default function DashboardPage() {
     }, [visibleCharts]);
     
     const selectedTagCategory = useMemo(() => {
-        if (!settings?.customTags || !settings?.dashboardSettings?.defaultCustomTagId) return null;
-        return settings.customTags.find(tag => tag.id === settings.dashboardSettings.defaultCustomTagId);
+        if (!settings?.customTags || settings.customTags.length === 0) {
+            return null; // No custom tags exist
+        }
+
+        // If a default is set in settings, use it
+        if (settings.dashboardSettings?.defaultCustomTagId) {
+            const foundTag = settings.customTags.find(tag => tag.id === settings.dashboardSettings.defaultCustomTagId);
+            if (foundTag) return foundTag;
+        }
+        
+        // --- NEW: Fallback to the first custom tag if no default is set ---
+        return settings.customTags[0];
     }, [settings]);
 
     if (isLoading) {
