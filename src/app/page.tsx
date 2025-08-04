@@ -34,11 +34,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { AIAssistantModal } from '@/components/ai-assistant';
 
 
 // A robust, unified date parsing function
@@ -429,8 +430,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings 
 
               {isEditing && (
                  <div className="space-y-2">
-                    <Label htmlFor="completionDate">Completion Date</Label>
-                    <Input 
+                    <Label htmlFor="completionDate">Completion Date</Label>                    <Input 
                       id="completionDate" 
                       name="completionDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
@@ -636,6 +636,7 @@ function KanbanPageContent() {
   const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], customTags: [], enableTimeTracking: false, workWeek: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const { theme, setTheme } = useTheme();
   const [activeId, setActiveId] = useState(null);
@@ -869,6 +870,33 @@ function KanbanPageContent() {
     );
   }
 
+  const handleAddTasksFromAI = async (generatedTasks) => {
+    const batch = writeBatch(db);
+    const now = Timestamp.now();
+
+    generatedTasks.forEach(task => {
+        const newTaskRef = doc(collection(db, 'tasks'));
+        const newTask = {
+            taskid: task.taskid,
+            desc: task.desc,
+            status: task.status || settings.workflowCategories?.[0]?.name || 'Not Started',
+            importance: task.importance || '',
+            date: now,
+            dueDate: task.daysFromNow ? Timestamp.fromMillis(now.toMillis() + task.daysFromNow * 24 * 60 * 60 * 1000) : null,
+            subStatus: '',
+            remarks: '',
+            completionDate: null,
+            tags: {},
+            subStatusChangeCount: 0,
+            lastModified: now,
+        };
+        batch.set(newTaskRef, newTask);
+    });
+
+    await batch.commit();
+    setIsAIAssistantOpen(false);
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-screen bg-background text-foreground">
@@ -878,6 +906,10 @@ function KanbanPageContent() {
             <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} settings={settings} />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Button onClick={() => setIsAIAssistantOpen(true)} size="sm">
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Assistant
+            </Button>
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
@@ -947,6 +979,12 @@ function KanbanPageContent() {
             onClose={() => setIsSubStatusModalOpen(false)}
             onSave={handleSubStatusSave}
             subStatuses={subStatusData.subStatuses}
+        />
+        <AIAssistantModal
+            isOpen={isAIAssistantOpen}
+            onClose={() => setIsAIAssistantOpen(false)}
+            onAddTasks={handleAddTasksFromAI}
+            settings={settings}
         />
         <DragOverlay dropAnimation={null}>
             {activeTask ? (
