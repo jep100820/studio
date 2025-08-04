@@ -500,8 +500,8 @@ function CustomTagBreakdownChart({ allTasks, selectedTagCategory }) {
         if (!selectedTagCategory) return [];
 
         const counts = allTasks.reduce((acc, task) => {
-            const origin = task.tags?.[selectedTagCategory.name] || 'Not Set';
-            acc[origin] = (acc[origin] || 0) + 1;
+            const tagValue = task.tags?.[selectedTagCategory.name] || 'Not Set';
+            acc[tagValue] = (acc[tagValue] || 0) + 1;
             return acc;
         }, {});
 
