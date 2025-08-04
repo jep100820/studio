@@ -309,9 +309,19 @@ function CustomTagsSection({ settings, onUpdate }) {
         onUpdate({ customTags: [...customTags, newMainTag] });
     };
 
-    const handleRemoveMainTag = (id) => {
-        const newCustomTags = customTags.filter((t) => t.id !== id);
-        onUpdate({ customTags: newCustomTags });
+    const handleRemoveMainTag = (idToRemove) => {
+        const newCustomTags = customTags.filter((t) => t.id !== idToRemove);
+        const updatedSettings = { customTags: newCustomTags };
+        
+        // Also remove the chart setting for the deleted tag
+        const newChartSettings = { ...settings.dashboardSettings.charts };
+        delete newChartSettings[`customTag_${idToRemove}`];
+        updatedSettings.dashboardSettings = {
+            ...settings.dashboardSettings,
+            charts: newChartSettings,
+        };
+
+        onUpdate(updatedSettings);
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
@@ -873,6 +883,7 @@ export default function SettingsPage() {
     
     const cleanseIdsForSave = (data) => {
         if (!data) return null;
+        // Deep copy to avoid mutating the original object
         const cleansedData = JSON.parse(JSON.stringify(data));
 
         const walker = (obj) => {
@@ -881,12 +892,14 @@ export default function SettingsPage() {
             } else if (obj && typeof obj === 'object') {
                 delete obj.id;
                 delete obj.isExpanded;
+                // Walk through the object's values
                 Object.values(obj).forEach(walker);
             }
         };
         walker(cleansedData);
         return cleansedData;
     };
+
 
     const addIdsToData = (data) => {
         const dataCopy = JSON.parse(JSON.stringify(data)); // Deep copy to avoid mutation
@@ -943,13 +956,14 @@ export default function SettingsPage() {
     
     useEffect(() => {
         if (settings && originalSettings) {
+            // Use the cleansed versions for a reliable comparison
             const cleanSettings = cleanseIdsForSave(settings);
             const cleanOriginal = cleanseIdsForSave(originalSettings);
             setIsDirty(!isEqual(cleanSettings, cleanOriginal));
         }
     }, [settings, originalSettings]);
 
-    // A single, unified update handler
+    // The single, unified update handler
     const handleSettingsUpdate = (updates) => {
         setSettings(prev => ({ ...prev, ...updates }));
     };
@@ -997,21 +1011,34 @@ export default function SettingsPage() {
                     if (originalItem.name !== currentItem.name) {
                         changes.push({ from: originalItem.name, to: currentItem.name, type });
                     }
+                    // Recursively check for renames in sub-items
                     if (originalItem.subStatuses && currentItem.subStatuses) {
                         changes.push(...findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status'));
                     }
-                    if (originalItem.tags && currentItem.tags) {
+                    if (originalItem.tags && currentItem.tags) { // For custom tags
                         changes.push(...findRenames(originalItem.tags, currentItem.tags, 'Tag'));
                     }
                 }
             });
             return changes;
         };
+        
+        const mainTagRenames = findRenames(originalSettings.customTags, settings.customTags, 'Tag Category');
+        
+        let subTagRenames = [];
+        originalSettings.customTags?.forEach(originalMainTag => {
+            const currentMainTag = settings.customTags.find(t => t.id === originalMainTag.id);
+            if (currentMainTag) {
+                subTagRenames.push(...findRenames(originalMainTag.tags, currentMainTag.tags, 'Tag'));
+            }
+        });
+
 
         const detectedChanges = [
             ...findRenames(originalSettings.workflowCategories, settings.workflowCategories, 'Status'),
             ...findRenames(originalSettings.importanceLevels, settings.importanceLevels, 'Importance'),
-            ...findRenames(originalSettings.customTags, settings.customTags, 'Tag Category'),
+            ...mainTagRenames,
+            ...subTagRenames,
         ];
         
         if (detectedChanges.length > 0) {
@@ -1047,6 +1074,20 @@ export default function SettingsPage() {
                     case 'Tag Category':
                         q = query(collection(db, "tasks"), where(`tags.${change.from}`, "!=", null));
                         break; // Special handling for map keys
+                    case 'Tag':
+                         // This case needs to find the parent category to construct the query path
+                         let parentCategoryName = '';
+                         for(const cat of originalSettings.customTags) {
+                            if (cat.tags.some(t => t.name === change.from)) {
+                                parentCategoryName = cat.name;
+                                break;
+                            }
+                         }
+                         if(parentCategoryName) {
+                            q = query(collection(db, "tasks"), where(`tags.${parentCategoryName}`, "==", change.from));
+                            updateData = { [`tags.${parentCategoryName}`]: change.to };
+                         }
+                        break;
                     default:
                         q = null;
                 }
@@ -1072,7 +1113,7 @@ export default function SettingsPage() {
                         }
                         
                         operationCount++;
-                        if (operationCount >= 499) { // Use >= to be safe
+                        if (operationCount >= 499) { 
                             await batch.commit();
                             batch = writeBatch(db);
                             operationCount = 0;
@@ -1097,6 +1138,7 @@ export default function SettingsPage() {
     };
     
     const handleCancelConfirmation = async () => {
+        // Just save the settings without updating tasks
         await updateSettingsInDb(settings);
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
