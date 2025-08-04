@@ -311,16 +311,16 @@ function CustomTagsSection({ settings, onUpdate }) {
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        const updatedSettings = { customTags: newCustomTags };
-
+        
+        let newDashboardSettings = { ...settings.dashboardSettings };
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
-            updatedSettings.dashboardSettings = {
-                ...settings.dashboardSettings,
-                defaultCustomTagId: newCustomTags.length > 0 ? newCustomTags[0].id : '',
-            };
+            newDashboardSettings.defaultCustomTagId = newCustomTags.length > 0 ? newCustomTags[0].id : '';
         }
         
-        onUpdate(updatedSettings);
+        onUpdate({ 
+            customTags: newCustomTags,
+            dashboardSettings: newDashboardSettings
+        });
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
@@ -422,30 +422,6 @@ function CustomTagsSection({ settings, onUpdate }) {
                 )}
             </CardContent>
         </Card>
-    );
-}
-
-function AccordionSection({ title, children, summary }) {
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-        <div className="border rounded-lg mb-4">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-start text-left p-4"
-            >
-                <div className="flex flex-col">
-                    <span className="font-semibold">{title}</span>
-                     {!isOpen && (
-                         <span className="text-sm text-muted-foreground mt-1 pr-4 truncate max-w-full">
-                            {summary}
-                        </span>
-                     )}
-                </div>
-                {isOpen ? <ChevronUp className="h-5 w-5 flex-shrink-0" /> : <ChevronDown className="h-5 w-5 flex-shrink-0" />}
-            </button>
-            {isOpen && <div className="p-4 pt-0">{children}</div>}
-        </div>
     );
 }
 
@@ -562,35 +538,35 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                 <Label className="text-base">Visible Charts</Label>
                 <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-                    {chartConfig.map(({ key, label }) => {
-                        const isCustomTagChart = key === 'customTagBreakdown';
-                        const isVisible = !!chartSettings[key];
-                        return (
-                            <div key={key} className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id={`chart-${key}`} checked={isVisible} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
-                                    <Label htmlFor={`chart-${key}`}>{label}</Label>
-                                </div>
-                                {isCustomTagChart && isVisible && customTags.length > 0 && (
-                                     <select
-                                        value={settings.dashboardSettings?.defaultCustomTagId || ''}
-                                        onChange={handleDefaultTagChange}
-                                        className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
-                                    >
-                                        <option value="">Select Tag...</option>
-                                        {customTags.map(tag => (
-                                            <option key={tag.id} value={tag.id}>
-                                                {tag.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        )
-                    })}
+                    {chartConfig.map(({ key, label }) => (
+                         <div key={key} className="flex items-center space-x-2">
+                            <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
+                            <Label htmlFor={`chart-${key}`}>{label}</Label>
+                        </div>
+                    ))}
                 </div>
             </div>
             
+            {chartSettings.customTagBreakdown && customTags.length > 0 && (
+                 <div className="rounded-lg border p-4">
+                    <Label className="text-base">Default Chart for Custom Tag Breakdown</Label>
+                    <SettingsCardDescription>Select which custom tag to show by default on the dashboard.</SettingsCardDescription>
+                     <div className="mt-4">
+                         <select
+                            value={settings.dashboardSettings?.defaultCustomTagId || ''}
+                            onChange={handleDefaultTagChange}
+                            className="w-full max-w-sm border rounded px-2 py-2 bg-input text-sm"
+                        >
+                            {customTags.map(tag => (
+                                <option key={tag.id} value={tag.id}>
+                                    {tag.name}
+                                </option>
+                            ))}
+                        </select>
+                     </div>
+                 </div>
+            )}
+
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
                 <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
@@ -607,6 +583,31 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     );
 }
 
+function AccordionSection({ title, children, summary }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="border rounded-lg mb-4">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex justify-between items-start text-left p-4"
+            >
+                <div className="flex flex-col">
+                    <span className="font-semibold">{title}</span>
+                     {!isOpen && (
+                         <span className="text-sm text-muted-foreground mt-1 pr-4 truncate max-w-full">
+                            {summary}
+                        </span>
+                     )}
+                </div>
+                {isOpen ? <ChevronUp className="h-5 w-5 flex-shrink-0" /> : <ChevronDown className="h-5 w-5 flex-shrink-0" />}
+            </button>
+            {isOpen && <div className="p-4 pt-0">{children}</div>}
+        </div>
+    );
+}
+
+
 function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileType }) {
     if (!isOpen) return null;
 
@@ -616,7 +617,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -1255,3 +1256,4 @@ export default function SettingsPage() {
         </>
     );
 }
+```
