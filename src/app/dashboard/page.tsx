@@ -795,7 +795,7 @@ export default function DashboardPage() {
     const { theme, setTheme } = useTheme();
     const router = useRouter();
     const [dateRange, setDateRange] = useState({ from: null, to: null });
-    const [filterScope, setFilterScope] = useState({ charts: true, stats: true });
+    const [filterScope, setFilterScope] = useState({ charts: false, stats: false });
     const [activeFilter, setActiveFilter] = useState(null);
 
 
@@ -1001,12 +1001,12 @@ export default function DashboardPage() {
                 
                 <div className="lg:col-span-5 flex flex-col min-h-0">
                     <div className="p-4 border rounded-lg mb-4 space-y-4">
-                        <div className="flex items-center gap-4">
-                            <div className="space-y-1 flex-grow">
+                        <div className="grid grid-cols-2 gap-4 max-w-md">
+                            <div className="space-y-1">
                                 <Label htmlFor="from-date">From</Label>
                                 <Input id="from-date" type="date" value={formatDateForInput(dateRange.from)} onChange={(e) => handleDateChange(e, 'from')} />
                             </div>
-                            <div className="space-y-1 flex-grow">
+                            <div className="space-y-1">
                                 <Label htmlFor="to-date">To</Label>
                                 <Input id="to-date" type="date" value={formatDateForInput(dateRange.to)} onChange={(e) => handleDateChange(e, 'to')} />
                             </div>
