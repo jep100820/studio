@@ -741,9 +741,11 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
         onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
     };
-
-    const handleDefaultTagChange = (tagId) => {
-        onUpdate('dashboardSettings', { ...settings.dashboardSettings, defaultCustomTagId: tagId });
+    
+    const handleDefaultTagChange = (e) => {
+        const { value } = e.target;
+        const newDashboardSettings = { ...settings.dashboardSettings, defaultCustomTagId: value };
+        onUpdate('dashboardSettings', newDashboardSettings);
     };
 
     const chartConfig = [
@@ -780,35 +782,34 @@ function DashboardSettingsCard({ settings, onUpdate }) {
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Charts</Label>
                 <SettingsCardDescription>Select which charts to display on the dashboard.</SettingsCardDescription>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-2">
-                    {chartConfig.map(({ key, label }) => (
-                         <div key={key} className="flex items-center space-x-2">
-                            <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
-                            <Label htmlFor={`chart-${key}`}>{label}</Label>
-                        </div>
-                    ))}
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+                    {chartConfig.map(({ key, label }) => {
+                        const isCustomTagChart = key === 'customTagBreakdown';
+                        return (
+                            <div key={key} className="flex items-center space-x-2">
+                                <Checkbox id={`chart-${key}`} checked={!!chartSettings[key]} onCheckedChange={(c) => handleChartVisibilityChange(key, c)} />
+                                <Label htmlFor={`chart-${key}`}>{label}</Label>
+                                {isCustomTagChart && chartSettings[key] && customTags.length > 0 && (
+                                     <select
+                                        value={settings.dashboardSettings?.defaultCustomTagId || ''}
+                                        onChange={handleDefaultTagChange}
+                                        className="w-full max-w-[150px] ml-auto border rounded px-2 py-1 bg-input text-xs"
+                                        onClick={(e) => e.stopPropagation()} // Prevent label click from toggling checkbox
+                                    >
+                                        <option value="">Select Tag...</option>
+                                        {customTags.map(tag => (
+                                            <option key={tag.id} value={tag.id}>
+                                                {tag.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
-             {chartSettings.customTagBreakdown && customTags.length > 0 && (
-                 <div className="rounded-lg border p-4">
-                    <Label className="text-base">Default Tag for Breakdown Chart</Label>
-                    <SettingsCardDescription>
-                        Select which custom tag category to display by default on the dashboard.
-                    </SettingsCardDescription>
-                    <select
-                        value={settings.dashboardSettings?.defaultCustomTagId || ''}
-                        onChange={(e) => handleDefaultTagChange(e.target.value)}
-                        className="w-full mt-2 border rounded px-2 py-2.5 bg-input text-sm"
-                    >
-                        <option value="">Select a Tag Category...</option>
-                        {customTags.map(tag => (
-                            <option key={tag.id} value={tag.id}>
-                                {tag.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            )}
+            
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
                 <SettingsCardDescription>Select which stats to display in the Project Snapshot.</SettingsCardDescription>
