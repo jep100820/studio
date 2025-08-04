@@ -315,6 +315,7 @@ function CustomTagsSection({ settings, onSettingsUpdate }) {
         const newCustomTags = customTags.filter((t) => t.id !== id);
         const updatedSettings = { customTags: newCustomTags };
 
+        // If the deleted tag was the default, reset the default
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
             updatedSettings.dashboardSettings = {
                 ...settings.dashboardSettings,
@@ -975,10 +976,18 @@ export default function SettingsPage() {
     }, [settings, originalSettings]);
 
     const handleSettingsUpdate = (updates) => {
-        setSettings(prev => ({
-            ...prev,
-            ...updates
-        }));
+        setSettings(prev => {
+            // A smarter merge for nested objects like dashboardSettings
+            const newSettings = { ...prev };
+            for (const key in updates) {
+                if (key === 'dashboardSettings' && typeof updates[key] === 'object' && !Array.isArray(updates[key])) {
+                     newSettings[key] = { ...prev[key], ...updates[key] };
+                } else {
+                    newSettings[key] = updates[key];
+                }
+            }
+            return newSettings;
+        });
     };
     
     const handleAddNewItem = (fieldName) => {
@@ -1017,7 +1026,7 @@ export default function SettingsPage() {
             if (!validTag) {
                 cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
             }
-        } else if (cleansedData.customTags?.length === 0) {
+        } else if (!cleansedData.customTags || cleansedData.customTags.length === 0) {
             cleansedData.dashboardSettings.defaultCustomTagId = '';
         }
         // --- End Validation ---
@@ -1268,7 +1277,3 @@ export default function SettingsPage() {
         </>
     );
 }
-
-    
-
-
