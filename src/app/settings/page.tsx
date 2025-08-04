@@ -566,18 +566,19 @@ function ImportExportCard() {
                     throw new Error('Imported file should contain an array of tasks.');
                 }
 
-                const batch = writeBatch(db);
+                const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
+                const settings = settingsDoc.data();
+                const customTagKeys = settings.customTags?.map(t => t.name) || [];
+
+                let batch = writeBatch(db);
+                let operationCount = 0;
+
                 for (const task of importedTasks) {
                     if (!task.taskid) continue;
 
                     const taskData = { ...task };
                     
-                    // On CSV import, group custom fields back into a 'tags' object
                     if (fileType === 'csv') {
-                        const settingsDoc = await getDoc(doc(db, 'settings', 'workflow'));
-                        const settings = settingsDoc.data();
-                        const customTagKeys = settings.customTags?.map(t => t.name) || [];
-                        
                         taskData.tags = {};
                         for (const key in taskData) {
                             if (customTagKeys.includes(key)) {
@@ -588,7 +589,6 @@ function ImportExportCard() {
                             }
                         }
                     }
-
 
                     taskData.date = parseDateString(task.date);
                     taskData.dueDate = parseDateString(task.dueDate);
@@ -607,9 +607,19 @@ function ImportExportCard() {
                         const newDocRef = doc(collection(db, 'tasks'));
                         batch.set(newDocRef, taskData);
                     }
+                    operationCount++;
+
+                    if (operationCount === 499) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                        operationCount = 0;
+                    }
+                }
+                
+                if (operationCount > 0) {
+                    await batch.commit();
                 }
 
-                await batch.commit();
                 alert('Import complete!');
             } catch (error) {
                 console.error("Error parsing or importing file:", error);
@@ -723,12 +733,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
     };
 
-    const handleSelectChange = (e) => {
-        const { value } = e.target;
-        const newDashboardSettings = { ...settings.dashboardSettings, performanceChartSource: value };
-        onUpdate('dashboardSettings', newDashboardSettings);
-    };
-
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
         { key: 'dailyActivity', label: 'Daily Activity Trend' },
@@ -785,8 +789,8 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 }
 
 
-function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) {
-    if (!isOpen || changes.length === 0) return null;
+function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes, isUpdating }) {
+    if (!isOpen) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -794,23 +798,26 @@ function UpdateTasksConfirmationDialog({ isOpen, onClose, onConfirm, changes }) 
                 <DialogHeader>
                     <DialogTitle>Confirm Setting Renaming</DialogTitle>
                     <DialogDescription>
-                        You have renamed the following items. Do you want to update all existing tasks to match?
+                        You have renamed items that may be in use. Would you like to update all existing tasks to match?
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-2 max-h-60 overflow-y-auto">
                     {changes.map((change, index) => (
                         <div key={index} className="text-sm p-2 rounded-md bg-muted">
-                            {change.type && <span className="font-bold text-xs uppercase text-muted-foreground mr-2">{change.type}</span>}
+                            <span className="font-bold text-xs uppercase text-muted-foreground mr-2">{change.type}</span>
                             Rename "<strong>{change.from}</strong>" to "<strong>{change.to}</strong>"
                         </div>
                     ))}
                     <p className="text-xs text-muted-foreground pt-2">
-                        This action cannot be undone. Choosing 'Cancel' will save the setting change but will not update existing tasks.
+                        This action may take a moment and cannot be undone. Choosing 'Cancel' will save the setting change but will not update existing tasks.
                     </p>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button onClick={onConfirm}>Update Tasks</Button>
+                    <Button variant="ghost" onClick={onClose} disabled={isUpdating}>Cancel</Button>
+                    <Button onClick={onConfirm} disabled={isUpdating}>
+                        {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {isUpdating ? 'Updating...' : 'Confirm & Update Tasks'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -825,9 +832,9 @@ export default function SettingsPage() {
     const { theme, setTheme } = useTheme();
     const router = useRouter();
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [isUpdatingTasks, setIsUpdatingTasks] = useState(false);
     const [renameChanges, setRenameChanges] = useState([]);
     
-    // Counter for new item IDs
     const nextIdCounter = useRef(Date.now());
     const getNextId = (prefix = 'item') => {
         nextIdCounter.current += 1;
@@ -861,16 +868,6 @@ export default function SettingsPage() {
         const unsubscribe = onSnapshot(settingsRef, (doc) => {
             if (doc.exists()) {
                 let data = doc.data();
-                 // --- MIGRATION & DEFAULTS ---
-                if (data.bidOrigins && !data.customTags) {
-                    data.customTags = [{
-                        id: 'tagcat-bidorigin-migrated',
-                        name: "Bid Origin",
-                        tags: data.bidOrigins.map(bo => ({ id: getNextId('subtag'), name: bo.name }))
-                    }];
-                    delete data.bidOrigins; // Clean up old field
-                }
-
                  if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
                 }
@@ -883,7 +880,6 @@ export default function SettingsPage() {
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
-                // --- END MIGRATION & DEFAULTS ---
                 
                 const dataWithIds = addIdsToData(data);
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
@@ -898,7 +894,6 @@ export default function SettingsPage() {
     
     useEffect(() => {
         if (settings && originalSettings) {
-             // Create copies without transient properties like isExpanded for comparison
             const cleanSettings = JSON.parse(JSON.stringify(settings));
             const cleanOriginalSettings = JSON.parse(JSON.stringify(originalSettings));
 
@@ -947,38 +942,31 @@ export default function SettingsPage() {
     const handleSaveChanges = async () => {
         if (!originalSettings || !settings) return;
 
-        // Clean up transient state before saving
         const settingsToSave = JSON.parse(JSON.stringify(settings));
         if (settingsToSave.workflowCategories) {
             settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
         }
 
-        const findRenames = (original, current, type, context = '') => {
+        const findRenames = (original, current, type) => {
             const changes = [];
             if (!original || !current) return changes;
         
-            const originalMap = new Map(original.map(item => [item.id, item.name]));
+            const originalMap = new Map(original.map(item => [item.id, item]));
             
-            current.forEach((item) => {
-                const originalName = originalMap.get(item.id);
-                const originalItem = original.find(o => o.id === item.id);
-
-                if (originalName && originalName !== item.name) {
-                    changes.push({ 
-                        from: originalName, 
-                        to: item.name, 
-                        type: context ? `${type} in ${context}` : type,
-                        id: item.id
-                    });
+            current.forEach(currentItem => {
+                const originalItem = originalMap.get(currentItem.id);
+                if (originalItem && originalItem.name !== currentItem.name) {
+                    changes.push({ from: originalItem.name, to: currentItem.name, type: type });
                 }
-        
-                if (item.subStatuses && originalItem?.subStatuses) {
-                     // Use the *new* name as context for sub-status changes
-                    changes.push(...findRenames(originalItem.subStatuses, item.subStatuses, 'Sub-Status', item.name));
+                
+                // Recursively check for sub-status renames
+                if (type === 'Status' && originalItem && currentItem.subStatuses) {
+                    changes.push(...findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status'));
                 }
-                if (item.tags && originalItem?.tags) {
-                     // Use the *new* name as context for tag changes
-                    changes.push(...findRenames(originalItem.tags, item.tags, 'Tag', item.name));
+                // Recursively check for tag renames
+                 if (type === 'Tag Category' && originalItem && currentItem.tags) {
+                     const tagChanges = findRenames(originalItem.tags, currentItem.tags, 'Tag').map(c => ({...c, category: currentItem.name}));
+                     changes.push(...tagChanges);
                 }
             });
             return changes;
@@ -990,15 +978,6 @@ export default function SettingsPage() {
             ...findRenames(originalSettings.customTags, settings.customTags, 'Tag Category'),
         ];
         
-        // This is a special check for sub-status renames where the parent status was NOT renamed.
-        originalSettings.workflowCategories?.forEach(originalCat => {
-            const currentCat = settings.workflowCategories.find(c => c.id === originalCat.id);
-            if(currentCat && originalCat.name === currentCat.name) { // Status not renamed
-                 detectedChanges.push(...findRenames(originalCat.subStatuses, currentCat.subStatuses, 'Sub-Status', currentCat.name));
-            }
-        });
-
-
         if (detectedChanges.length > 0) {
             setRenameChanges(detectedChanges);
             setIsConfirmModalOpen(true);
@@ -1016,7 +995,7 @@ export default function SettingsPage() {
                     obj.forEach(walker);
                 } else if (obj && typeof obj === 'object') {
                     delete obj.id;
-                    delete obj.isExpanded; // Ensure this is also removed
+                    delete obj.isExpanded;
                     Object.values(obj).forEach(walker);
                 }
             };
@@ -1027,75 +1006,77 @@ export default function SettingsPage() {
     };
 
     const handleConfirmUpdate = async () => {
-        const settingsToSave = JSON.parse(JSON.stringify(settings));
-        await updateSettingsInDb(settingsToSave);
+        setIsUpdatingTasks(true);
+        try {
+            const settingsToSave = JSON.parse(JSON.stringify(settings));
+            await updateSettingsInDb(settingsToSave);
 
-        const batch = writeBatch(db);
-        const tasksRef = collection(db, 'tasks');
-        
-        const tasksSnapshot = await getDocs(tasksRef);
-
-        tasksSnapshot.forEach(taskDoc => {
-            const taskData = taskDoc.data();
-            let needsUpdate = false;
-            const updates = {};
-            
             for (const change of renameChanges) {
+                let q;
+                let updateData = {};
+    
                 switch(change.type) {
                     case 'Status':
-                        if (taskData.status === change.from) {
-                            updates.status = change.to;
-                            needsUpdate = true;
-                        }
+                        q = query(collection(db, "tasks"), where("status", "==", change.from));
+                        updateData = { status: change.to };
+                        break;
+                    case 'Sub-Status':
+                        q = query(collection(db, "tasks"), where("subStatus", "==", change.from));
+                        updateData = { subStatus: change.to };
                         break;
                     case 'Importance':
-                         if (taskData.importance === change.from) {
-                            updates.importance = change.to;
-                            needsUpdate = true;
-                        }
+                        q = query(collection(db, "tasks"), where("importance", "==", change.from));
+                        updateData = { importance: change.to };
                         break;
                     case 'Tag Category':
-                        if (taskData.tags && typeof taskData.tags[change.from] !== 'undefined') {
-                            if(!updates.tags) updates.tags = { ...taskData.tags };
-                            updates.tags[change.to] = updates.tags[change.from];
-                            delete updates.tags[change.from];
-                            needsUpdate = true;
-                        }
+                        // This requires a different approach since we rename a key in a map
+                        q = query(collection(db, "tasks"), where(`tags.${change.from}`, "!=", null));
                         break;
-                     default:
-                        if (change.type.startsWith('Sub-Status in')) {
-                            // Find original status name for comparison, because it might have been renamed too
-                            const statusChange = renameChanges.find(c => c.type === 'Status' && c.to === change.type.replace('Sub-Status in ', ''));
-                            const originalStatusName = statusChange ? statusChange.from : change.type.replace('Sub-Status in ', '');
+                    default:
+                        q = null;
+                }
+    
+                if (q) {
+                    const tasksToUpdateSnapshot = await getDocs(q);
+                    if (tasksToUpdateSnapshot.empty) continue;
 
-                            if (taskData.status === originalStatusName && taskData.subStatus === change.from) {
-                                updates.subStatus = change.to;
-                                needsUpdate = true;
-                            }
-                        } else if (change.type.startsWith('Tag in')) {
-                            // This logic remains complex, but we can simplify by finding the original category name via ID
-                            const tagCategoryChange = renameChanges.find(c => c.type === 'Tag Category' && c.to === change.type.replace('Tag in ', ''));
-                            const originalCategoryName = tagCategoryChange ? tagCategoryChange.from : change.type.replace('Tag in ', '');
-                            
-                            if (taskData.tags && taskData.tags[originalCategoryName] === change.from) {
-                               if(!updates.tags) updates.tags = { ...taskData.tags };
-                               updates.tags[originalCategoryName] = change.to;
-                               needsUpdate = true;
-                            }
+                    let batch = writeBatch(db);
+                    let operationCount = 0;
+                    
+                    for (const taskDoc of tasksToUpdateSnapshot.docs) {
+                        if (change.type === 'Tag Category') {
+                            const taskData = taskDoc.data();
+                            const newTags = { ...taskData.tags };
+                            newTags[change.to] = newTags[change.from];
+                            delete newTags[change.from];
+                            batch.update(taskDoc.ref, { tags: newTags });
+                        } else {
+                            batch.update(taskDoc.ref, updateData);
                         }
-                        break;
+                        
+                        operationCount++;
+                        if (operationCount === 499) {
+                            await batch.commit();
+                            batch = writeBatch(db);
+                            operationCount = 0;
+                        }
+                    }
+    
+                    if (operationCount > 0) {
+                        await batch.commit();
+                    }
                 }
             }
 
-            if (needsUpdate) {
-                batch.update(taskDoc.ref, updates);
-            }
-        });
-
-        await batch.commit();
-        
-        setIsConfirmModalOpen(false);
-        setRenameChanges([]);
+            alert("Settings and tasks updated successfully!");
+        } catch (error) {
+            console.error("Error updating tasks:", error);
+            alert("An error occurred while updating tasks. Please check the console.");
+        } finally {
+            setIsUpdatingTasks(false);
+            setIsConfirmModalOpen(false);
+            setRenameChanges([]);
+        }
     };
     
     const handleCancelConfirmation = async () => {
@@ -1120,11 +1101,11 @@ export default function SettingsPage() {
                 <header className="flex-shrink-0 flex justify-between items-center p-4 border-b">
                     <h1 className="text-2xl font-bold">Settings</h1>
                      <div className="flex items-center gap-2">
-                        <Button onClick={handleSaveChanges} disabled={!isDirty}>
-                            <Save className="h-4 w-4 mr-2" />
+                        <Button onClick={handleSaveChanges} disabled={!isDirty || isUpdatingTasks}>
+                            {isUpdatingTasks ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                             Save Changes
                         </Button>
-                        <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty}>
+                        <Button onClick={handleCancelChanges} variant="outline" disabled={!isDirty || isUpdatingTasks}>
                             <Undo className="h-4 w-4 mr-2" />
                             Cancel
                         </Button>
@@ -1208,6 +1189,7 @@ export default function SettingsPage() {
                 onClose={handleCancelConfirmation}
                 onConfirm={handleConfirmUpdate}
                 changes={renameChanges}
+                isUpdating={isUpdatingTasks}
             />
         </>
     );
