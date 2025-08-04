@@ -398,26 +398,27 @@ function WeeklyProgressChart({ allTasks }) {
 
 function DayOfWeekCompletionChart({ tasks, onBarClick }) {
     const data = useMemo(() => {
-        const dayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dayCounts = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
-        tasks
-            .filter(t => t.completionDate)
-            .forEach(t => {
-                const completionDate = toDate(t.completionDate);
-                if (completionDate) {
-                    const dayName = format(completionDate, 'E');
-                    dayCounts[dayName]++;
-                }
-            });
+        const today = new Date();
+        const last7Days = eachDayOfInterval({
+            start: subDays(today, 6),
+            end: today
+        });
         
-        return dayOrder.map(dayName => ({ name: dayName, count: dayCounts[dayName] }));
+        return last7Days.map(day => {
+            const count = tasks.filter(t => {
+                const completionDate = toDate(t.completionDate);
+                return completionDate && isSameDay(day, completionDate);
+            }).length;
+            
+            return { name: format(day, 'MMM d'), count: count };
+        });
     }, [tasks]);
     
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Productivity by Day</CardTitle>
-                <CardDescription>Total tasks completed on each day of the week.</CardDescription>
+                <CardTitle className="text-lg">Recent Productivity</CardTitle>
+                <CardDescription>Tasks completed over the last 7 days.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
