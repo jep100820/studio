@@ -298,7 +298,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
     );
 }
 
-function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
+function CustomTagsSection({ settings, onSettingsUpdate }) {
     const customTags = settings.customTags || [];
 
     const handleAddMainTag = () => {
@@ -308,26 +308,26 @@ function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
             name: `New Tag Category ${customTags.length + 1}`,
             tags: [],
         };
-        onUpdate('customTags', [...customTags, newMainTag]);
+        onSettingsUpdate({ customTags: [...customTags, newMainTag] });
     };
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        onUpdate('customTags', newCustomTags);
+        const updatedSettings = { customTags: newCustomTags };
 
-        // If the deleted tag was the default, update the dashboard setting
         if (settings.dashboardSettings?.defaultCustomTagId === id) {
-            const newDashboardSettings = {
+            updatedSettings.dashboardSettings = {
                 ...settings.dashboardSettings,
                 defaultCustomTagId: newCustomTags.length > 0 ? newCustomTags[0].id : '',
             };
-            onSettingsUpdate('dashboardSettings', newDashboardSettings);
         }
+        
+        onSettingsUpdate(updatedSettings);
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
         const newCustomTags = customTags.map(t => t.id === id ? updatedMainTag : t);
-        onUpdate('customTags', newCustomTags);
+        onSettingsUpdate({ customTags: newCustomTags });
     };
 
     const handleAddSubTag = (mainId) => {
@@ -337,7 +337,7 @@ function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
         
         const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
         newCustomTags[mainTagIndex].tags.push(newSubTag);
-        onUpdate('customTags', newCustomTags);
+        onSettingsUpdate({ customTags: newCustomTags });
     };
 
     const handleRemoveSubTag = (mainId, subId) => {
@@ -346,7 +346,7 @@ function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
         if (mainTagIndex === -1) return;
 
         newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.filter((st) => st.id !== subId);
-        onUpdate('customTags', newCustomTags);
+        onSettingsUpdate({ customTags: newCustomTags });
     };
 
     const handleSubTagUpdate = (mainId, subId, updatedSubTag) => {
@@ -355,7 +355,7 @@ function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
         if (mainTagIndex === -1) return;
         
         newCustomTags[mainTagIndex].tags = newCustomTags[mainTagIndex].tags.map(st => st.id === subId ? updatedSubTag : st);
-        onUpdate('customTags', newCustomTags);
+        onSettingsUpdate({ customTags: newCustomTags });
     };
     
     const handleDragEnd = (event, mainTagId) => {
@@ -369,7 +369,7 @@ function CustomTagsSection({ settings, onUpdate, onSettingsUpdate }) {
             const newIndex = newCustomTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
             newCustomTags[mainTagIndex].tags = arrayMove(newCustomTags[mainTagIndex].tags, oldIndex, newIndex);
             
-            onUpdate('customTags', newCustomTags);
+            onSettingsUpdate({ customTags: newCustomTags });
         }
     };
     
@@ -489,7 +489,6 @@ function ImportExportCard() {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
-            }
             return convertedData;
         });
 
@@ -520,7 +519,6 @@ function ImportExportCard() {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
-            }
             
             // Flatten tags object into separate columns with descriptive headers
             const tags = convertedData.tags || {};
@@ -685,7 +683,7 @@ function ImportExportCard() {
 
 function GeneralSettingsCard({ settings, onUpdate }) {
     const handleSwitchChange = (fieldName, checked) => {
-        onUpdate(fieldName, checked);
+        onUpdate({ [fieldName]: checked });
     };
     
     const handleWorkWeekChange = (day, checked) => {
@@ -696,7 +694,7 @@ function GeneralSettingsCard({ settings, onUpdate }) {
         } else {
             newWeek = currentWeek.filter(d => d !== day);
         }
-        onUpdate('workWeek', newWeek);
+        onUpdate({ workWeek: newWeek });
     }
     
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -743,12 +741,12 @@ function GeneralSettingsCard({ settings, onUpdate }) {
 function DashboardSettingsCard({ settings, onUpdate }) {
     const handleChartVisibilityChange = (chartName, checked) => {
         const newCharts = { ...settings.dashboardSettings.charts, [chartName]: checked };
-        onUpdate('dashboardSettings', { ...settings.dashboardSettings, charts: newCharts });
+        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, charts: newCharts } });
     };
 
     const handleStatVisibilityChange = (statName, checked) => {
         const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
-        onUpdate('dashboardSettings', { ...settings.dashboardSettings, stats: newStats });
+        onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
     };
     
     const handleDefaultTagChange = (e) => {
@@ -757,7 +755,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
             ...settings.dashboardSettings,
             defaultCustomTagId: value 
         };
-        onUpdate('dashboardSettings', newDashboardSettings);
+        onUpdate({ dashboardSettings: newDashboardSettings });
     };
 
     const chartConfig = [
@@ -919,9 +917,8 @@ export default function SettingsPage() {
         const unsubscribe = onSnapshot(settingsRef, (doc) => {
             if (doc.exists()) {
                 let data = doc.data();
-                let needsUpdateInDb = false; // Flag to check if we need to write back
+                let needsUpdateInDb = false;
 
-                // --- Default and migration logic ---
                 if (data.workflowCategories) {
                     data.workflowCategories = data.workflowCategories.map(cat => ({ ...cat, isExpanded: false, subStatuses: cat.subStatuses || [] }));
                 }
@@ -937,40 +934,21 @@ export default function SettingsPage() {
                 
                 const dataWithIds = addIdsToData(data);
                 
-                // --- THIS IS THE CRITICAL FIX ---
-                // If the setting is missing, set it and prepare to update the database
                 if (
                     dataWithIds.dashboardSettings?.charts?.customTagBreakdown &&
                     dataWithIds.customTags?.length > 0 &&
                     !dataWithIds.dashboardSettings.defaultCustomTagId
                 ) {
                     dataWithIds.dashboardSettings.defaultCustomTagId = dataWithIds.customTags[0].id;
-                    needsUpdateInDb = true; // Mark that we need to save this change
+                    needsUpdateInDb = true;
                 }
 
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
                 setOriginalSettings(JSON.parse(JSON.stringify(dataWithIds)));
 
-                // If we added a default ID, write it back to Firestore immediately
                 if (needsUpdateInDb) {
-                    // We call a function to update the DB without the temporary 'id' fields
-                    // This avoids the race condition entirely.
-                    const cleanseIds = (dataToCleanse) => {
-                        const cleansedData = JSON.parse(JSON.stringify(dataToCleanse));
-                        const walker = (obj) => {
-                            if (Array.isArray(obj)) {
-                                obj.forEach(walker);
-                            } else if (obj && typeof obj === 'object') {
-                                delete obj.id;
-                                delete obj.isExpanded;
-                                Object.values(obj).forEach(walker);
-                            }
-                        };
-                        walker(cleansedData);
-                        return cleansedData;
-                    };
-                    updateDoc(settingsRef, cleanseIds(dataWithIds));
+                    updateDoc(settingsRef, cleanseIdsForSave(dataWithIds));
                 }
             }
             setIsLoading(false);
@@ -994,11 +972,10 @@ export default function SettingsPage() {
         }
     }, [settings, originalSettings]);
 
-    const handleSettingsUpdate = (fieldName, updatedItems) => {
-        if (!settings) return;
+    const handleSettingsUpdate = (updates) => {
         setSettings(prev => ({
             ...prev,
-            [fieldName]: updatedItems,
+            ...updates
         }));
     };
     
@@ -1023,39 +1000,66 @@ export default function SettingsPage() {
         }
 
         const newItems = [...currentItems, newItem];
-        handleSettingsUpdate(fieldName, newItems);
+        handleSettingsUpdate({ [fieldName]: newItems });
+    };
+
+    const cleanseIdsForSave = (data) => {
+        const cleansedData = JSON.parse(JSON.stringify(data));
+        
+        // --- Start Validation ---
+        if (
+            cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
+            cleansedData.customTags?.length > 0
+        ) {
+            const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
+            if (!validTag) {
+                cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
+            }
+        } else if (cleansedData.customTags?.length === 0) {
+            cleansedData.dashboardSettings.defaultCustomTagId = '';
+        }
+        // --- End Validation ---
+
+        const walker = (obj) => {
+            if (Array.isArray(obj)) {
+                obj.forEach(walker);
+            } else if (obj && typeof obj === 'object') {
+                delete obj.id;
+                delete obj.isExpanded;
+                Object.values(obj).forEach(walker);
+            }
+        };
+        walker(cleansedData);
+        return cleansedData;
+    };
+    
+    const updateSettingsInDb = async (settingsToSave) => {
+        const settingsRef = doc(db, 'settings', 'workflow');
+        const finalData = cleanseIdsForSave(settingsToSave);
+        await updateDoc(settingsRef, finalData);
     };
 
     const handleSaveChanges = async () => {
         if (!originalSettings || !settings) return;
 
-        const settingsToSave = JSON.parse(JSON.stringify(settings));
-        if (settingsToSave.workflowCategories) {
-            settingsToSave.workflowCategories.forEach(cat => delete cat.isExpanded);
-        }
-
-        const findRenames = (original, current, type, parentName = null) => {
+        const findRenames = (originalItems, currentItems, type) => {
             const changes = [];
-            if (!original || !current) return changes;
-        
-            const originalMap = new Map(original.map(item => [item.id, item.name]));
-            
-            current.forEach(currentItem => {
-                const originalItemName = originalMap.get(currentItem.id);
-                if (originalItemName && originalItemName !== currentItem.name) {
-                    changes.push({ from: originalItemName, to: currentItem.name, type: type, parent: parentName });
-                }
-                
-                if (type === 'Status' && currentItem.subStatuses && originalSettings.workflowCategories.find(c => c.id === currentItem.id)?.subStatuses) {
-                     const originalSubStatuses = originalSettings.workflowCategories.find(c => c.id === currentItem.id).subStatuses;
-                     const subStatusChanges = findRenames(originalSubStatuses, currentItem.subStatuses, 'Sub-Status', currentItem.name);
-                     changes.push(...subStatusChanges);
-                }
-
-                 if (type === 'Tag Category' && currentItem.tags && originalSettings.customTags.find(t => t.id === currentItem.id)?.tags) {
-                    const originalTags = originalSettings.customTags.find(t => t.id === currentItem.id).tags;
-                     const tagChanges = findRenames(originalTags, currentItem.tags, 'Tag', currentItem.name);
-                     changes.push(...tagChanges);
+            if (!originalItems || !currentItems) return changes;
+    
+            const originalMap = new Map(originalItems.map(item => [item.id, item]));
+    
+            currentItems.forEach(currentItem => {
+                const originalItem = originalMap.get(currentItem.id);
+                if (originalItem) {
+                    if (originalItem.name !== currentItem.name) {
+                        changes.push({ from: originalItem.name, to: currentItem.name, type });
+                    }
+                    if (originalItem.subStatuses && currentItem.subStatuses) {
+                        changes.push(...findRenames(originalItem.subStatuses, currentItem.subStatuses, 'Sub-Status'));
+                    }
+                    if (originalItem.tags && currentItem.tags) {
+                        changes.push(...findRenames(originalItem.tags, currentItem.tags, 'Tag'));
+                    }
                 }
             });
             return changes;
@@ -1071,48 +1075,14 @@ export default function SettingsPage() {
             setRenameChanges(detectedChanges);
             setIsConfirmModalOpen(true);
         } else {
-            await updateSettingsInDb(settingsToSave);
+            await updateSettingsInDb(settings);
         }
-    };
-    
-    const updateSettingsInDb = async (settingsToSave) => {
-        const settingsRef = doc(db, 'settings', 'workflow');
-        const cleanseIds = (data) => {
-            const cleansedData = JSON.parse(JSON.stringify(data));
-            const walker = (obj) => {
-                if (Array.isArray(obj)) {
-                    obj.forEach(walker);
-                } else if (obj && typeof obj === 'object') {
-                    delete obj.id;
-                    delete obj.isExpanded;
-                    Object.values(obj).forEach(walker);
-                }
-            };
-            
-            // Validate defaultCustomTagId before returning
-            if (
-                cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
-                cleansedData.customTags?.length > 0
-            ) {
-                const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
-                if (!validTag) {
-                    cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
-                }
-            } else if (cleansedData.customTags?.length === 0) {
-                cleansedData.dashboardSettings.defaultCustomTagId = '';
-            }
-
-            walker(cleansedData);
-            return cleansedData;
-        };
-        await updateDoc(settingsRef, cleanseIds(settingsToSave));
     };
 
     const handleConfirmUpdate = async () => {
         setIsUpdatingTasks(true);
         try {
-            const settingsToSave = JSON.parse(JSON.stringify(settings));
-            await updateSettingsInDb(settingsToSave);
+            await updateSettingsInDb(settings);
 
             for (const change of renameChanges) {
                 let q;
@@ -1184,8 +1154,7 @@ export default function SettingsPage() {
     };
     
     const handleCancelConfirmation = async () => {
-        const settingsToSave = JSON.parse(JSON.stringify(settings));
-        await updateSettingsInDb(settingsToSave);
+        await updateSettingsInDb(settings);
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
     };
@@ -1237,7 +1206,7 @@ export default function SettingsPage() {
                         >
                             <SettingsSection
                                 items={settings?.workflowCategories}
-                                onUpdate={handleSettingsUpdate}
+                                onUpdate={(fieldName, updatedItems) => handleSettingsUpdate({ [fieldName]: updatedItems })}
                                 onAddItem={handleAddNewItem}
                                 fieldName="workflowCategories"
                                 hasSubStatuses={true}
@@ -1250,7 +1219,7 @@ export default function SettingsPage() {
                         >
                             <SettingsSection
                                 items={settings?.importanceLevels}
-                                onUpdate={handleSettingsUpdate}
+                                onUpdate={(fieldName, updatedItems) => handleSettingsUpdate({ [fieldName]: updatedItems })}
                                 onAddItem={handleAddNewItem}
                                 fieldName="importanceLevels"
                             />
@@ -1262,7 +1231,6 @@ export default function SettingsPage() {
                         >
                             <CustomTagsSection
                                 settings={settings}
-                                onUpdate={handleSettingsUpdate}
                                 onSettingsUpdate={handleSettingsUpdate}
                             />
                         </AccordionSection>
@@ -1298,3 +1266,5 @@ export default function SettingsPage() {
         </>
     );
 }
+
+    
