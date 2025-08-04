@@ -744,7 +744,10 @@ function DashboardSettingsCard({ settings, onUpdate }) {
     
     const handleDefaultTagChange = (e) => {
         const { value } = e.target;
-        const newDashboardSettings = { ...settings.dashboardSettings, defaultCustomTagId: value };
+        const newDashboardSettings = { 
+            ...settings.dashboardSettings,
+            defaultCustomTagId: value 
+        };
         onUpdate('dashboardSettings', newDashboardSettings);
     };
 
