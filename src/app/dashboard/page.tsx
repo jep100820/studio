@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client';
 
@@ -495,12 +493,12 @@ function CompletionPerformanceChart({ completedTasks }) {
     );
 }
 
-function CustomTagBreakdownChart({ allTasks, selectedTagCategory }) {
+function CustomTagBreakdownChart({ allTasks, tagCategory }) {
     const data = useMemo(() => {
-        if (!selectedTagCategory) return [];
+        if (!tagCategory) return [];
 
         const counts = allTasks.reduce((acc, task) => {
-            const tagValue = task.tags?.[selectedTagCategory.name] || 'Not Set';
+            const tagValue = task.tags?.[tagCategory.name] || 'Not Set';
             acc[tagValue] = (acc[tagValue] || 0) + 1;
             return acc;
         }, {});
@@ -509,26 +507,17 @@ function CustomTagBreakdownChart({ allTasks, selectedTagCategory }) {
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
             
-    }, [allTasks, selectedTagCategory]);
+    }, [allTasks, tagCategory]);
 
-    if (!selectedTagCategory) {
-        return (
-            <Card className="h-full flex flex-col items-center justify-center">
-                <CardHeader>
-                    <CardTitle>Custom Tag Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground text-center">Please configure a custom tag category in settings to use this chart.</p>
-                </CardContent>
-            </Card>
-        );
+    if (!tagCategory) {
+        return null;
     }
     
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-lg">Tasks by {selectedTagCategory.name}</CardTitle>
-                <CardDescription>Distribution of tasks based on the selected custom tag.</CardDescription>
+                <CardTitle className="text-lg">Tasks by {tagCategory.name}</CardTitle>
+                <CardDescription>Distribution of tasks based on the &quot;{tagCategory.name}&quot; tag.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1001,19 +990,11 @@ export default function DashboardPage() {
         return settings.dashboardSettings.charts;
     }, [settings]);
 
-    const selectedTagCategory = useMemo(() => {
+    const customTagCategories = useMemo(() => {
         if (!settings?.customTags || settings.customTags.length === 0) {
-            return null; // No custom tags exist
+            return [];
         }
-
-        // If a default is set in settings, use it
-        if (settings.dashboardSettings?.defaultCustomTagId) {
-            const foundTag = settings.customTags.find(tag => tag.id === settings.dashboardSettings.defaultCustomTagId);
-            if (foundTag) return foundTag;
-        }
-        
-        // --- NEW: Fallback to the first custom tag if no default is set ---
-        return settings.customTags[0];
+        return settings.customTags;
     }, [settings]);
 
     const defaultTab = useMemo(() => {
@@ -1022,10 +1003,10 @@ export default function DashboardPage() {
         if (visibleCharts.dayOfWeekCompletion) return "dayOfWeek";
         if (visibleCharts.weeklyProgress) return "weekly";
         if (visibleCharts.completionPerformance) return "performance";
-        if (visibleCharts.customTagBreakdown) return "origin";
+        if (customTagCategories.length > 0) return `custom-tag-${customTagCategories[0].id}`;
         if (visibleCharts.activeWorkload) return "workload";
         return "";
-    }, [visibleCharts]);
+    }, [visibleCharts, customTagCategories]);
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -1098,11 +1079,11 @@ export default function DashboardPage() {
                                     {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                     {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                     {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
-                                    {visibleCharts.customTagBreakdown && (
-                                        <TabsTrigger value="origin">
-                                            {selectedTagCategory ? `By: ${selectedTagCategory.name}` : 'Tag Breakdown'}
+                                    {customTagCategories.map(tag => (
+                                        <TabsTrigger key={tag.id} value={`custom-tag-${tag.id}`}>
+                                            By: {tag.name}
                                         </TabsTrigger>
-                                    )}
+                                    ))}
                                     {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                                 </TabsList>
                             </div>
@@ -1131,11 +1112,11 @@ export default function DashboardPage() {
                                     <CompletionPerformanceChart completedTasks={completedTasksForCharts} />
                                 </TabsContent>
                             )}
-                            {visibleCharts.customTagBreakdown && (
-                                <TabsContent value="origin" className="flex-grow">
-                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} selectedTagCategory={selectedTagCategory} />
+                            {customTagCategories.map(tag => (
+                                <TabsContent key={tag.id} value={`custom-tag-${tag.id}`} className="flex-grow">
+                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={tag} />
                                 </TabsContent>
-                            )}
+                            ))}
                             {visibleCharts.activeWorkload && (
                                 <TabsContent value="workload" className="flex-grow">
                                     <ActiveWorkloadChart activeTasks={tasksForCharts} settings={settings} />

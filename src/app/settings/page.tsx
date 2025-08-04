@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 
@@ -312,16 +313,7 @@ function CustomTagsSection({ settings, onUpdate }) {
 
     const handleRemoveMainTag = (id) => {
         const newCustomTags = customTags.filter((t) => t.id !== id);
-        const updatedSettings = { customTags: newCustomTags };
-
-        if (settings.dashboardSettings?.defaultCustomTagId === id) {
-            updatedSettings.dashboardSettings = {
-                ...settings.dashboardSettings,
-                defaultCustomTagId: newCustomTags.length > 0 ? newCustomTags[0].id : '',
-            };
-        }
-        
-        onUpdate(updatedSettings);
+        onUpdate({ customTags: newCustomTags });
     };
 
     const handleMainTagUpdate = (id, updatedMainTag) => {
@@ -493,16 +485,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         const newStats = { ...settings.dashboardSettings.stats, [statName]: checked };
         onUpdate({ dashboardSettings: { ...settings.dashboardSettings, stats: newStats } });
     };
-    
-    const handleDefaultTagChange = (e) => {
-        const { value } = e.target;
-        onUpdate({ 
-            dashboardSettings: { 
-                ...settings.dashboardSettings, 
-                defaultCustomTagId: value 
-            } 
-        });
-    };
 
     const chartConfig = [
         { key: 'taskStatus', label: 'Task Status Overview' },
@@ -511,7 +493,7 @@ function DashboardSettingsCard({ settings, onUpdate }) {
         { key: 'dayOfWeekCompletion', label: 'Productivity by Day' },
         { key: 'completionPerformance', label: 'On-Time/Overdue Completion' },
         { key: 'activeWorkload', label: 'Active Workload by Importance' },
-        { key: 'customTagBreakdown', label: 'Custom Tag Breakdown' },
+        // Custom Tag Breakdown is now dynamically handled on the dashboard
     ];
 
     const statConfig = [
@@ -531,7 +513,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
 
     const chartSettings = settings?.dashboardSettings?.charts || {};
     const statSettings = settings?.dashboardSettings?.stats || {};
-    const customTags = settings?.customTags || [];
 
     return (
         <CardContent className="space-y-6">
@@ -547,26 +528,6 @@ function DashboardSettingsCard({ settings, onUpdate }) {
                     ))}
                 </div>
             </div>
-            
-            {chartSettings.customTagBreakdown && customTags.length > 0 && (
-                 <div className="rounded-lg border p-4">
-                    <Label className="text-base">Default Chart for Custom Tag Breakdown</Label>
-                    <SettingsCardDescription>Select which custom tag to show by default on the dashboard.</SettingsCardDescription>
-                     <div className="mt-4">
-                         <select
-                            value={settings.dashboardSettings?.defaultCustomTagId || ''}
-                            onChange={handleDefaultTagChange}
-                            className="w-full max-w-sm border rounded px-2 py-2 bg-input text-sm"
-                        >
-                            {customTags.map(tag => (
-                                <option key={tag.id} value={tag.id}>
-                                    {tag.name}
-                                </option>
-                            ))}
-                        </select>
-                     </div>
-                 </div>
-            )}
 
             <div className="rounded-lg border p-4">
                 <Label className="text-base">Visible Statistics</Label>
@@ -618,7 +579,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -896,22 +857,6 @@ export default function SettingsPage() {
     const cleanseIdsForSave = (data) => {
         if (!data) return null;
         const cleansedData = JSON.parse(JSON.stringify(data));
-        
-        // --- Start Validation ---
-        if (
-            cleansedData.dashboardSettings?.charts?.customTagBreakdown &&
-            cleansedData.customTags?.length > 0
-        ) {
-            const validTag = cleansedData.customTags.find(tag => tag.id === cleansedData.dashboardSettings.defaultCustomTagId);
-            if (!validTag) {
-                cleansedData.dashboardSettings.defaultCustomTagId = cleansedData.customTags[0].id;
-            }
-        } else if (!cleansedData.customTags || cleansedData.customTags.length === 0) {
-            if (cleansedData.dashboardSettings) {
-                cleansedData.dashboardSettings.defaultCustomTagId = '';
-            }
-        }
-        // --- End Validation ---
 
         const walker = (obj) => {
             if (Array.isArray(obj)) {
@@ -955,34 +900,24 @@ export default function SettingsPage() {
         const unsubscribe = onSnapshot(settingsRef, (doc) => {
             if (doc.exists()) {
                 let data = doc.data();
-                let needsUpdateInDb = false;
-
+                
                 // --- Default and migration logic ---
                 if (!data.hasOwnProperty('enableTimeTracking')) data.enableTimeTracking = false;
                 if (!data.hasOwnProperty('workWeek')) data.workWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 if (!data.hasOwnProperty('dashboardSettings')) {
                     data.dashboardSettings = {
-                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, customTagBreakdown: true, activeWorkload: true },
+                        charts: { taskStatus: true, dailyActivity: true, weeklyProgress: true, dayOfWeekCompletion: true, completionPerformance: true, activeWorkload: true },
                         stats: { totalTasks: true, totalCompleted: true, overdue: true, active: true, avgTime: true, last7: true, completedToday: true, createdToday: true, completionRate: true, inReview: true, stale: true, avgSubStatusChanges: true },
-                        defaultCustomTagId: '',
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
                 
                 const dataWithIds = addIdsToData(data);
                 
-                if (dataWithIds.dashboardSettings?.charts?.customTagBreakdown && dataWithIds.customTags?.length > 0 && !dataWithIds.dashboardSettings.defaultCustomTagId) {
-                    dataWithIds.dashboardSettings.defaultCustomTagId = dataWithIds.customTags[0].id;
-                    needsUpdateInDb = true;
-                }
-
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
                 setOriginalSettings(JSON.parse(JSON.stringify(dataWithIds)));
 
-                if (needsUpdateInDb) {
-                    updateDoc(settingsRef, cleanseIdsForSave(dataWithIds));
-                }
             }
             setIsLoading(false);
         });
