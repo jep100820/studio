@@ -309,8 +309,16 @@ function CustomTagsSection({ settings, onUpdate }) {
             id: `tagcat-${Date.now()}`,
             name: `New Tag Category ${customTags.length + 1}`,
             tags: [],
+            isExpanded: false,
         };
         onUpdate({ customTags: [...customTags, newMainTag] });
+    };
+    
+    const handleToggleExpand = (mainTagId) => {
+        const newCustomTags = customTags.map(tag => 
+            tag.id === mainTagId ? { ...tag, isExpanded: !tag.isExpanded } : tag
+        );
+        onUpdate({ customTags: newCustomTags });
     };
 
     const handleRemoveMainTag = (idToRemove) => {
@@ -377,39 +385,54 @@ function CustomTagsSection({ settings, onUpdate }) {
             <CardContent className="pt-6">
                 <div className="space-y-4">
                     {customTags.map((mainTag) => (
-                        <div key={mainTag.id} className="p-4 border rounded-lg">
-                            <SortableItem
-                                id={mainTag.id}
-                                item={mainTag}
-                                onUpdate={(id, updated) => handleMainTagUpdate(id, updated)}
-                                onRemove={() => handleRemoveMainTag(mainTag.id)}
-                                hasColor={false}
-                                hasSubStatuses={false}
-                            />
-                            <div className="pl-10 mt-4 space-y-2">
-                                <DndContext onDragEnd={(e) => handleDragEnd(e, mainTag.id)}>
-                                    <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                                        {mainTag.tags.map(subTag => (
-                                            <SortableItem
-                                                key={subTag.id}
-                                                id={subTag.id}
-                                                item={subTag}
-                                                onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
-                                                onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
-                                                hasColor={false}
-                                                hasSubStatuses={false}
-                                            />
-                                        ))}
-                                    </SortableContext>
-                                </DndContext>
-                                {mainTag.tags.length < 10 && (
-                                     <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Add Tag
+                        <AccordionSection
+                            key={mainTag.id}
+                            title={mainTag.name}
+                            summary={mainTag.tags.map(t => t.name).join(', ') || 'No tags configured.'}
+                        >
+                            <div className="p-4 border rounded-lg bg-muted/50">
+                                <div className="flex items-center justify-end mb-2">
+                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(mainTag.id)} className="h-8 w-8">
+                                        <X className="h-4 w-4" />
+                                        <span className="sr-only">Remove Category</span>
                                     </Button>
-                                )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor={`main-tag-name-${mainTag.id}`}>Category Name</Label>
+                                    <Input
+                                        id={`main-tag-name-${mainTag.id}`}
+                                        value={mainTag.name}
+                                        onChange={(e) => handleMainTagUpdate(mainTag.id, { ...mainTag, name: e.target.value })}
+                                        className="font-semibold bg-background"
+                                    />
+                                </div>
+                                <div className="pl-4 mt-4 space-y-3">
+                                    <Label>Tags</Label>
+                                    <DndContext onDragEnd={(e) => handleDragEnd(e, mainTag.id)}>
+                                        <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                            {mainTag.tags.map(subTag => (
+                                                <div key={subTag.id} className="flex items-center gap-2">
+                                                     <SortableItem
+                                                        id={subTag.id}
+                                                        item={subTag}
+                                                        onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
+                                                        onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
+                                                        hasColor={false}
+                                                        hasSubStatuses={false}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </SortableContext>
+                                    </DndContext>
+                                    {mainTag.tags.length < 10 && (
+                                         <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Tag
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        </AccordionSection>
                     ))}
                 </div>
                  {customTags.length < 4 && (
@@ -583,7 +606,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
