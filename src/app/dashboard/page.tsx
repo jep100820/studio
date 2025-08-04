@@ -515,7 +515,7 @@ function CustomTagBreakdownChart({ allTasks, selectedTagCategory }) {
         return (
             <Card className="h-full flex flex-col items-center justify-center">
                 <CardHeader>
-                    <CardTitle>Task Breakdown by Tag</CardTitle>
+                    <CardTitle>Custom Tag Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground text-center">Please configure a custom tag category in settings to use this chart.</p>
