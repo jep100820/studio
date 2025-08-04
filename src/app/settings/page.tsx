@@ -984,20 +984,22 @@ export default function SettingsPage() {
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
 
+                 const dataWithIds = addIdsToData(data);
+                 
                  // Initialize custom tag chart visibility if not set
-                if (data.customTags && data.customTags.length > 0) {
-                    if (!data.dashboardSettings.charts) {
-                        data.dashboardSettings.charts = {};
+                if (dataWithIds.customTags && dataWithIds.customTags.length > 0) {
+                    if (!dataWithIds.dashboardSettings.charts) {
+                        dataWithIds.dashboardSettings.charts = {};
                     }
-                    data.customTags.forEach(tag => {
+                    let chartsUpdated = false;
+                    dataWithIds.customTags.forEach(tag => {
                         const chartKey = `customTag_${tag.id}`;
-                        if (data.dashboardSettings.charts[chartKey] === undefined) {
-                            data.dashboardSettings.charts[chartKey] = true; // default to visible
+                        if (dataWithIds.dashboardSettings.charts[chartKey] === undefined) {
+                            dataWithIds.dashboardSettings.charts[chartKey] = true; // default to visible
+                            chartsUpdated = true;
                         }
                     });
                 }
-                
-                const dataWithIds = addIdsToData(data);
                 
                 const deepCopy = JSON.parse(JSON.stringify(dataWithIds));
                 setSettings(deepCopy);
