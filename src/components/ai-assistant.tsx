@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label';
+import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2, Plus } from 'lucide-react';
 import { generateTasks, AITask } from '@/ai/flows/generate-tasks-flow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

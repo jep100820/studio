@@ -1,8 +1,7 @@
-'use server';
-import { genkit, configureGenkit } from 'genkit';
+import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
-configureGenkit({
+export const ai = genkit({
   plugins: [
     googleAI({
       apiVersion: ['v1', 'v1beta'],
@@ -11,5 +10,3 @@ configureGenkit({
   logLevel: 'debug',
   enableTracingAndMetrics: true,
 });
-
-export { ai } from 'genkit/ai';
