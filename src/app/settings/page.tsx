@@ -1104,7 +1104,7 @@ export default function SettingsPage() {
         await updateSettingsInDb(settingsToSave);
         setIsConfirmModalOpen(false);
         setRenameChanges([]);
-    }
+    };
 
     const handleCancelChanges = () => {
         setSettings(JSON.parse(JSON.stringify(originalSettings)));
