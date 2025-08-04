@@ -509,8 +509,7 @@ function CompletedTasksList({ tasks, settings }) {
     const filteredTasks = useMemo(() => {
         if (!searchTerm) return tasks;
         return tasks.filter(task => 
-            (task.taskid?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (task.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
+            (task.taskid?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [tasks, searchTerm]);
     
@@ -522,18 +521,22 @@ function CompletedTasksList({ tasks, settings }) {
             alert('Incorrect password.');
         }
     };
+    
+    const handleClick = (task) => {
+        router.push(`/?taskId=${task.id}`);
+    };
 
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <CardTitle>Completed Tasks</CardTitle>
-                <CardDescription>Search or double-click to edit.</CardDescription>
+                <CardDescription>Click to view, double-click to edit.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col min-h-0">
                 <div className="relative mb-4">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by Task ID or Remarks..."
+                        placeholder="Search by Task ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-8"
@@ -541,16 +544,18 @@ function CompletedTasksList({ tasks, settings }) {
                 </div>
                 <div className="flex-grow overflow-y-auto pr-2 -mr-2">
                     {filteredTasks.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {filteredTasks.map(task => (
                                 <div 
                                     key={task.id} 
-                                    className="p-3 bg-muted/50 rounded-lg text-sm cursor-pointer hover:bg-muted"
+                                    className="p-2 bg-muted/50 rounded-lg text-sm cursor-pointer hover:bg-muted flex justify-between items-center"
+                                    onClick={() => handleClick(task)}
                                     onDoubleClick={() => handleDoubleClick(task)}
                                 >
-                                    <p className="font-semibold text-foreground">{task.taskid}</p>
-                                    <p className="text-muted-foreground mt-1 truncate">{task.remarks || 'No remarks'}</p>
-                                    <p className="text-xs text-muted-foreground mt-2">Completed on: {formatDate(task.completionDate, settings?.enableTimeTracking) || 'Not set'}</p>
+                                    <span className="font-semibold text-foreground truncate" title={task.taskid}>{task.taskid}</span>
+                                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-4">
+                                        {formatDate(task.completionDate, settings?.enableTimeTracking ? 'MMM d, yy, h:mm a' : 'MMM d, yyyy') || 'N/A'}
+                                    </span>
                                 </div>
                             ))}
                         </div>
