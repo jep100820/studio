@@ -54,48 +54,47 @@ function isColorLight(hexColor) {
     return ((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186;
 }
 
-function SubStatusManager({ parentId, subStatuses, onUpdate }) {
+function SubItemManager({ items, onUpdate, parentId, itemLabel = 'Sub-Status', maxItems = 10 }) {
     const handleAdd = () => {
-        const newSubStatus = { id: `sub-${Date.now()}`, name: 'New Sub-Status' };
-        const newSubStatuses = [...subStatuses, newSubStatus];
-        onUpdate(parentId, newSubStatuses);
+        const newItem = { id: `sub-${Date.now()}`, name: `New ${itemLabel}` };
+        onUpdate(parentId, [...items, newItem]);
     };
 
-    const handleRemove = (subId) => {
-        const newSubStatuses = subStatuses.filter((s) => s.id !== subId);
-        onUpdate(parentId, newSubStatuses);
+    const handleRemove = (itemId) => {
+        onUpdate(parentId, items.filter((s) => s.id !== itemId));
     };
 
-    const handleChange = (subId, value) => {
-        const newSubStatuses = subStatuses.map(s => s.id === subId ? { ...s, name: value } : s);
-        onUpdate(parentId, newSubStatuses);
+    const handleChange = (itemId, value) => {
+        onUpdate(parentId, items.map(s => s.id === itemId ? { ...s, name: value } : s));
     };
-
+    
     return (
         <div className="p-3 mt-2 space-y-3 bg-muted/50 rounded-lg ml-10">
             <div className="space-y-2">
-                {subStatuses?.map((sub) => (
-                    <div key={sub.id} className="flex items-center gap-2">
+                {items?.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2">
                         <Input
-                            value={sub.name}
-                            onChange={(e) => handleChange(sub.id, e.target.value)}
+                            value={item.name}
+                            onChange={(e) => handleChange(item.id, e.target.value)}
                             className="flex-grow bg-background h-9"
                         />
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(sub.id)} className="h-9 w-9">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.id)} className="h-9 w-9">
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                 ))}
             </div>
-            <Button onClick={handleAdd} variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Sub-Status
-            </Button>
+            {items.length < maxItems && (
+                <Button onClick={handleAdd} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add {itemLabel}
+                </Button>
+            )}
         </div>
     );
 }
 
-function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true }) {
+function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true, subItemLabel, maxSubItems }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(item.name);
@@ -139,10 +138,11 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     const bgColor = hasColor ? item.color : 'hsl(var(--card))';
     
     const subStatusSummary = useMemo(() => {
-        if (!hasSubStatuses || !item.subStatuses) return '';
-        if (item.subStatuses.length === 0) return '(No substatus)';
-        return `(${item.subStatuses.map(s => s.name).join(', ')})`;
-    }, [item.subStatuses, hasSubStatuses]);
+        const subItems = item.subStatuses || item.tags;
+        if (!hasSubStatuses || !subItems) return '';
+        if (subItems.length === 0) return `(No ${subItemLabel.toLowerCase()}es)`;
+        return `(${subItems.map(s => s.name).join(', ')})`;
+    }, [item, hasSubStatuses, subItemLabel]);
 
     return (
         <div className="mb-3">
@@ -202,17 +202,19 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                 </div>
             </div>
              {hasSubStatuses && item.isExpanded && (
-                 <SubStatusManager
+                 <SubItemManager
                     parentId={id}
-                    subStatuses={item.subStatuses || []}
+                    items={item.subStatuses || item.tags || []}
                     onUpdate={onSubStatusUpdate}
+                    itemLabel={subItemLabel}
+                    maxItems={maxSubItems}
                 />
             )}
         </div>
     );
 }
 
-function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true }) {
+function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true, subItemLabel, maxSubItems }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -244,14 +246,21 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
         onUpdate({ [fieldName]: newItems });
     };
     
-    const handleSubStatusUpdate = (parentItemId, newSubStatuses) => {
-        const newItems = items.map(item =>
-            item.id === parentItemId
-                ? { ...item, subStatuses: newSubStatuses }
-                : item
-        );
+    const handleSubStatusUpdate = (parentItemId, newSubItems) => {
+        const newItems = items.map(item => {
+            if (item.id === parentItemId) {
+                // Determine whether to update 'subStatuses' or 'tags'
+                if (item.hasOwnProperty('subStatuses')) {
+                    return { ...item, subStatuses: newSubItems };
+                } else if (item.hasOwnProperty('tags')) {
+                    return { ...item, tags: newSubItems };
+                }
+            }
+            return item;
+        });
         onUpdate({ [fieldName]: newItems });
     };
+
 
     const handleToggleExpand = (itemId) => {
         const newItems = items.map(item =>
@@ -286,6 +295,8 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
                                     hasSubStatuses={hasSubStatuses}
                                     onSubStatusUpdate={handleSubStatusUpdate}
                                     hasColor={hasColor}
+                                    subItemLabel={subItemLabel}
+                                    maxSubItems={maxSubItems}
                                 />
                             ))}
                         </div>
@@ -314,133 +325,19 @@ function CustomTagsSection({ settings, onUpdate }) {
         onUpdate({ customTags: [...customTags, newMainTag] });
     };
     
-    const handleToggleExpand = (mainTagId) => {
-        const newCustomTags = customTags.map(tag => 
-            tag.id === mainTagId ? { ...tag, isExpanded: !tag.isExpanded } : tag
-        );
-        onUpdate({ customTags: newCustomTags });
-    };
-
-    const handleRemoveMainTag = (idToRemove) => {
-        const newCustomTags = customTags.filter((t) => t.id !== idToRemove);
-        onUpdate({ customTags: newCustomTags });
-    };
-
-    const handleMainTagUpdate = (id, updatedMainTag) => {
-        const newCustomTags = customTags.map(t => t.id === id ? updatedMainTag : t);
-        onUpdate({ customTags: newCustomTags });
-    };
-
-    const handleAddSubTag = (mainId) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId && tag.tags.length < 10) {
-                const newSubTag = { id: `subtag-${Date.now()}`, name: 'New Tag' };
-                return { ...tag, tags: [...tag.tags, newSubTag] };
-            }
-            return tag;
-        });
-        onUpdate({ customTags: newCustomTags });
-    };
-
-    const handleRemoveSubTag = (mainId, subId) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId) {
-                return { ...tag, tags: tag.tags.filter(st => st.id !== subId) };
-            }
-            return tag;
-        });
-        onUpdate({ customTags: newCustomTags });
-    };
-
-    const handleSubTagUpdate = (mainId, subId, updatedSubTag) => {
-        const newCustomTags = customTags.map(tag => {
-            if (tag.id === mainId) {
-                return { ...tag, tags: tag.tags.map(st => st.id === subId ? updatedSubTag : st) };
-            }
-            return tag;
-        });
-        onUpdate({ customTags: newCustomTags });
-    };
-    
-    const handleDragEnd = (event, mainTagId) => {
-        const { active, over } = event;
-        if (active.id !== over.id) {
-            const mainTagIndex = customTags.findIndex(t => t.id === mainTagId);
-            if (mainTagIndex === -1) return;
-            
-            const oldIndex = customTags[mainTagIndex].tags.findIndex(item => item.id === active.id);
-            const newIndex = customTags[mainTagIndex].tags.findIndex(item => item.id === over.id);
-            const reorderedSubTags = arrayMove(customTags[mainTagIndex].tags, oldIndex, newIndex);
-            
-            const newCustomTags = customTags.map((tag, index) => 
-                index === mainTagIndex ? { ...tag, tags: reorderedSubTags } : tag
-            );
-            
-            onUpdate({ customTags: newCustomTags });
-        }
-    };
-    
     return (
         <Card>
             <CardContent className="pt-6">
-                <div className="space-y-4">
-                    {customTags.map((mainTag) => (
-                        <AccordionSection
-                            key={mainTag.id}
-                            title={mainTag.name}
-                            summary={mainTag.tags.map(t => t.name).join(', ') || 'No tags configured.'}
-                        >
-                            <div className="p-4 border rounded-lg bg-muted/50">
-                                <div className="flex items-center justify-end mb-2">
-                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveMainTag(mainTag.id)} className="h-8 w-8">
-                                        <X className="h-4 w-4" />
-                                        <span className="sr-only">Remove Category</span>
-                                    </Button>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor={`main-tag-name-${mainTag.id}`}>Category Name</Label>
-                                    <Input
-                                        id={`main-tag-name-${mainTag.id}`}
-                                        value={mainTag.name}
-                                        onChange={(e) => handleMainTagUpdate(mainTag.id, { ...mainTag, name: e.target.value })}
-                                        className="font-semibold bg-background"
-                                    />
-                                </div>
-                                <div className="pl-4 mt-4 space-y-3">
-                                    <Label>Tags</Label>
-                                    <DndContext onDragEnd={(e) => handleDragEnd(e, mainTag.id)}>
-                                        <SortableContext items={mainTag.tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                                            {mainTag.tags.map(subTag => (
-                                                <div key={subTag.id} className="flex items-center gap-2">
-                                                     <SortableItem
-                                                        id={subTag.id}
-                                                        item={subTag}
-                                                        onUpdate={(id, updated) => handleSubTagUpdate(mainTag.id, id, updated)}
-                                                        onRemove={() => handleRemoveSubTag(mainTag.id, subTag.id)}
-                                                        hasColor={false}
-                                                        hasSubStatuses={false}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </SortableContext>
-                                    </DndContext>
-                                    {mainTag.tags.length < 10 && (
-                                         <Button variant="outline" size="sm" onClick={() => handleAddSubTag(mainTag.id)}>
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Tag
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </AccordionSection>
-                    ))}
-                </div>
-                 {customTags.length < 4 && (
-                    <Button onClick={handleAddMainTag} variant="outline" size="sm" className="mt-4">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Tag Category
-                    </Button>
-                )}
+                <SettingsSection
+                    items={customTags}
+                    onUpdate={onUpdate}
+                    onAddItem={handleAddMainTag}
+                    fieldName="customTags"
+                    hasSubStatuses={true}
+                    hasColor={false}
+                    subItemLabel="Tag"
+                    maxSubItems={10}
+                />
             </CardContent>
         </Card>
     );
@@ -918,6 +815,7 @@ export default function SettingsPage() {
             dataCopy.customTags = dataCopy.customTags.map(tag => ({
                 ...tag,
                 id: tag.id || getNextId('tag'),
+                isExpanded: false,
                 tags: (tag.tags || []).map(subTag => ({ ...subTag, id: subTag.id || getNextId('subtag') }))
             }));
         }
@@ -984,6 +882,10 @@ export default function SettingsPage() {
             newItem.isExpanded = false;
         } else if (fieldName === 'importanceLevels') {
             newItem.color = '#cccccc';
+        } else if (fieldName === 'customTags') {
+            newItem.name = `New Tag Category ${currentItems.length + 1}`;
+            newItem.tags = [];
+            newItem.isExpanded = false;
         }
 
         handleSettingsUpdate({ [fieldName]: [...currentItems, newItem] });
@@ -1194,6 +1096,8 @@ export default function SettingsPage() {
                                 onAddItem={handleAddNewItem}
                                 fieldName="workflowCategories"
                                 hasSubStatuses={true}
+                                subItemLabel="Sub-Status"
+                                maxSubItems={10}
                             />
                         </AccordionSection>
 
