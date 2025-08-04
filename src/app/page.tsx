@@ -184,6 +184,21 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
           <div className="text-xs mt-1">
               <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
           </div>
+          
+          {!isExpanded && (
+            <div className="mt-2 space-y-1 text-xs opacity-80">
+                {(task.desc) && (
+                    <p className="truncate">
+                        <span className="font-semibold">Desc:</span> {task.desc}
+                    </p>
+                )}
+                {(task.remarks) && (
+                    <p className="truncate">
+                        <span className="font-semibold">Remarks:</span> {task.remarks}
+                    </p>
+                )}
+            </div>
+          )}
 
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
@@ -201,10 +216,10 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
          {isExpanded && (
             <div className="mt-4 pt-4 border-t border-black/20">
                 <p className="text-sm font-semibold">Description:</p>
-                <p className="text-sm mt-1">{task.desc || 'No description'}</p>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{task.desc || 'No description'}</p>
                 
                 <p className="text-sm font-semibold mt-2">Remarks:</p>
-                <p className="text-sm mt-1">{task.remarks || 'No remarks'}</p>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{task.remarks || 'No remarks'}</p>
                 
                 <p className="text-sm font-semibold mt-2">Date Started:</p>
                 <p className="text-sm mt-1">{formatDate(task.date, displayFormat)}</p>
