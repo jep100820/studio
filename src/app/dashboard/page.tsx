@@ -986,21 +986,23 @@ export default function DashboardPage() {
     };
     
     const visibleCharts = useMemo(() => {
-        const defaultCharts = { taskStatus: true, dailyActivity: true, customTagBreakdown: true };
+        const defaultCharts = { taskStatus: true, dailyActivity: true, customTagBreakdown1: true, customTagBreakdown2: true };
         if (!settings?.dashboardSettings?.charts) return defaultCharts;
         return settings.dashboardSettings.charts;
     }, [settings]);
 
-    const defaultCustomTagChart = useMemo(() => {
-        if (!settings?.customTags || settings.customTags.length === 0) {
-            return null;
-        }
-        const defaultId = settings.dashboardSettings?.defaultCustomTagChartId;
-        if (defaultId) {
-            return settings.customTags.find(tag => tag.id === defaultId) || settings.customTags[0];
-        }
-        return settings.customTags[0];
+    const customTagChart1 = useMemo(() => {
+        if (!settings?.customTags || settings.customTags.length === 0) return null;
+        const chartId = settings.dashboardSettings?.defaultCustomTagChartId1;
+        return chartId ? settings.customTags.find(tag => tag.id === chartId) : settings.customTags[0];
     }, [settings]);
+
+    const customTagChart2 = useMemo(() => {
+        if (!settings?.customTags || settings.customTags.length === 0) return null;
+        const chartId = settings.dashboardSettings?.defaultCustomTagChartId2;
+        return chartId ? settings.customTags.find(tag => tag.id === chartId) : settings.customTags[0];
+    }, [settings]);
+
 
     const defaultTab = useMemo(() => {
         if (visibleCharts.taskStatus) return "status";
@@ -1009,9 +1011,10 @@ export default function DashboardPage() {
         if (visibleCharts.weeklyProgress) return "weekly";
         if (visibleCharts.completionPerformance) return "performance";
         if (visibleCharts.activeWorkload) return "workload";
-        if (visibleCharts.customTagBreakdown && defaultCustomTagChart) return "customTag";
+        if (visibleCharts.customTagBreakdown1 && customTagChart1) return "customTag1";
+        if (visibleCharts.customTagBreakdown2 && customTagChart2) return "customTag2";
         return "";
-    }, [visibleCharts, defaultCustomTagChart]);
+    }, [visibleCharts, customTagChart1, customTagChart2]);
 
 
     if (isLoading) {
@@ -1085,9 +1088,14 @@ export default function DashboardPage() {
                                     {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                     {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                     {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
-                                    {visibleCharts.customTagBreakdown && defaultCustomTagChart && (
-                                        <TabsTrigger value="customTag">
-                                            By: {defaultCustomTagChart.name}
+                                    {visibleCharts.customTagBreakdown1 && customTagChart1 && (
+                                        <TabsTrigger value="customTag1">
+                                            By: {customTagChart1.name}
+                                        </TabsTrigger>
+                                    )}
+                                     {visibleCharts.customTagBreakdown2 && customTagChart2 && (
+                                        <TabsTrigger value="customTag2">
+                                            By: {customTagChart2.name}
                                         </TabsTrigger>
                                     )}
                                     {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
@@ -1118,9 +1126,14 @@ export default function DashboardPage() {
                                     <CompletionPerformanceChart completedTasks={completedTasksForCharts} />
                                 </TabsContent>
                             )}
-                            {visibleCharts.customTagBreakdown && defaultCustomTagChart && (
-                                <TabsContent value="customTag" className="flex-grow">
-                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={defaultCustomTagChart} />
+                            {visibleCharts.customTagBreakdown1 && customTagChart1 && (
+                                <TabsContent value="customTag1" className="flex-grow">
+                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={customTagChart1} />
+                                </TabsContent>
+                            )}
+                             {visibleCharts.customTagBreakdown2 && customTagChart2 && (
+                                <TabsContent value="customTag2" className="flex-grow">
+                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={customTagChart2} />
                                 </TabsContent>
                             )}
                             {visibleCharts.activeWorkload && (
@@ -1150,4 +1163,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-
