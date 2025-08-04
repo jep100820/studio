@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -985,16 +986,20 @@ export default function DashboardPage() {
     };
     
     const visibleCharts = useMemo(() => {
-        const defaultCharts = { taskStatus: true, dailyActivity: true };
+        const defaultCharts = { taskStatus: true, dailyActivity: true, customTagBreakdown: true };
         if (!settings?.dashboardSettings?.charts) return defaultCharts;
         return settings.dashboardSettings.charts;
     }, [settings]);
 
-    const customTagCategories = useMemo(() => {
+    const defaultCustomTagChart = useMemo(() => {
         if (!settings?.customTags || settings.customTags.length === 0) {
-            return [];
+            return null;
         }
-        return settings.customTags;
+        const defaultId = settings.dashboardSettings?.defaultCustomTagChartId;
+        if (defaultId) {
+            return settings.customTags.find(tag => tag.id === defaultId) || settings.customTags[0];
+        }
+        return settings.customTags[0];
     }, [settings]);
 
     const defaultTab = useMemo(() => {
@@ -1004,13 +1009,10 @@ export default function DashboardPage() {
         if (visibleCharts.weeklyProgress) return "weekly";
         if (visibleCharts.completionPerformance) return "performance";
         if (visibleCharts.activeWorkload) return "workload";
-        
-        // Find the first visible custom tag chart
-        const firstVisibleTag = customTagCategories.find(tag => visibleCharts[`customTag_${tag.id}`]);
-        if (firstVisibleTag) return `custom-tag-${firstVisibleTag.id}`;
-
+        if (visibleCharts.customTagBreakdown && defaultCustomTagChart) return "customTag";
         return "";
-    }, [visibleCharts, customTagCategories]);
+    }, [visibleCharts, defaultCustomTagChart]);
+
 
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading dashboard...</div>;
@@ -1083,12 +1085,11 @@ export default function DashboardPage() {
                                     {visibleCharts.dayOfWeekCompletion && <TabsTrigger value="dayOfWeek">Day Productivity</TabsTrigger>}
                                     {visibleCharts.weeklyProgress && <TabsTrigger value="weekly">Weekly Progress</TabsTrigger>}
                                     {visibleCharts.completionPerformance && <TabsTrigger value="performance">Performance</TabsTrigger>}
-                                    {customTagCategories.map(tag => (
-                                        visibleCharts[`customTag_${tag.id}`] &&
-                                        <TabsTrigger key={tag.id} value={`custom-tag-${tag.id}`}>
-                                            By: {tag.name}
+                                    {visibleCharts.customTagBreakdown && defaultCustomTagChart && (
+                                        <TabsTrigger value="customTag">
+                                            By: {defaultCustomTagChart.name}
                                         </TabsTrigger>
-                                    ))}
+                                    )}
                                     {visibleCharts.activeWorkload && <TabsTrigger value="workload">Workload</TabsTrigger>}
                                 </TabsList>
                             </div>
@@ -1117,12 +1118,11 @@ export default function DashboardPage() {
                                     <CompletionPerformanceChart completedTasks={completedTasksForCharts} />
                                 </TabsContent>
                             )}
-                            {customTagCategories.map(tag => (
-                                visibleCharts[`customTag_${tag.id}`] &&
-                                <TabsContent key={tag.id} value={`custom-tag-${tag.id}`} className="flex-grow">
-                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={tag} />
+                            {visibleCharts.customTagBreakdown && defaultCustomTagChart && (
+                                <TabsContent value="customTag" className="flex-grow">
+                                    <CustomTagBreakdownChart allTasks={allTasksForCharts} tagCategory={defaultCustomTagChart} />
                                 </TabsContent>
-                            ))}
+                            )}
                             {visibleCharts.activeWorkload && (
                                 <TabsContent value="workload" className="flex-grow">
                                     <ActiveWorkloadChart activeTasks={tasksForCharts} settings={settings} />
@@ -1150,3 +1150,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+
