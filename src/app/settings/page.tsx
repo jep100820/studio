@@ -1,5 +1,6 @@
 
 
+
 // @ts-nocheck
 'use client';
 
@@ -608,6 +609,7 @@ function ImportExportCard() {
                 if (convertedData[key] instanceof Timestamp) {
                     convertedData[key] = convertedData[key].toDate().toISOString();
                 }
+            }
             return convertedData;
         });
 
@@ -1087,27 +1089,6 @@ export default function SettingsPage() {
         setSettings(JSON.parse(JSON.stringify(originalSettings)));
     };
 
-    const ImportConfirmationDialog = ({ isOpen, onCancel, onConfirm, fileName, fileType }) => {
-        if (!isOpen) return null;
-
-        return (
-            <Dialog open={isOpen} onOpenChange={onCancel}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirm Data Import</DialogTitle>
-                        <DialogDescription>
-                            You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                        <Button onClick={onConfirm}>Confirm & Import</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        );
-    };
-
     if (isLoading) {
         return <div className="flex items-center justify-center min-h-screen">Loading settings...</div>;
     }
@@ -1211,7 +1192,3 @@ export default function SettingsPage() {
         </>
     );
 }
-
-    
-
-    
