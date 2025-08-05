@@ -426,7 +426,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
-    
     const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
 
     const handleChange = (e) => {
@@ -467,120 +466,176 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
-             <p className="text-xs text-muted-foreground pt-1">Date Started: {formatDate(task.date, displayFormat)}</p>
+        <DialogContent className="sm:max-w-md p-4">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
+            <p className="text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="py-4 space-y-4 max-h-[80vh] overflow-y-auto pr-4 -mr-2 group">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="taskid">Task ID</Label>
-                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
+          <fieldset disabled={isReadOnly} className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-1 gap-y-3 gap-x-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="taskid" className="text-sm">Task ID</Label>
+                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-8 text-sm" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dueDate">Due Date</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="dueDate" className="text-sm">Due Date</Label>
                     <Input 
                       id="dueDate" 
                       name="dueDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                       value={formatDateForInput(task?.dueDate)} 
                       onChange={handleDateChange} 
-                      className="w-full" 
+                      className="h-8 text-sm" 
                     />
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <div className={cn("space-y-2", currentSubStatuses.length === 0 && "md:col-span-2")}>
-                      <Label htmlFor="status">Status</Label>
-                       <select name="status" id="status" value={task?.status || 'Not Started'} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                           {settings.workflowCategories?.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-                       </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-2">
+                  <div className={cn("space-y-1", currentSubStatuses.length === 0 && "md:col-span-2")}>
+                      <Label htmlFor="status" className="text-sm">Status</Label>
+                      <select 
+                        name="status" 
+                        id="status" 
+                        value={task?.status || 'Not Started'} 
+                        onChange={handleChange} 
+                        className="w-full border rounded px-2 py-1.5 bg-input text-sm group-disabled:opacity-100 h-8"
+                      >
+                          {settings.workflowCategories?.map(cat => (
+                              <option key={cat.name} value={cat.name}>{cat.name}</option>
+                          ))}
+                      </select>
                   </div>
                   {currentSubStatuses.length > 0 && (
-                    <div className="space-y-2">
-                        <Label htmlFor="subStatus">Sub-Status</Label>
-                        <select name="subStatus" id="subStatus" value={task?.subStatus || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                              <option value="">None</option>
-                             {currentSubStatuses.map(sub => <option key={sub.name} value={sub.name}>{sub.name}</option>)}
-                         </select>
-                     </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="subStatus" className="text-sm">Sub-Status</Label>
+                        <select 
+                          name="subStatus" 
+                          id="subStatus" 
+                          value={task?.subStatus || ''} 
+                          onChange={handleChange} 
+                          className="w-full border rounded px-2 py-1.5 bg-input text-sm group-disabled:opacity-100 h-8"
+                        >
+                            <option value="">None</option>
+                            {currentSubStatuses.map(sub => (
+                                <option key={sub.name} value={sub.name}>{sub.name}</option>
+                            ))}
+                        </select>
+                    </div>
                   )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-2">
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
-                    <div className="space-y-2">
-                        <Label htmlFor="importance">Importance</Label>
-                         <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                              <option value="">None</option>
-                             {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
-                         </select>
+                    <div className="space-y-1">
+                        <Label htmlFor="importance" className="text-sm">Importance</Label>
+                        <select 
+                          name="importance" 
+                          id="importance" 
+                          value={task?.importance || ''} 
+                          onChange={handleChange} 
+                          className="w-full border rounded px-2 py-1.5 bg-input text-sm group-disabled:opacity-100 h-8"
+                        >
+                            <option value="">None</option>
+                            {settings.importanceLevels?.map(imp => (
+                                <option key={imp.name} value={imp.name}>{imp.name}</option>
+                            ))}
+                        </select>
                     </div>
                   )}
-                   {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
-                    <div className="space-y-2">
-                        <Label htmlFor="urgency">Urgency</Label>
-                         <select name="urgency" id="urgency" value={task?.urgency || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                              <option value="">Auto-Calculate</option>
-                             {settings.urgencyLevels?.map(urg => <option key={urg.name} value={urg.name}>{urg.name}</option>)}
-                         </select>
-                         <p className="text-xs text-muted-foreground pt-1">Effective Urgency: <span className="font-bold">{effectiveUrgency.name}</span></p>
+                  {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
+                    <div className="space-y-1">
+                        <Label htmlFor="urgency" className="text-sm">Urgency</Label>
+                        <select 
+                          name="urgency" 
+                          id="urgency" 
+                          value={task?.urgency || ''} 
+                          onChange={handleChange} 
+                          className="w-full border rounded px-2 py-1.5 bg-input text-sm group-disabled:opacity-100 h-8"
+                        >
+                            <option value="">Auto-Calculate</option>
+                            {settings.urgencyLevels?.map(urg => (
+                                <option key={urg.name} value={urg.name}>{urg.name}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">Effective: <span className="font-medium">{effectiveUrgency.name}</span></p>
                     </div>
                   )}
                   {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
-                    <div className="space-y-2" key={mainTag.name}>
-                        <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
+                    <div className="space-y-1" key={mainTag.name}>
+                        <Label htmlFor={`tag-${mainTag.name}`} className="text-sm">{mainTag.name}</Label>
                         <select 
                             name={mainTag.name} 
                             id={`tag-${mainTag.name}`} 
                             value={task?.tags?.[mainTag.name] || ''} 
                             onChange={handleTagChange} 
-                            className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100"
+                            className="w-full border rounded px-2 py-1.5 bg-input text-sm group-disabled:opacity-100 h-8"
                         >
                             <option value="">None</option>
-                            {mainTag.tags.map(tag => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
+                            {mainTag.tags.map(tag => (
+                                <option key={tag.name} value={tag.name}>{tag.name}</option>
+                            ))}
                         </select>
                     </div>
                   ))}
-             </div>
+              </div>
 
-              <div className="space-y-2">
-                  <Label htmlFor="desc">Description</Label>
-                  <Textarea id="desc" name="desc" value={task?.desc || ''} onChange={handleChange} />
+              <div className="space-y-1">
+                  <Label htmlFor="desc" className="text-sm">Description</Label>
+                  <Textarea 
+                    id="desc" 
+                    name="desc" 
+                    value={task?.desc || ''} 
+                    onChange={handleChange} 
+                    className="text-sm"
+                  />
               </div>
               
-              <div className="space-y-2">
-                  <Label htmlFor="remarks">Remarks</Label>
-                  <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} />
+              <div className="space-y-1">
+                  <Label htmlFor="remarks" className="text-sm">Remarks</Label>
+                  <Textarea 
+                    id="remarks" 
+                    name="remarks" 
+                    value={task?.remarks || ''} 
+                    onChange={handleChange} 
+                    className="text-sm"
+                  />
               </div>
 
               {isEditing && task.status === 'Completed' && (
-                 <div className="space-y-2">
-                    <Label htmlFor="completionDate">Completion Date</Label>                    
+                <div className="space-y-1">
+                    <Label htmlFor="completionDate" className="text-sm">Completion Date</Label>                    
                     <Input 
                       id="completionDate" 
                       name="completionDate" 
                       type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                       value={formatDateForInput(task?.completionDate)} 
                       onChange={handleDateChange} 
-                      className="w-full" 
+                      className="h-8 text-sm" 
                     />
                 </div>
               )}
           </fieldset>
-          <DialogFooter className="sm:justify-between pt-4">
+          <DialogFooter className="sm:justify-between pt-2">
             <div>
-                {isEditing && !isReadOnly && <Button variant="destructive" onClick={() => onDelete(task.id)}>Delete</Button>}
-                {isEditing && isReadOnly && <Button variant="secondary" onClick={() => onSetReadOnly(false)}><Pencil className="h-4 w-4 mr-2"/>Edit</Button>}
+                {isEditing && !isReadOnly && (
+                    <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm">
+                        Delete
+                    </Button>
+                )}
+                {isEditing && isReadOnly && (
+                    <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
+                        <Pencil className="h-3 w-3 mr-1"/>Edit
+                    </Button>
+                )}
                 {!isEditing && <div />}
             </div>
-
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              {!isReadOnly && <Button onClick={onSave} disabled={isSaveDisabled}>Save changes</Button>}
+            <div className="flex gap-1">
+              <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
+              {!isReadOnly && (
+                  <Button onClick={onSave} disabled={isSaveDisabled} size="sm">
+                      Save
+                  </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>
@@ -1422,5 +1477,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    
