@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon, Upload, Download as DownloadIcon } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon, Upload, Download as DownloadIcon, FileText } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -625,11 +625,11 @@ function AttachmentPreviewModal({ isOpen, onClose, attachment }) {
                 </DialogHeader>
                 <div className="flex-grow p-4 flex items-center justify-center overflow-auto">
                     {isImage ? (
-                        <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-full object-contain rounded-b-lg" />
+                        <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-full object-contain" />
                     ) : isPdf ? (
-                        <iframe src={attachment.dataUrl} title={attachment.name} className="w-full h-full border-0 rounded-b-lg" />
+                        <iframe src={attachment.dataUrl} title={attachment.name} className="w-full h-full border-0" />
                     ) : (
-                        <div className="text-center p-8 bg-background rounded-b-lg">
+                        <div className="text-center p-8 bg-background rounded-lg">
                             <p className="text-lg text-muted-foreground mb-4">No preview available for this file type.</p>
                             <Button asChild>
                                 <a href={attachment.dataUrl} download={attachment.name}>
@@ -720,18 +720,30 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments, on
                         </Alert>
                     )}
 
-                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 -mr-2">
+                    <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 -mr-2">
                         <Label>Current Attachments</Label>
                         {localAttachments.length > 0 ? (
                             localAttachments.map(att => (
-                                <div key={att.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <div key={att.id} className="flex items-center gap-3 p-2 bg-muted/50 rounded-md">
                                     <button
                                         onClick={() => onPreviewAttachment(att)}
-                                        className="flex-grow text-sm font-medium text-primary underline-offset-4 hover:underline truncate text-left"
+                                        className="h-12 w-12 flex-shrink-0 bg-background rounded flex items-center justify-center overflow-hidden border"
                                     >
-                                        {att.name}
+                                        {att.type.startsWith('image/') ? (
+                                            <img src={att.dataUrl} alt={att.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <FileText className="h-6 w-6 text-muted-foreground" />
+                                        )}
                                     </button>
+                                    <div className="flex-grow truncate">
+                                        <button
+                                            onClick={() => onPreviewAttachment(att)}
+                                            className="text-sm font-medium text-primary underline-offset-4 hover:underline truncate text-left"
+                                        >
+                                            {att.name}
+                                        </button>
+                                         <p className="text-xs text-muted-foreground truncate">{att.type}</p>
+                                    </div>
                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id)} className="h-8 w-8 flex-shrink-0">
                                         <X className="h-4 w-4" />
                                     </Button>
@@ -1957,3 +1969,5 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
+    
