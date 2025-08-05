@@ -467,13 +467,13 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md p-4">
-          <DialogHeader className="mb-2">
+          <DialogHeader className="mb-4 flex flex-row justify-between items-center">
             <DialogTitle className="text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
             <p className="text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-1 gap-y-3 gap-x-2">
-                  <div className="space-y-1">
+          <fieldset disabled={isReadOnly} className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-3 gap-x-2">
+                  <div className="space-y-1 col-span-2">
                     <Label htmlFor="taskid" className="text-sm">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-8 text-sm" />
                   </div>
@@ -490,8 +490,8 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-2">
-                  <div className={cn("space-y-1", currentSubStatuses.length === 0 && "md:col-span-2")}>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-2">
+                  <div className={cn("space-y-1", currentSubStatuses.length === 0 && "col-span-2")}>
                       <Label htmlFor="status" className="text-sm">Status</Label>
                       <select 
                         name="status" 
@@ -524,7 +524,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-2">
+              <div className="grid grid-cols-2 gap-y-2 gap-x-2">
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div className="space-y-1">
                         <Label htmlFor="importance" className="text-sm">Importance</Label>
