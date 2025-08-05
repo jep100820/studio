@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -347,6 +347,27 @@ function CompletionZone({ isDragging }) {
             <div className="text-center text-green-700">
                 <CheckCircle2 className="h-8 w-8 mx-auto" />
                 <p className="font-semibold mt-2">Complete</p>
+            </div>
+        </div>
+    );
+}
+
+function ArchiveZone({ isDragging }) {
+    const { setNodeRef } = useDroppable({
+        id: 'archive-zone',
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={cn(
+                'fixed top-1/3 right-0 h-1/3 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out z-10',
+                isDragging ? 'translate-x-0' : 'translate-x-full'
+            )}
+        >
+            <div className="text-center text-gray-700 dark:text-gray-300">
+                <Archive className="h-8 w-8 mx-auto" />
+                <p className="font-semibold mt-2">Archive</p>
             </div>
         </div>
     );
@@ -755,6 +776,65 @@ function CategoryFilter({ category, selected, onSelectionChange }) {
     );
 }
 
+function ArchivedTasksModal({ isOpen, onClose, archivedTasks, onUnarchiveTask, onTaskClick, settings }) {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredTasks = useMemo(() => {
+        if (!searchTerm) return archivedTasks;
+        return archivedTasks.filter(task =>
+            task.taskid?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [archivedTasks, searchTerm]);
+    
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>Archived Tasks</DialogTitle>
+                    <DialogDescription>
+                        {archivedTasks.length} task(s) are archived. Unarchive them to return them to the board.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="relative mt-4">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search archived tasks..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                    />
+                </div>
+                <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+                    {filteredTasks.length > 0 ? (
+                        <ul className="space-y-2">
+                            {filteredTasks.map(task => (
+                                <li key={task.id} className="text-sm p-3 rounded-md bg-muted/50 flex items-center justify-between gap-4">
+                                    <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
+                                        <p className="font-semibold">{task.taskid}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Status: {task.status} (Archived)</p>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => onUnarchiveTask(task.id)}>
+                                        <ArchiveRestore className="h-4 w-4 mr-2"/>
+                                        Unarchive
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-8">No archived tasks found.</p>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button onClick={onClose}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -769,6 +849,7 @@ function KanbanPageContent() {
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tagFilters, setTagFilters] = useState({});
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -797,9 +878,8 @@ function KanbanPageContent() {
         });
 
         const tasksUnsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
-            const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setAllTasks(fetchedTasks); // Store all tasks
-            setTasks(fetchedTasks.filter(t => t.status !== 'Completed')); // For board display
+            const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, isArchived: doc.data().isArchived || false }));
+            setAllTasks(fetchedTasks);
             setIsLoading(false);
         });
 
@@ -809,6 +889,16 @@ function KanbanPageContent() {
         };
     });
   }, []);
+
+  const { activeTasks, archivedTasks } = useMemo(() => {
+    const active = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
+    const archived = allTasks.filter(t => t.isArchived);
+    return { activeTasks, archivedTasks };
+  }, [allTasks]);
+
+  useEffect(() => {
+    setTasks(activeTasks);
+  }, [activeTasks]);
   
   const handleOpenModal = (task = null) => {
       const defaultTask = {
@@ -825,6 +915,7 @@ function KanbanPageContent() {
           tags: {},
           subStatusChangeCount: 0,
           lastModified: Timestamp.now(),
+          isArchived: false,
       };
       setSelectedTask(task ? { ...task } : defaultTask);
       setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
@@ -869,15 +960,21 @@ function KanbanPageContent() {
             const updatedTask = {
                 ...taskToUpdate,
                 status: 'Completed',
+                isArchived: false,
                 completionDate: taskToUpdate.completionDate || Timestamp.now(),
                 lastModified: Timestamp.now(),
             };
             await updateDoc(taskRef, { 
                 status: 'Completed', 
+                isArchived: false,
                 completionDate: updatedTask.completionDate,
                 lastModified: updatedTask.lastModified,
             });
             handleOpenModal(updatedTask);
+        }
+    } else if (over.id === 'archive-zone') {
+        if (window.confirm('Are you sure you want to archive this task?')) {
+            await updateDoc(taskRef, { isArchived: true, lastModified: Timestamp.now() });
         }
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
         const newStatus = over.id;
@@ -954,6 +1051,16 @@ function KanbanPageContent() {
           handleCloseModal();
       }
   };
+  
+  const handleUnarchiveTask = async (taskId) => {
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, { isArchived: false, lastModified: Timestamp.now() });
+  };
+  
+  const handleArchivedTaskClick = (task) => {
+      setIsArchiveModalOpen(false);
+      handleOpenModal(task);
+  }
 
     const handleFilterChange = (category, value) => {
         if (value === '__clear__') {
@@ -1061,6 +1168,11 @@ function KanbanPageContent() {
           <div className="flex items-center gap-4 flex-shrink-0">
             <h1 className="text-2xl font-bold">KanbanFlow</h1>
             <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} settings={settings} />
+            <Button variant="outline" size="sm" onClick={() => setIsArchiveModalOpen(true)}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archived
+                <Badge variant="secondary" className="ml-2">{archivedTasks.length}</Badge>
+            </Button>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={() => handleOpenModal()} size="sm">
@@ -1125,6 +1237,7 @@ function KanbanPageContent() {
         </main>
 
         <CompletionZone isDragging={!!activeId} />
+        <ArchiveZone isDragging={!!activeId} />
       </div>
       <TaskModal 
         isOpen={isModalOpen}
@@ -1142,6 +1255,14 @@ function KanbanPageContent() {
             onClose={() => setIsSubStatusModalOpen(false)}
             onSave={handleSubStatusSave}
             subStatuses={subStatusData.subStatuses}
+        />
+        <ArchivedTasksModal
+            isOpen={isArchiveModalOpen}
+            onClose={() => setIsArchiveModalOpen(false)}
+            archivedTasks={archivedTasks}
+            onUnarchiveTask={handleUnarchiveTask}
+            onTaskClick={handleArchivedTaskClick}
+            settings={settings}
         />
         <DragOverlay dropAnimation={null}>
             {activeTask ? (
@@ -1167,3 +1288,4 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
