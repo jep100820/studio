@@ -1123,40 +1123,34 @@ export default function SettingsPage() {
                             title="Prioritization Settings"
                             summary="Manage Importance and Urgency levels."
                         >
-                            <div className="space-y-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-lg">Importance Levels</CardTitle>
-                                        <SettingsCardDescription>
+                            <Card>
+                                <CardContent className="pt-6 space-y-6">
+                                    <div>
+                                        <CardTitle className="text-lg mb-2">Importance Levels</CardTitle>
+                                        <SettingsCardDescription className="mb-4">
                                             Define levels to classify tasks by importance.
                                         </SettingsCardDescription>
-                                    </CardHeader>
-                                    <CardContent>
                                         <SettingsSection
                                             items={settings?.importanceLevels}
                                             onUpdate={handleSettingsUpdate}
                                             onAddItem={handleAddNewItem}
                                             fieldName="importanceLevels"
                                         />
-                                    </CardContent>
-                                </Card>
-                                 <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-lg">Urgency Levels</CardTitle>
-                                         <SettingsCardDescription>
+                                    </div>
+                                     <div>
+                                        <CardTitle className="text-lg mb-2">Urgency Levels</CardTitle>
+                                         <SettingsCardDescription className="mb-4">
                                             Define levels for time-sensitive tasks. Used for auto-calculation.
                                         </SettingsCardDescription>
-                                    </CardHeader>
-                                    <CardContent>
                                         <SettingsSection
                                             items={settings?.urgencyLevels}
                                             onUpdate={handleSettingsUpdate}
                                             onAddItem={handleAddNewItem}
                                             fieldName="urgencyLevels"
                                         />
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </AccordionSection>
 
                          <AccordionSection 
