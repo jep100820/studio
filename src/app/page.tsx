@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2 } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -45,6 +45,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 // A robust, unified date parsing function
@@ -233,13 +234,18 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
 
   const checklistProgress = useMemo(() => {
-    if (!task.checklist || task.checklist.length === 0) {
+    if (!task.checklists || task.checklists.length === 0) {
         return null;
     }
-    const completed = task.checklist.filter(item => item.completed).length;
-    const total = task.checklist.length;
-    return { completed, total };
-  }, [task.checklist]);
+    let completed = 0;
+    let total = 0;
+    task.checklists.forEach(cl => {
+        total += cl.items.length;
+        completed += cl.items.filter(item => item.completed).length;
+    });
+
+    return total > 0 ? { completed, total } : null;
+  }, [task.checklists]);
 
   return (
     <div
@@ -442,66 +448,137 @@ function ArchiveZone({ isDragging }) {
     );
 }
 
-function ChecklistModal({ isOpen, onClose, checklist, onUpdateChecklist }) {
-    const [localChecklist, setLocalChecklist] = useState([]);
+function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
+    const [localChecklists, setLocalChecklists] = useState([]);
+    const [activeTab, setActiveTab] = useState('');
+    const [editingChecklistId, setEditingChecklistId] = useState(null);
 
     useEffect(() => {
-        // Deep copy to avoid mutating parent state directly
-        setLocalChecklist(JSON.parse(JSON.stringify(checklist || [])));
-    }, [isOpen, checklist]);
+        const checklistsWithIds = (checklists || []).map(cl => ({
+            ...cl,
+            id: cl.id || `cl-${Date.now()}-${Math.random()}`
+        }));
+        setLocalChecklists(JSON.parse(JSON.stringify(checklistsWithIds)));
+        if (checklistsWithIds.length > 0 && !activeTab) {
+            setActiveTab(checklistsWithIds[0].id);
+        }
+    }, [isOpen, checklists]);
 
-    const handleChecklistChange = (id, field, value) => {
-        setLocalChecklist(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    const handleChecklistItemChange = (checklistId, itemId, field, value) => {
+        setLocalChecklists(prev => prev.map(cl => 
+            cl.id === checklistId 
+                ? { ...cl, items: cl.items.map(item => item.id === itemId ? { ...item, [field]: value } : item) } 
+                : cl
+        ));
     };
 
-    const handleAddChecklistItem = () => {
+    const handleAddChecklistItem = (checklistId) => {
         const newItem = { id: `item-${Date.now()}`, text: '', completed: false };
-        setLocalChecklist(prev => [...prev, newItem]);
+        setLocalChecklists(prev => prev.map(cl => 
+            cl.id === checklistId ? { ...cl, items: [...cl.items, newItem] } : cl
+        ));
     };
 
-    const handleDeleteChecklistItem = (id) => {
-        setLocalChecklist(prev => prev.filter(item => item.id !== id));
+    const handleDeleteChecklistItem = (checklistId, itemId) => {
+        setLocalChecklists(prev => prev.map(cl => 
+            cl.id === checklistId ? { ...cl, items: cl.items.filter(item => item.id !== itemId) } : cl
+        ));
+    };
+    
+    const handleAddChecklist = () => {
+        const newId = `cl-${Date.now()}`;
+        const newChecklist = { id: newId, name: `New Checklist ${localChecklists.length + 1}`, items: [] };
+        setLocalChecklists(prev => [...prev, newChecklist]);
+        setActiveTab(newId);
+    };
+    
+    const handleChecklistNameChange = (checklistId, newName) => {
+        setLocalChecklists(prev => prev.map(cl => cl.id === checklistId ? { ...cl, name: newName } : cl));
+    };
+
+    const handleDeleteChecklist = (checklistId) => {
+        setLocalChecklists(prev => {
+            const remaining = prev.filter(cl => cl.id !== checklistId);
+            if (activeTab === checklistId) {
+                setActiveTab(remaining[0]?.id || '');
+            }
+            return remaining;
+        });
     };
 
     const handleSave = () => {
-        onUpdateChecklist(localChecklist);
+        onUpdateChecklists(localChecklists);
         onClose();
     };
-
+    
     if (!isOpen) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent>
+            <DialogContent className="max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>Task Checklist</DialogTitle>
+                    <DialogTitle>Manage Checklists</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-3 py-4 max-h-[50vh] overflow-y-auto">
-                    {localChecklist.map(item => (
-                        <div key={item.id} className="flex items-center gap-2">
-                           <Checkbox
-                                checked={item.completed}
-                                onCheckedChange={(checked) => handleChecklistChange(item.id, 'completed', checked)}
-                            />
-                            <Input
-                                value={item.text}
-                                onChange={(e) => handleChecklistChange(item.id, 'text', e.target.value)}
-                                className={cn("h-9 text-sm", item.completed && "line-through text-muted-foreground")}
-                                placeholder="Checklist item..."
-                            />
-                             <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklistItem(item.id)} className="h-9 w-9 flex-shrink-0">
-                                <X className="h-4 w-4" />
+                 <div className="py-4">
+                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                         <div className="flex items-center border-b">
+                            <TabsList className="flex-grow justify-start rounded-none bg-transparent p-0 border-b-0">
+                                {localChecklists.map(cl => (
+                                    <TabsTrigger key={cl.id} value={cl.id} className="relative rounded-none border-b-2 border-transparent bg-transparent px-4 pb-2 text-muted-foreground shadow-none transition-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none">
+                                        {cl.name}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            <Button onClick={handleAddChecklist} variant="outline" size="sm" className="ml-4 flex-shrink-0">
+                                <Plus className="h-4 w-4 mr-2"/> Add Checklist
                             </Button>
+                         </div>
+                        {localChecklists.map(cl => (
+                            <TabsContent key={cl.id} value={cl.id} className="mt-4">
+                                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 -mr-2">
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            value={cl.name}
+                                            onChange={(e) => handleChecklistNameChange(cl.id, e.target.value)}
+                                            className="h-9 text-base font-semibold"
+                                        />
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklist(cl.id)} className="h-9 w-9 flex-shrink-0">
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                    {cl.items.map(item => (
+                                        <div key={item.id} className="flex items-center gap-2">
+                                            <Checkbox
+                                                checked={item.completed}
+                                                onCheckedChange={(checked) => handleChecklistItemChange(cl.id, item.id, 'completed', checked)}
+                                            />
+                                            <Input
+                                                value={item.text}
+                                                onChange={(e) => handleChecklistItemChange(cl.id, item.id, 'text', e.target.value)}
+                                                className={cn("h-9 text-sm", item.completed && "line-through text-muted-foreground")}
+                                                placeholder="Checklist item..."
+                                            />
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklistItem(cl.id, item.id)} className="h-9 w-9 flex-shrink-0">
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddChecklistItem(cl.id)} className="mt-2">
+                                        <Plus className="h-4 w-4 mr-2"/> Add Item
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                    {localChecklists.length === 0 && (
+                        <div className="text-center text-muted-foreground py-8">
+                            <p>No checklists yet. Add one to get started.</p>
                         </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="mt-2">
-                        <Plus className="h-4 w-4 mr-2"/>
-                        Add Item
-                    </Button>
-                </div>
+                    )}
+                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSave}>Save Checklist</Button>
+                    <Button onClick={handleSave}>Save Checklists</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -539,13 +616,18 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     };
     
     const checklistProgress = useMemo(() => {
-        if (!task?.checklist || task.checklist.length === 0) {
+        if (!task?.checklists || task.checklists.length === 0) {
             return null;
         }
-        const completed = task.checklist.filter(item => item.completed).length;
-        const total = task.checklist.length;
-        return { completed, total };
-    }, [task?.checklist]);
+        let completed = 0;
+        let total = 0;
+        task.checklists.forEach(cl => {
+            total += cl.items.length;
+            completed += cl.items.filter(item => item.completed).length;
+        });
+
+        return total > 0 ? { completed, total } : null;
+    }, [task?.checklists]);
 
 
     const formatDateForInput = (timestamp) => {
@@ -1153,7 +1235,15 @@ function KanbanPageContent() {
         });
 
         const tasksUnsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
-            const fetchedTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, isArchived: doc.data().isArchived || false }));
+            const fetchedTasks = snapshot.docs.map(doc => {
+                let data = doc.data();
+                // Migration for checklist -> checklists
+                if (data.checklist && !data.checklists) {
+                    data.checklists = [{ id: 'cl-default', name: 'Checklist', items: data.checklist }];
+                    delete data.checklist;
+                }
+                return { ...data, id: doc.id, isArchived: data.isArchived || false };
+            });
             setAllTasks(fetchedTasks);
             setIsLoading(false);
         });
@@ -1191,7 +1281,7 @@ function KanbanPageContent() {
           subStatusChangeCount: 0,
           lastModified: Timestamp.now(),
           isArchived: false,
-          checklist: [],
+          checklists: [],
       };
       setSelectedTask(task ? { ...task } : defaultTask);
       setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
@@ -1451,11 +1541,11 @@ function KanbanPageContent() {
         });
     }, [filteredTasks]);
     
-    const handleUpdateChecklist = (newChecklist) => {
+    const handleUpdateChecklists = (newChecklists) => {
         if(selectedTask) {
             setSelectedTask(prev => ({
                 ...prev,
-                checklist: newChecklist
+                checklists: newChecklists
             }));
         }
     };
@@ -1588,8 +1678,8 @@ function KanbanPageContent() {
          <ChecklistModal
             isOpen={isChecklistModalOpen}
             onClose={() => setIsChecklistModalOpen(false)}
-            checklist={selectedTask.checklist}
-            onUpdateChecklist={handleUpdateChecklist}
+            checklists={selectedTask.checklists}
+            onUpdateChecklists={handleUpdateChecklists}
          />
        )}
         <SubStatusModal 
