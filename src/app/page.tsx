@@ -868,9 +868,12 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive
                         onChange={handleChange} 
                         className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                       >
-                          {settings.workflowCategories?.filter(c => c.name !== 'Archived').map(cat => (
+                          {settings.workflowCategories?.filter(c => c.name !== 'Completed' && c.name !== 'Archived').map(cat => (
                               <option key={cat.name} value={cat.name}>{cat.name}</option>
                           ))}
+                          {task?.status === 'Archived' && (
+                              <option value="Archived" disabled>Archived</option>
+                          )}
                       </select>
                   </div>
                   {currentSubStatuses.length > 0 && (
@@ -1040,7 +1043,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive
                         <Trash2 className="h-4 w-4 mr-2" /> Delete
                     </Button>
                 )}
-                 {isEditing && !isReadOnly && task.status !== 'Completed' && (
+                 {isEditing && !isReadOnly && task.status !== 'Completed' && task.status !== 'Archived' && (
                      <Button variant="secondary" onClick={() => onArchive(task)} size="sm" disabled={isSaving}>
                         <Archive className="h-3 w-3 mr-1" /> Archive
                     </Button>
