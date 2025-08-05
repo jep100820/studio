@@ -503,7 +503,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -1119,28 +1119,44 @@ export default function SettingsPage() {
                             />
                         </AccordionSection>
 
-                        <AccordionSection 
-                            title="Importance Levels"
-                            summary={settings?.importanceLevels?.map(c => c.name).join(', ') || 'No importance levels configured.'}
+                        <AccordionSection
+                            title="Prioritization Settings"
+                            summary="Manage Importance and Urgency levels."
                         >
-                            <SettingsSection
-                                items={settings?.importanceLevels}
-                                onUpdate={handleSettingsUpdate}
-                                onAddItem={handleAddNewItem}
-                                fieldName="importanceLevels"
-                            />
-                        </AccordionSection>
-
-                        <AccordionSection 
-                            title="Urgency Levels"
-                            summary={settings?.urgencyLevels?.map(c => c.name).join(', ') || 'No urgency levels configured.'}
-                        >
-                            <SettingsSection
-                                items={settings?.urgencyLevels}
-                                onUpdate={handleSettingsUpdate}
-                                onAddItem={handleAddNewItem}
-                                fieldName="urgencyLevels"
-                            />
+                            <div className="space-y-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Importance Levels</CardTitle>
+                                        <SettingsCardDescription>
+                                            Define levels to classify tasks by importance.
+                                        </SettingsCardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <SettingsSection
+                                            items={settings?.importanceLevels}
+                                            onUpdate={handleSettingsUpdate}
+                                            onAddItem={handleAddNewItem}
+                                            fieldName="importanceLevels"
+                                        />
+                                    </CardContent>
+                                </Card>
+                                 <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Urgency Levels</CardTitle>
+                                         <SettingsCardDescription>
+                                            Define levels for time-sensitive tasks. Used for auto-calculation.
+                                        </SettingsCardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <SettingsSection
+                                            items={settings?.urgencyLevels}
+                                            onUpdate={handleSettingsUpdate}
+                                            onAddItem={handleAddNewItem}
+                                            fieldName="urgencyLevels"
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </AccordionSection>
 
                          <AccordionSection 
