@@ -173,14 +173,15 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
         `p-4 rounded-lg shadow-sm mb-4 flex items-start transition-all duration-300 relative`,
         isOverdue && "border-2 border-red-500",
         isHighlighted && "ring-4 ring-offset-2 ring-primary ring-offset-background animate-pulse",
-        textColor,
-        "cursor-grab"
+        textColor
       )}
-       onClick={() => onCardClick(task.id)}
-       {...attributes} 
-       {...listeners}
     >
-      <div className="flex-grow" style={{ pointerEvents: 'none' }}>
+      <div 
+        className="flex-grow cursor-grab"
+        onClick={() => onCardClick(task.id)}
+        {...attributes} 
+        {...listeners}
+      >
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
               <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
@@ -212,23 +213,14 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                 {task.tags && Object.entries(task.tags).map(([key, value]) => (
                     value && <p key={key}><span className="font-semibold">{key}:</span> {value}</p>
                 ))}
-                
-                <div className="!mt-4 flex justify-end">
-                    <Button 
-                        onClick={(e) => { e.stopPropagation(); onEditClick(task); }} 
-                        size="sm" 
-                        className="bg-black/20 hover:bg-black/40"
-                        style={{ pointerEvents: 'auto' }}
-                    >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit Task
-                    </Button>
-                </div>
             </div>
         )}
       </div>
-       <div className="pl-2 self-start" style={{ pointerEvents: 'none' }}>
-         <GripVertical className="h-5 w-5" />
+       <div 
+          className="pl-2 self-start cursor-pointer" 
+          onClick={(e) => { e.stopPropagation(); onEditClick(task); }}
+        >
+         <Pencil className="h-5 w-5" />
       </div>
     </div>
   );
