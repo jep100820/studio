@@ -472,14 +472,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
             <DialogTitle>{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
              <p className="text-xs text-muted-foreground pt-1">Date Started: {formatDate(task.date, displayFormat)}</p>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 -mr-2 group">
+          <fieldset disabled={isReadOnly} className="py-4 space-y-4 max-h-[80vh] overflow-y-auto pr-4 -mr-2 group">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
-                  <div className="md:col-span-2 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                  <div className="space-y-2">
                     <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
                   </div>
-                  <div className="md:col-span-1 space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                     <Input 
                       id="dueDate" 
@@ -1424,4 +1424,3 @@ export default function KanbanPage() {
 }
 
     
-
