@@ -230,6 +230,10 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
+  
+  const indicatorStyle = {
+    background: `linear-gradient(to right, ${importance?.color || 'transparent'} 50%, ${urgency?.color || 'transparent'} 50%)`,
+  };
 
 
   return (
@@ -240,12 +244,18 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       }}
       style={{ backgroundColor: statusColor }}
       className={cn(
-        `p-4 rounded-lg shadow-sm mb-4 flex items-start transition-all duration-300 relative`,
+        `p-3 rounded-lg shadow-sm mb-4 flex items-start gap-3 transition-all duration-300 relative`,
         isOverdue && "border-2 border-red-500",
         isHighlighted && "ring-4 ring-offset-2 ring-primary ring-offset-background animate-pulse",
         textColor
       )}
     >
+       <div
+        title={`Importance: ${importance?.name || 'N/A'}\nUrgency: ${urgency?.name || 'N/A'}`}
+        style={indicatorStyle}
+        className="w-4 h-4 rounded-sm flex-shrink-0 mt-1 border border-black/20"
+       />
+
       <div 
         className="flex-grow cursor-grab"
         onClick={() => onCardClick(task.id)}
@@ -254,24 +264,11 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       >
           <p className="font-bold text-sm">{task.taskid}</p>
           <div className="text-xs mt-1">
-              <span>Due Date: {formatDate(task.dueDate, displayFormat)}</span>
+              <span>Due: {formatDate(task.dueDate, displayFormat)}</span>
           </div>
           
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             {task.subStatus && <span className="text-xs bg-black/20 px-2 py-1 rounded-full">{task.subStatus}</span>}
-            {importance && (
-              <div className="flex items-center text-xs">
-                 <span style={{ backgroundColor: importance.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
-                 {task.importance}
-              </div>
-             )}
-            {urgency && (
-              <div className="flex items-center text-xs" title={`Urgency: ${urgency.name} (${effectiveUrgency.source})`}>
-                 <span style={{ backgroundColor: urgency.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
-                 {urgency.name}
-                 {effectiveUrgency.source === 'auto-override' && <Sparkles className="h-3 w-3 ml-1 text-yellow-300" />}
-              </div>
-             )}
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
                 value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
              ))}
@@ -1198,3 +1195,4 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
