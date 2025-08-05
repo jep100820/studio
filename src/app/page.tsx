@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2 } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -246,6 +246,8 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
 
     return total > 0 ? { completed, total } : null;
   }, [task.checklists]);
+  
+  const attachmentCount = task.attachments?.length || 0;
 
   return (
     <div
@@ -290,6 +292,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                     {checklistProgress.completed}/{checklistProgress.total}
                 </span>
              )}
+             {attachmentCount > 0 && (
+                <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
+                    <Paperclip className="h-3 w-3"/>
+                    {attachmentCount}
+                </span>
+             )}
           </div>
         
         {isExpanded && (
@@ -314,7 +322,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                                 const total = cl.items.length;
                                 const completed = cl.items.filter(i => i.completed).length;
                                 return (
-                                    <p key={cl.id} className="text-xs">
+                                    <p key={cl.id} className="text-sm">
                                         - {cl.name}: {completed}/{total}
                                     </p>
                                 );
@@ -468,12 +476,12 @@ function ArchiveZone({ isDragging }) {
 function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
     const [localChecklists, setLocalChecklists] = useState([]);
     const [activeTab, setActiveTab] = useState('');
-    const [editingChecklistId, setEditingChecklistId] = useState(null);
 
     useEffect(() => {
         const checklistsWithIds = (checklists || []).map(cl => ({
             ...cl,
-            id: cl.id || `cl-${Date.now()}-${Math.random()}`
+            id: cl.id || `cl-${Date.now()}-${Math.random()}`,
+            items: (cl.items || []).map(item => ({...item, id: item.id || `item-${Date.now()}-${Math.random()}`}))
         }));
         setLocalChecklists(JSON.parse(JSON.stringify(checklistsWithIds)));
         if (checklistsWithIds.length > 0 && !activeTab) {
@@ -602,7 +610,91 @@ function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
     );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist }) {
+function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) {
+    const [localAttachments, setLocalAttachments] = useState([]);
+    const [newAttachment, setNewAttachment] = useState({ name: '', url: '' });
+
+    useEffect(() => {
+        setLocalAttachments(attachments ? [...attachments] : []);
+    }, [isOpen, attachments]);
+
+    const handleAddAttachment = () => {
+        if (!newAttachment.name || !newAttachment.url) return;
+        const toAdd = { ...newAttachment, id: `att-${Date.now()}` };
+        setLocalAttachments(prev => [...prev, toAdd]);
+        setNewAttachment({ name: '', url: '' });
+    };
+
+    const handleDeleteAttachment = (id) => {
+        setLocalAttachments(prev => prev.filter(att => att.id !== id));
+    };
+
+    const handleSave = () => {
+        onUpdateAttachments(localAttachments);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Manage Attachments</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                        <Label>New Attachment</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                placeholder="Attachment Name (e.g., 'Design Mockup')"
+                                value={newAttachment.name}
+                                onChange={(e) => setNewAttachment(p => ({ ...p, name: e.target.value }))}
+                            />
+                            <Input
+                                placeholder="URL (e.g., 'https://...')"
+                                value={newAttachment.url}
+                                onChange={(e) => setNewAttachment(p => ({ ...p, url: e.target.value }))}
+                            />
+                            <Button onClick={handleAddAttachment} size="icon" className="flex-shrink-0">
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 -mr-2">
+                        <Label>Existing Attachments</Label>
+                        {localAttachments.length > 0 ? (
+                            localAttachments.map(att => (
+                                <div key={att.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                                    <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <a
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-grow text-sm font-medium text-primary underline-offset-4 hover:underline truncate"
+                                    >
+                                        {att.name}
+                                    </a>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id)} className="h-8 w-8 flex-shrink-0">
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No attachments yet.</p>
+                        )}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Attachments</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist, onOpenAttachments }) {
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
@@ -645,6 +737,8 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
         return total > 0 ? { completed, total } : null;
     }, [task?.checklists]);
+    
+    const attachmentCount = task?.attachments?.length || 0;
 
 
     const formatDateForInput = (timestamp) => {
@@ -690,7 +784,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     </div>
                   </div>
               </div>
-
+              
               <div className="grid grid-cols-2 gap-y-2 gap-x-2">
                   <div>
                       <Label htmlFor="status">Status</Label>
@@ -723,7 +817,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                         </select>
                     </div>
                   )}
-
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div>
                         <Label htmlFor="importance">Importance</Label>
@@ -777,16 +870,27 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     </div>
                   ))}
               </div>
-              
-              <Button onClick={onOpenChecklist} variant="outline" size="sm" className="w-full justify-start">
-                  <ListChecks className="h-4 w-4 mr-2" />
-                  Checklist
-                  {checklistProgress && (
-                      <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                          {checklistProgress.completed} / {checklistProgress.total}
-                      </span>
-                  )}
-              </Button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={onOpenChecklist} variant="outline" size="sm" className="w-full justify-start">
+                    <ListChecks className="h-4 w-4 mr-2" />
+                    Checklist
+                    {checklistProgress && (
+                        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            {checklistProgress.completed} / {checklistProgress.total}
+                        </span>
+                    )}
+                </Button>
+                <Button onClick={onOpenAttachments} variant="outline" size="sm" className="w-full justify-start">
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Attachments
+                    {attachmentCount > 0 && (
+                        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            {attachmentCount}
+                        </span>
+                    )}
+                </Button>
+              </div>
 
 
               <div>
@@ -1223,6 +1327,7 @@ function KanbanPageContent() {
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
+  const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
 
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
@@ -1299,6 +1404,7 @@ function KanbanPageContent() {
           lastModified: Timestamp.now(),
           isArchived: false,
           checklists: [],
+          attachments: [],
       };
       setSelectedTask(task ? { ...task } : defaultTask);
       setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
@@ -1566,6 +1672,15 @@ function KanbanPageContent() {
             }));
         }
     };
+    
+    const handleUpdateAttachments = (newAttachments) => {
+        if (selectedTask) {
+            setSelectedTask(prev => ({
+                ...prev,
+                attachments: newAttachments,
+            }));
+        }
+    };
 
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
@@ -1690,6 +1805,7 @@ function KanbanPageContent() {
         isReadOnly={isModalReadOnly}
         onSetReadOnly={setIsModalReadOnly}
         onOpenChecklist={() => setIsChecklistModalOpen(true)}
+        onOpenAttachments={() => setIsAttachmentModalOpen(true)}
        />
        {selectedTask && (
          <ChecklistModal
@@ -1698,6 +1814,14 @@ function KanbanPageContent() {
             checklists={selectedTask.checklists}
             onUpdateChecklists={handleUpdateChecklists}
          />
+       )}
+       {selectedTask && (
+        <AttachmentModal
+            isOpen={isAttachmentModalOpen}
+            onClose={() => setIsAttachmentModalOpen(false)}
+            attachments={selectedTask.attachments}
+            onUpdateAttachments={handleUpdateAttachments}
+        />
        )}
         <SubStatusModal 
             isOpen={isSubStatusModalOpen}
