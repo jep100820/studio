@@ -1167,7 +1167,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick, setti
     );
 }
 
-function DueDateSummary({ tasks, archivedTasksCount, onTaskClick, settings, onArchiveClick }) {
+function DueDateSummary({ tasks, archivedTasks, onTaskClick, settings }) {
     const [modalData, setModalData] = useState({ isOpen: false, title: '', tasks: [] });
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
@@ -1239,11 +1239,11 @@ function DueDateSummary({ tasks, archivedTasksCount, onTaskClick, settings, onAr
                 />
                  <DueDateWidget
                     title="Archived"
-                    value={archivedTasksCount}
+                    value={archivedTasks.length}
                     icon={Archive}
                     color="text-gray-500"
-                    onClick={onArchiveClick}
-                    disabled={archivedTasksCount === 0}
+                    onClick={() => handleWidgetClick("Archived Tasks", archivedTasks)}
+                    disabled={archivedTasks.length === 0}
                 />
             </div>
             <DueDateSummaryModal 
@@ -1747,10 +1747,9 @@ function KanbanPageContent() {
             <h1 className="text-2xl font-bold">{viewMode === 'kanban' ? 'KanbanFlow' : 'To-Do List'}</h1>
             <DueDateSummary 
                 tasks={tasks} 
+                archivedTasks={archivedTasks}
                 onTaskClick={handleSummaryTaskClick} 
                 settings={settings}
-                archivedTasksCount={archivedTasks.length}
-                onArchiveClick={() => handleWidgetClick("Archived Tasks", archivedTasks)}
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
