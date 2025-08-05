@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2 } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -344,7 +344,7 @@ function CompletionZone({ isDragging }) {
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
-            <div className="text-center text-green-700">
+            <div className="text-center text-green-700 dark:text-green-300">
                 <CheckCircle2 className="h-8 w-8 mx-auto" />
                 <p className="font-semibold mt-2">Complete</p>
             </div>
@@ -421,15 +421,11 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
+             <p className="text-xs text-muted-foreground pt-1">Date Started: {formatDate(task.date, displayFormat)}</p>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 group">
+          <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 -mr-2 group">
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
-                   <div className="md:col-span-2 space-y-2">
-                      <p className="text-xs text-muted-foreground">Date Started: {formatDate(task.date, displayFormat)}</p>
-                  </div>
-                  <div className="md:col-span-1" />
-
                   <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
@@ -836,6 +832,23 @@ function ArchivedTasksModal({ isOpen, onClose, archivedTasks, onUnarchiveTask, o
     );
 }
 
+function ConfirmationDialog({ open, title, description, onConfirm, onCancel, confirmText = 'Confirm', confirmVariant = 'default' }) {
+    return (
+        <Dialog open={open} onOpenChange={onCancel}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+                    <Button variant={confirmVariant} onClick={onConfirm}>{confirmText}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
@@ -852,6 +865,8 @@ function KanbanPageContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tagFilters, setTagFilters] = useState({});
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
+
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -957,27 +972,44 @@ function KanbanPageContent() {
 
     const taskRef = doc(db, 'tasks', active.id);
 
+    const performAction = async (action) => {
+        await action();
+        setConfirmation({ isOpen: false });
+    };
+
     if (over.id === 'completion-zone') {
-        if (window.confirm('Are you sure you want to complete this task?')) {
-            const updatedTask = {
-                ...taskToUpdate,
-                status: 'Completed',
-                isArchived: false,
-                completionDate: taskToUpdate.completionDate || Timestamp.now(),
-                lastModified: Timestamp.now(),
-            };
-            await updateDoc(taskRef, { 
-                status: 'Completed', 
-                isArchived: false,
-                completionDate: updatedTask.completionDate,
-                lastModified: updatedTask.lastModified,
-            });
-            handleOpenModal(updatedTask);
-        }
+        setConfirmation({
+            isOpen: true,
+            title: 'Complete Task',
+            description: 'Are you sure you want to complete this task?',
+            onConfirm: () => performAction(async () => {
+                const updatedTask = {
+                    ...taskToUpdate,
+                    status: 'Completed',
+                    isArchived: false,
+                    completionDate: taskToUpdate.completionDate || Timestamp.now(),
+                    lastModified: Timestamp.now(),
+                };
+                await updateDoc(taskRef, {
+                    status: 'Completed',
+                    isArchived: false,
+                    completionDate: updatedTask.completionDate,
+                    lastModified: updatedTask.lastModified,
+                });
+                handleOpenModal(updatedTask);
+            })
+        });
     } else if (over.id === 'archive-zone') {
-        if (window.confirm('Are you sure you want to archive this task?')) {
-            await updateDoc(taskRef, { isArchived: true, lastModified: Timestamp.now() });
-        }
+        setConfirmation({
+            isOpen: true,
+            title: 'Archive Task',
+            description: 'Are you sure you want to archive this task?',
+            confirmText: 'Archive',
+            confirmVariant: 'destructive',
+            onConfirm: () => performAction(async () => {
+                await updateDoc(taskRef, { isArchived: true, lastModified: Timestamp.now() });
+            })
+        });
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
         const newStatus = over.id;
         const targetCategory = settings.workflowCategories.find(cat => cat.name === newStatus);
@@ -1048,10 +1080,18 @@ function KanbanPageContent() {
   };
   
   const handleDeleteTask = async (id) => {
-      if (window.confirm('Are you sure you want to delete this task?')) {
-          await deleteDoc(doc(db, 'tasks', id));
-          handleCloseModal();
-      }
+        setConfirmation({
+            isOpen: true,
+            title: 'Delete Task',
+            description: 'Are you sure you want to permanently delete this task? This action cannot be undone.',
+            confirmText: 'Delete',
+            confirmVariant: 'destructive',
+            onConfirm: async () => {
+                await deleteDoc(doc(db, 'tasks', id));
+                setConfirmation({ isOpen: false });
+                handleCloseModal();
+            }
+        });
   };
   
   const handleUnarchiveTask = async (taskId) => {
@@ -1265,6 +1305,15 @@ function KanbanPageContent() {
             onUnarchiveTask={handleUnarchiveTask}
             onTaskClick={handleArchivedTaskClick}
             settings={settings}
+        />
+         <ConfirmationDialog
+            open={confirmation.isOpen}
+            title={confirmation.title}
+            description={confirmation.description}
+            onConfirm={confirmation.onConfirm}
+            onCancel={() => setConfirmation({ isOpen: false })}
+            confirmText={confirmation.confirmText}
+            confirmVariant={confirmation.confirmVariant}
         />
         <DragOverlay dropAnimation={null}>
             {activeTask ? (
