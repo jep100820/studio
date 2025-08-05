@@ -1611,7 +1611,8 @@ function KanbanPageContent() {
 
   const handleArchiveTask = async (task) => {
       const taskRef = doc(db, 'tasks', task.id);
-      const newStatus = task.status === 'Archived' ? 'Not Started' : 'Archived';
+      const isArchiving = task.status !== 'Archived';
+      const newStatus = isArchiving ? 'Archived' : 'Not Started'; // Unarchive to 'Not Started'
       await updateDoc(taskRef, { status: newStatus, lastModified: Timestamp.now() });
       handleCloseModal();
   };
