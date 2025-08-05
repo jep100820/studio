@@ -630,7 +630,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick, setti
     );
 }
 
-function DueDateSummary({ tasks, onTaskClick, settings }) {
+function DueDateSummary({ tasks, onTaskClick, settings, archivedTasksCount, onArchiveClick }) {
     const [modalData, setModalData] = useState({ isOpen: false, title: '', tasks: [] });
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
@@ -674,31 +674,41 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
     };
 
     return (
-        <div className="flex items-center gap-4">
-            <DueDateWidget
-                title="Past Due"
-                value={pastDue.length}
-                icon={AlertTriangle}
-                color="text-red-500"
-                onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
-                disabled={pastDue.length === 0}
-            />
-            <DueDateWidget
-                title="Due Today"
-                value={dueToday.length}
-                icon={Clock}
-                color="text-amber-500"
-                onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
-                disabled={dueToday.length === 0}
-            />
-            <DueDateWidget
-                title="Due this Week"
-                value={dueThisWeek.length}
-                icon={Calendar}
-                color="text-blue-500"
-                onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
-                disabled={dueThisWeek.length === 0}
-            />
+        <>
+            <div className="flex items-center gap-4">
+                <DueDateWidget
+                    title="Past Due"
+                    value={pastDue.length}
+                    icon={AlertTriangle}
+                    color="text-red-500"
+                    onClick={() => handleWidgetClick('Past Due Tasks', pastDue)}
+                    disabled={pastDue.length === 0}
+                />
+                <DueDateWidget
+                    title="Due Today"
+                    value={dueToday.length}
+                    icon={Clock}
+                    color="text-amber-500"
+                    onClick={() => handleWidgetClick('Tasks Due Today', dueToday)}
+                    disabled={dueToday.length === 0}
+                />
+                <DueDateWidget
+                    title="Due this Week"
+                    value={dueThisWeek.length}
+                    icon={Calendar}
+                    color="text-blue-500"
+                    onClick={() => handleWidgetClick('Tasks Due this Week', dueThisWeek)}
+                    disabled={dueThisWeek.length === 0}
+                />
+                 <DueDateWidget
+                    title="Archived"
+                    value={archivedTasksCount}
+                    icon={Archive}
+                    color="text-gray-500"
+                    onClick={onArchiveClick}
+                    disabled={archivedTasksCount === 0}
+                />
+            </div>
             <DueDateSummaryModal 
                 isOpen={modalData.isOpen}
                 onClose={handleCloseModal}
@@ -707,7 +717,7 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
                 onTaskClick={handleTaskItemClick}
                 settings={settings}
             />
-        </div>
+        </>
     );
 }
 
@@ -1209,12 +1219,13 @@ function KanbanPageContent() {
         <header className="flex-shrink-0 flex items-center justify-between p-4 border-b gap-4">
           <div className="flex items-center gap-4 flex-shrink-0">
             <h1 className="text-2xl font-bold">KanbanFlow</h1>
-            <DueDateSummary tasks={tasks} onTaskClick={handleSummaryTaskClick} settings={settings} />
-            <Button variant="outline" size="sm" onClick={() => setIsArchiveModalOpen(true)}>
-                <Archive className="h-4 w-4 mr-2" />
-                Archived
-                <Badge variant="secondary" className="ml-2">{archivedTasks.length}</Badge>
-            </Button>
+            <DueDateSummary 
+                tasks={tasks} 
+                onTaskClick={handleSummaryTaskClick} 
+                settings={settings}
+                archivedTasksCount={archivedTasks.length}
+                onArchiveClick={() => setIsArchiveModalOpen(true)}
+            />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button onClick={() => handleOpenModal()} size="sm">
@@ -1339,3 +1350,4 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
