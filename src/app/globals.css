@@ -59,7 +59,10 @@
   body {
     @apply bg-background text-foreground;
   }
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    margin-top: 1px;
+  ::-webkit-calendar-picker-indicator {
+    @apply mr-2; /* Increased to margin-right: 0.5rem = 8px */
+    width: 16px; /* Fixed width for consistency */
+    height: 16px; /* Fixed height for consistency */
+    padding: 0; /* Ensure no padding interferes */
   }
 }
