@@ -287,7 +287,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
                 value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
              ))}
-             {checklistProgress && (
+             {checklistProgress && !isExpanded && (
                 <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
                     <Check className="h-3 w-3"/>
                     {checklistProgress.completed}/{checklistProgress.total}
@@ -728,7 +728,7 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) 
     );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist, onOpenAttachments }) {
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist, onOpenAttachments, isSaving }) {
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
@@ -786,7 +786,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
         return category?.subStatuses || [];
     }, [task?.status, settings.workflowCategories]);
 
-    const isSaveDisabled = !task?.taskid || !task?.dueDate;
+    const isSaveDisabled = !task?.taskid || !task?.dueDate || isSaving;
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -797,7 +797,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               <p className="text-xs text-muted-foreground">{formatDate(task.date, settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy')}</p>
             </div>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="p-4 space-y-1.5 max-h-[60vh] overflow-y-auto">
+          <fieldset disabled={isReadOnly || isSaving} className="p-4 space-y-1.5 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-3 gap-y-2 gap-x-2">
                   <div className="col-span-2">
                     <Label htmlFor="taskid">Task ID</Label>
@@ -997,7 +997,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
           <DialogFooter className="p-4 border-t sm:justify-between">
             <div>
                 {isEditing && !isReadOnly && (
-                    <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm">
+                    <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
                         Delete
                     </Button>
                 )}
@@ -1009,10 +1009,15 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                 {!isEditing && <div />}
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
+              <Button variant="ghost" onClick={onClose} size="sm" disabled={isSaving}>Cancel</Button>
               {!isReadOnly && (
                   <Button onClick={onSave} disabled={isSaveDisabled} size="sm">
-                      Save
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : 'Save'}
                   </Button>
               )}
             </div>
@@ -1362,6 +1367,7 @@ function KanbanPageContent() {
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
@@ -1562,30 +1568,40 @@ function KanbanPageContent() {
   
 
   const handleCloseModal = () => {
+    if (isSaving) return;
     setIsModalOpen(false);
     setSelectedTask(null);
   };
   
   const handleSaveTask = async () => {
-      if (!selectedTask || !selectedTask.taskid || !selectedTask.dueDate) return;
-      const taskToSave = { 
-          ...selectedTask,
-          lastModified: Timestamp.now(),
-      };
-      
-      const currentCategory = settings.workflowCategories.find(cat => cat.name === taskToSave.status);
-      if (!currentCategory?.subStatuses?.some(sub => sub.name === taskToSave.subStatus)) {
-          taskToSave.subStatus = '';
-      }
+      if (!selectedTask || !selectedTask.taskid || !selectedTask.dueDate || isSaving) return;
 
-      if (taskToSave.id) {
-          const docRef = doc(db, 'tasks', taskToSave.id);
-          const { id, ...dataToUpdate } = taskToSave;
-          await updateDoc(docRef, dataToUpdate);
-      } else {
-          await addDoc(collection(db, 'tasks'), taskToSave);
+      setIsSaving(true);
+      try {
+          const taskToSave = { 
+              ...selectedTask,
+              lastModified: Timestamp.now(),
+          };
+          
+          const currentCategory = settings.workflowCategories.find(cat => cat.name === taskToSave.status);
+          if (!currentCategory?.subStatuses?.some(sub => sub.name === taskToSave.subStatus)) {
+              taskToSave.subStatus = '';
+          }
+
+          if (taskToSave.id) {
+              const docRef = doc(db, 'tasks', taskToSave.id);
+              const { id, ...dataToUpdate } = taskToSave;
+              await updateDoc(docRef, dataToUpdate);
+          } else {
+              await addDoc(collection(db, 'tasks'), taskToSave);
+          }
+          handleCloseModal();
+      } catch (error) {
+          console.error("Failed to save task:", error);
+          // Here you could show an error toast
+      } finally {
+          setIsSaving(false);
       }
-      handleCloseModal();
   };
   
   const handleDeleteTask = async (id) => {
@@ -1840,6 +1856,7 @@ function KanbanPageContent() {
         onSetReadOnly={setIsModalReadOnly}
         onOpenChecklist={() => setIsChecklistModalOpen(true)}
         onOpenAttachments={() => setIsAttachmentModalOpen(true)}
+        isSaving={isSaving}
        />
        {selectedTask && (
          <ChecklistModal
