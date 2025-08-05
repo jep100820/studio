@@ -1281,10 +1281,6 @@ function KanbanPageContent() {
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button onClick={() => handleOpenModal()} size="sm">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
             <Link href="/dashboard">
               <Button variant="outline" size="sm">
                   <LayoutDashboard className="h-4 w-4 mr-2" />
@@ -1307,6 +1303,10 @@ function KanbanPageContent() {
 
         <div className="p-4 border-b flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4 flex-grow">
+                <Button onClick={() => handleOpenModal()} size="sm">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
                 <div className="relative flex-grow max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -1424,3 +1424,4 @@ export default function KanbanPage() {
 }
 
     
+
