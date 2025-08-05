@@ -474,13 +474,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                 <p className="text-[0.65rem] sm:text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
               </div>
             </DialogHeader>
-            <button
-              onClick={onClose}
-              className="absolute top-1 right-1 p-1 rounded-full hover:bg-muted focus:outline-none"
-              aria-label="Close"
-            >
-              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" />
-            </button>
           </div>
           <fieldset disabled={isReadOnly} className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-1 gap-y-2.5 gap-x-2">
@@ -490,14 +483,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="dueDate" className="text-xs sm:text-sm">Due Date</Label>
-                    <Input 
-                      id="dueDate" 
-                      name="dueDate" 
-                      type={settings.enableTimeTracking ? "datetime-local" : "date"} 
-                      value={formatDateForInput(task?.dueDate)} 
-                      onChange={handleDateChange} 
-                      className={cn("h-7 sm:h-8 text-xs sm:text-sm min-w-[140px]", settings.enableTimeTracking ? "pr-6 sm:pr-10" : "pr-8 sm:pr-12")}
-                    />
+                    <div className="relative">
+                        <Input 
+                          id="dueDate" 
+                          name="dueDate" 
+                          type={settings.enableTimeTracking ? "datetime-local" : "date"} 
+                          value={formatDateForInput(task?.dueDate)} 
+                          onChange={handleDateChange} 
+                          className="h-7 sm:h-8 text-xs sm:text-sm min-w-[140px] pr-8"
+                        />
+                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
                   </div>
               </div>
 
@@ -615,14 +611,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               {isEditing && task.status === 'Completed' && (
                 <div className="space-y-1">
                     <Label htmlFor="completionDate" className="text-xs sm:text-sm">Completion Date</Label>                    
-                    <Input 
-                      id="completionDate" 
-                      name="completionDate" 
-                      type={settings.enableTimeTracking ? "datetime-local" : "date"} 
-                      value={formatDateForInput(task?.completionDate)} 
-                      onChange={handleDateChange} 
-                      className={cn("h-7 sm:h-8 text-xs sm:text-sm min-w-[140px]", settings.enableTimeTracking ? "pr-6 sm:pr-10" : "pr-8 sm:pr-12")}
-                    />
+                    <div className="relative">
+                        <Input 
+                          id="completionDate" 
+                          name="completionDate" 
+                          type={settings.enableTimeTracking ? "datetime-local" : "date"} 
+                          value={formatDateForInput(task?.completionDate)} 
+                          onChange={handleDateChange} 
+                          className="h-7 sm:h-8 text-xs sm:text-sm min-w-[140px] pr-8"
+                        />
+                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
                 </div>
               )}
           </fieldset>
@@ -641,6 +640,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                 {!isEditing && <div />}
             </div>
             <div className="flex gap-1">
+              <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
               {!isReadOnly && (
                   <Button onClick={onSave} disabled={isSaveDisabled} size="sm">
                       Save
