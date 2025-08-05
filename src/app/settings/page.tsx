@@ -94,7 +94,7 @@ function SubItemManager({ items, onUpdate, parentId, itemLabel = 'Sub-Status', m
     );
 }
 
-function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true, subItemLabel, maxSubItems }) {
+function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStatuses, onSubStatusUpdate, hasColor = true, subItemLabel, maxSubItems, isLocked = false }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(item.name);
@@ -125,6 +125,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     };
 
     const toggleEdit = () => {
+        if (isLocked) return;
         setIsEditing(prev => !prev);
     };
 
@@ -146,8 +147,8 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
 
     return (
         <div className="mb-3">
-             <div ref={setNodeRef} style={{...style, backgroundColor: bgColor}} className="flex items-center gap-0 rounded-lg shadow-sm border">
-                <div {...attributes} {...listeners} className="cursor-grab p-3 self-stretch flex items-center bg-card rounded-l-md">
+             <div ref={setNodeRef} style={{...style, backgroundColor: bgColor}} className={cn("flex items-center gap-0 rounded-lg shadow-sm border", isLocked && "opacity-70")}>
+                <div {...attributes} {...listeners} className={cn("cursor-grab p-3 self-stretch flex items-center bg-card rounded-l-md", isLocked && "cursor-not-allowed")}>
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
 
@@ -173,12 +174,12 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                     </span>
 
                     <div className={cn("flex items-center gap-1 ml-auto", textColor)}>
-                         <Button variant="ghost" size="icon" onClick={toggleEdit} className={cn("hover:bg-black/10 w-8 h-8", textColor)}>
+                         <Button variant="ghost" size="icon" onClick={toggleEdit} className={cn("hover:bg-black/10 w-8 h-8", textColor, isLocked && "hidden")}>
                             <Pencil className="h-4 w-4" />
                         </Button>
                         {hasColor && (
                             <div className="relative w-8 h-8 flex items-center justify-center">
-                                <label htmlFor={`color-${id}`} className="cursor-pointer w-full h-full flex items-center justify-center">
+                                <label htmlFor={`color-${id}`} className={cn("cursor-pointer w-full h-full flex items-center justify-center", isLocked && "cursor-not-allowed")}>
                                     <Paintbrush className="h-4 w-4" />
                                 </label>
                                 <Input
@@ -187,10 +188,11 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
                                     value={item.color || '#ffffff'}
                                     onChange={(e) => handleColorChange(e.target.value)}
                                     className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                    disabled={isLocked}
                                 />
                             </div>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover-bg-black/10 w-8 h-8", textColor)}>
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(id)} className={cn("hover-bg-black/10 w-8 h-8", textColor, isLocked && "hidden")}>
                             <X className="h-4 w-4" />
                         </Button>
                          {hasSubStatuses && (
@@ -214,7 +216,7 @@ function SortableItem({ id, item, onUpdate, onRemove, onToggleExpand, hasSubStat
     );
 }
 
-function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true, subItemLabel, maxSubItems }) {
+function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses = false, hasColor = true, subItemLabel, maxSubItems, lockedItems = [] }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -223,11 +225,8 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
     );
     
     const displayedItems = useMemo(() => {
-        if (fieldName === 'workflowCategories') {
-            return items?.filter(item => item.name !== 'Completed') || [];
-        }
         return items || [];
-    }, [items, fieldName]);
+    }, [items]);
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
@@ -297,6 +296,7 @@ function SettingsSection({ items, onUpdate, onAddItem, fieldName, hasSubStatuses
                                     hasColor={hasColor}
                                     subItemLabel={subItemLabel}
                                     maxSubItems={maxSubItems}
+                                    isLocked={lockedItems.includes(item.name)}
                                 />
                             ))}
                         </div>
@@ -850,7 +850,9 @@ export default function SettingsPage() {
                         { name: 'Low', color: '#4ade80' },
                     ];
                  }
-
+                if (!data.workflowCategories.some(cat => cat.name === 'Archived')) {
+                    data.workflowCategories.push({ name: 'Archived', color: '#6b7280', subStatuses: [] });
+                }
 
                  const dataWithIds = addIdsToData(data);
                  
@@ -1116,6 +1118,7 @@ export default function SettingsPage() {
                                 hasSubStatuses={true}
                                 subItemLabel="Sub-Status"
                                 maxSubItems={10}
+                                lockedItems={['Completed', 'Archived']}
                             />
                         </AccordionSection>
 

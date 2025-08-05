@@ -120,7 +120,8 @@ const seedDatabase = async () => {
       { name: 'In Progress', color: '#60a5fa', subStatuses: [] },
       { name: 'For Review', color: '#facc15', subStatuses: [{ name: 'With Earl' }, { name: 'Pending Approval'}] },
       { name: 'Approved for Submission', color: '#4ade80', subStatuses: [{name: 'On-Hold'}, {name: 'On Tray'}] },
-      { name: 'Completed', color: '#a78bfa', subStatuses: [] }
+      { name: 'Completed', color: '#a78bfa', subStatuses: [] },
+      { name: 'Archived', color: '#6b7280', subStatuses: [] }
     ];
     await setDoc(settingsRef, {
       workflowCategories: workflowCategories,
@@ -149,6 +150,15 @@ const seedDatabase = async () => {
                 { name: 'High', color: '#f97316' },
                 { name: 'Medium', color: '#facc15' },
                 { name: 'Low', color: '#4ade80' },
+            ]
+        });
+    }
+     // Add 'Archived' status if it doesn't exist
+    if (!settingsData.workflowCategories.some(cat => cat.name === 'Archived')) {
+        await updateDoc(settingsRef, {
+            workflowCategories: [
+                ...settingsData.workflowCategories,
+                { name: 'Archived', color: '#6b7280', subStatuses: [] }
             ]
         });
     }
@@ -455,7 +465,7 @@ function CompletionZone({ isDragging }) {
         <div
             ref={setNodeRef}
             className={cn(
-                'fixed top-0 right-0 h-1/2 w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                'fixed top-1/2 -translate-y-1/2 right-0 h-32 w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
@@ -467,26 +477,6 @@ function CompletionZone({ isDragging }) {
     );
 }
 
-function ArchiveZone({ isDragging }) {
-    const { setNodeRef } = useDroppable({
-        id: 'archive-zone',
-    });
-
-    return (
-        <div
-            ref={setNodeRef}
-            className={cn(
-                'fixed bottom-0 right-0 h-1/2 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
-                isDragging ? 'translate-x-0' : 'translate-x-full'
-            )}
-        >
-            <div className="text-center text-gray-700 dark:text-gray-300">
-                <Archive className="h-8 w-8 mx-auto" />
-                <p className="font-semibold mt-2">Archive</p>
-            </div>
-        </div>
-    );
-}
 
 function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
     const [localChecklists, setLocalChecklists] = useState([]);
@@ -777,7 +767,7 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments, on
     );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist, onOpenAttachments, isSaving }) {
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive, settings, isReadOnly, onSetReadOnly, onOpenChecklist, onOpenAttachments, isSaving }) {
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
@@ -878,7 +868,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                         onChange={handleChange} 
                         className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                       >
-                          {settings.workflowCategories?.map(cat => (
+                          {settings.workflowCategories?.filter(c => c.name !== 'Archived').map(cat => (
                               <option key={cat.name} value={cat.name}>{cat.name}</option>
                           ))}
                       </select>
@@ -1045,14 +1035,24 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
           </fieldset>
           <DialogFooter className="p-4 border-t sm:justify-between">
             <div>
-                {isEditing && !isReadOnly && (
+                {isEditing && !isReadOnly && task.status !== 'Completed' && (
                     <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
                         Delete
                     </Button>
                 )}
-                {isEditing && isReadOnly && (
+                 {isEditing && !isReadOnly && task.status === 'Completed' && (
+                     <Button variant="secondary" onClick={() => onArchive(task)} size="sm" disabled={isSaving}>
+                        <Archive className="h-3 w-3 mr-1" /> Archive
+                    </Button>
+                )}
+                {isEditing && isReadOnly && task.status !== 'Archived' &&(
                     <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
                         <Pencil className="h-3 w-3 mr-1"/>Edit
+                    </Button>
+                )}
+                 {isEditing && isReadOnly && task.status === 'Archived' && (
+                    <Button variant="secondary" onClick={() => onArchive(task)} size="sm">
+                        <ArchiveRestore className="h-3 w-3 mr-1"/> Unarchive
                     </Button>
                 )}
                 {!isEditing && <div />}
@@ -1167,7 +1167,7 @@ function DueDateSummaryModal({ isOpen, onClose, title, tasks, onTaskClick, setti
     );
 }
 
-function DueDateSummary({ tasks, onTaskClick, settings, archivedTasksCount, onArchiveClick }) {
+function DueDateSummary({ tasks, archivedTasksCount, onTaskClick, settings, onArchiveClick }) {
     const [modalData, setModalData] = useState({ isOpen: false, title: '', tasks: [] });
 
     const { pastDue, dueToday, dueThisWeek } = useMemo(() => {
@@ -1321,63 +1321,6 @@ function CategoryFilter({ category, selected, onSelectionChange }) {
     );
 }
 
-function ArchivedTasksModal({ isOpen, onClose, archivedTasks, onUnarchiveTask, onTaskClick, settings }) {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const filteredTasks = useMemo(() => {
-        if (!searchTerm) return archivedTasks;
-        return archivedTasks.filter(task =>
-            task.taskid?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [archivedTasks, searchTerm]);
-    
-    if (!isOpen) return null;
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-xl">
-                <DialogHeader>
-                    <DialogTitle>Archived Tasks</DialogTitle>
-                    <DialogDescription>
-                        {archivedTasks.length} task(s) are archived. Unarchive them to return them to the board.
-                    </DialogDescription>
-                </DialogHeader>
-                 <div className="relative mt-4">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search archived tasks..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8"
-                    />
-                </div>
-                <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 -mr-2">
-                    {filteredTasks.length > 0 ? (
-                        <ul className="space-y-2">
-                            {filteredTasks.map(task => (
-                                <li key={task.id} className="text-sm p-3 rounded-md bg-muted/50 flex items-center justify-between gap-4">
-                                    <div className="flex-grow cursor-pointer" onClick={() => onTaskClick(task)}>
-                                        <p className="font-semibold">{task.taskid}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Status: {task.status} (Archived)</p>
-                                    </div>
-                                    <Button size="sm" variant="outline" onClick={() => onUnarchiveTask(task.id)}>
-                                        <ArchiveRestore className="h-4 w-4 mr-2"/>
-                                        Unarchive
-                                    </Button>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-8">No archived tasks found.</p>
-                    )}
-                </div>
-                <DialogFooter>
-                    <Button onClick={onClose}>Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 function ConfirmationDialog({ open, title, description, onConfirm, onCancel, confirmText = 'Confirm', confirmVariant = 'default' }) {
     return (
@@ -1411,7 +1354,6 @@ function KanbanPageContent() {
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tagFilters, setTagFilters] = useState({});
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
@@ -1455,7 +1397,12 @@ function KanbanPageContent() {
                     data.checklists = [{ id: 'cl-default', name: 'Checklist', items: data.checklist }];
                     delete data.checklist;
                 }
-                return { ...data, id: doc.id, isArchived: data.isArchived || false };
+                 // Migration for isArchived flag
+                if (data.isArchived) {
+                    data.status = 'Archived';
+                    delete data.isArchived;
+                }
+                return { ...data, id: doc.id };
             });
             setAllTasks(fetchedTasks);
             setIsLoading(false);
@@ -1469,8 +1416,8 @@ function KanbanPageContent() {
   }, []);
 
   const { activeTasks, archivedTasks } = useMemo(() => {
-    const active = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
-    const archived = allTasks.filter(t => t.isArchived);
+    const active = allTasks.filter(t => t.status !== 'Completed' && t.status !== 'Archived');
+    const archived = allTasks.filter(t => t.status === 'Archived');
     return { activeTasks: active, archivedTasks: archived };
   }, [allTasks]);
 
@@ -1493,12 +1440,11 @@ function KanbanPageContent() {
           tags: {},
           subStatusChangeCount: 0,
           lastModified: Timestamp.now(),
-          isArchived: false,
           checklists: [],
           attachments: [],
       };
       setSelectedTask(task ? { ...task } : defaultTask);
-      setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
+      setIsModalReadOnly(task ? (task.status === 'Completed' || task.status === 'Archived' ? true : false) : false);
       setIsModalOpen(true);
   };
   
@@ -1549,28 +1495,15 @@ function KanbanPageContent() {
                 const updatedTask = {
                     ...taskToUpdate,
                     status: 'Completed',
-                    isArchived: false,
                     completionDate: taskToUpdate.completionDate || Timestamp.now(),
                     lastModified: Timestamp.now(),
                 };
                 await updateDoc(taskRef, {
                     status: 'Completed',
-                    isArchived: false,
                     completionDate: updatedTask.completionDate,
                     lastModified: updatedTask.lastModified,
                 });
                 handleOpenModal(updatedTask);
-            })
-        });
-    } else if (over.id === 'archive-zone') {
-        setConfirmation({
-            isOpen: true,
-            title: 'Archive Task',
-            description: 'Are you sure you want to archive this task?',
-            confirmText: 'Archive',
-            confirmVariant: 'destructive',
-            onConfirm: () => performAction(async () => {
-                await updateDoc(taskRef, { isArchived: true, lastModified: Timestamp.now() });
             })
         });
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
@@ -1593,12 +1526,17 @@ function KanbanPageContent() {
   const handleSummaryTaskClick = (taskId) => {
     setViewMode('kanban'); // Switch to kanban view if not already
     setTimeout(() => {
-        setHighlightedTaskId(taskId);
-        setExpandedTaskId(taskId);
-        // Use a timer to remove the highlight class after the animation
-        setTimeout(() => {
-            setHighlightedTaskId(null);
-        }, 2000); // The duration of your pulse/highlight effect
+        const task = allTasks.find(t => t.id === taskId);
+        if (task && task.status === 'Archived') {
+            handleOpenModal(task);
+        } else {
+            setHighlightedTaskId(taskId);
+            setExpandedTaskId(taskId);
+            // Use a timer to remove the highlight class after the animation
+            setTimeout(() => {
+                setHighlightedTaskId(null);
+            }, 2000); // The duration of your pulse/highlight effect
+        }
     }, 100);
   };
 
@@ -1669,16 +1607,14 @@ function KanbanPageContent() {
             }
         });
   };
-  
-  const handleUnarchiveTask = async (taskId) => {
-      const taskRef = doc(db, 'tasks', taskId);
-      await updateDoc(taskRef, { isArchived: false, lastModified: Timestamp.now() });
+
+  const handleArchiveTask = async (task) => {
+      const taskRef = doc(db, 'tasks', task.id);
+      const newStatus = task.status === 'Archived' ? 'Completed' : 'Archived';
+      await updateDoc(taskRef, { status: newStatus, lastModified: Timestamp.now() });
+      handleCloseModal();
   };
   
-  const handleArchivedTaskClick = (task) => {
-      setIsArchiveModalOpen(false);
-      handleOpenModal(task);
-  }
 
     const handleFilterChange = (category, value) => {
         if (value === '__clear__') {
@@ -1789,7 +1725,7 @@ function KanbanPageContent() {
     };
 
   const columns = useMemo(() => {
-    return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
+    return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed' && name !== 'Archived') || [];
   }, [settings.workflowCategories]);
 
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
@@ -1813,7 +1749,7 @@ function KanbanPageContent() {
                 onTaskClick={handleSummaryTaskClick} 
                 settings={settings}
                 archivedTasksCount={archivedTasks.length}
-                onArchiveClick={() => setIsArchiveModalOpen(true)}
+                onArchiveClick={() => handleSummaryTaskClick(null)}
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -1898,7 +1834,6 @@ function KanbanPageContent() {
         </main>
 
         <CompletionZone isDragging={!!activeId} />
-        <ArchiveZone isDragging={!!activeId} />
       </div>
       <TaskModal 
         isOpen={isModalOpen}
@@ -1907,6 +1842,7 @@ function KanbanPageContent() {
         setTask={setSelectedTask}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onArchive={handleArchiveTask}
         settings={settings}
         isReadOnly={isModalReadOnly}
         onSetReadOnly={setIsModalReadOnly}
@@ -1942,14 +1878,6 @@ function KanbanPageContent() {
             onSave={handleSubStatusSave}
             subStatuses={subStatusData.subStatuses}
         />
-        <ArchivedTasksModal
-            isOpen={isArchiveModalOpen}
-            onClose={() => setIsArchiveModalOpen(false)}
-            archivedTasks={archivedTasks}
-            onUnarchiveTask={handleUnarchiveTask}
-            onTaskClick={handleArchivedTaskClick}
-            settings={settings}
-        />
          <ConfirmationDialog
             open={confirmation.isOpen}
             title={confirmation.title}
@@ -1983,5 +1911,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    
