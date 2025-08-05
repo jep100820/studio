@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval } from 'date-fns';
 import Link from 'next/link';
@@ -633,7 +633,7 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[250px] p-0" align="start">
+            <PopoverContent className="w-[250px] p-0" align="start" side="right">
                 <Command>
                     <CommandInput placeholder="Search filters..." />
                     <CommandList>
@@ -646,18 +646,14 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
                                         <CommandItem
                                             key={tag.name}
                                             onSelect={() => onSelectionChange(category.name, tag.name)}
+                                            className="flex items-center"
                                         >
-                                            <div
-                                                className={cn(
-                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                                    isSelected
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : "opacity-50 [&_svg]:invisible"
-                                                )}
-                                            >
-                                                <CheckIcon className={cn("h-4 w-4")} />
-                                            </div>
-                                            <span>{tag.name}</span>
+                                            <Checkbox
+                                                checked={isSelected}
+                                                className="mr-2"
+                                                id={`${category.name}-${tag.name}`}
+                                            />
+                                            <Label htmlFor={`${category.name}-${tag.name}`} className="flex-grow cursor-pointer">{tag.name}</Label>
                                         </CommandItem>
                                     );
                                 })}
@@ -1077,22 +1073,6 @@ function KanbanPageContent() {
   );
 }
 
-const CheckIcon = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-
 export default function KanbanPage() {
     return (
         <Suspense fallback={<div>Loading...</div>}>
@@ -1100,5 +1080,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
-    
