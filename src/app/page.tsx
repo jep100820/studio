@@ -495,39 +495,39 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
               </div>
 
-              <div>
-                  <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
-                  <select 
-                    name="status" 
-                    id="status" 
-                    value={task?.status || 'Not Started'} 
-                    onChange={handleChange} 
-                    className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
-                  >
-                      {settings.workflowCategories?.map(cat => (
-                          <option key={cat.name} value={cat.name}>{cat.name}</option>
-                      ))}
-                  </select>
-              </div>
-              {currentSubStatuses.length > 0 && (
-                <div>
-                    <Label htmlFor="subStatus" className="text-xs sm:text-sm">Sub-Status</Label>
-                    <select 
-                      name="subStatus" 
-                      id="subStatus" 
-                      value={task?.subStatus || ''} 
-                      onChange={handleChange} 
-                      className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
-                    >
-                        <option value="">None</option>
-                        {currentSubStatuses.map(sub => (
-                            <option key={sub.name} value={sub.name}>{sub.name}</option>
-                        ))}
-                    </select>
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-y-2 gap-x-2">
+                  <div>
+                      <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
+                      <select 
+                        name="status" 
+                        id="status" 
+                        value={task?.status || 'Not Started'} 
+                        onChange={handleChange} 
+                        className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                      >
+                          {settings.workflowCategories?.map(cat => (
+                              <option key={cat.name} value={cat.name}>{cat.name}</option>
+                          ))}
+                      </select>
+                  </div>
+                  {currentSubStatuses.length > 0 && (
+                    <div>
+                        <Label htmlFor="subStatus" className="text-xs sm:text-sm">Sub-Status</Label>
+                        <select 
+                          name="subStatus" 
+                          id="subStatus" 
+                          value={task?.subStatus || ''} 
+                          onChange={handleChange} 
+                          className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                        >
+                            <option value="">None</option>
+                            {currentSubStatuses.map(sub => (
+                                <option key={sub.name} value={sub.name}>{sub.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                  )}
 
-              <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div>
                         <Label htmlFor="importance" className="text-xs sm:text-sm">Importance</Label>
