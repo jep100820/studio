@@ -842,7 +842,14 @@ export default function SettingsPage() {
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
-                 if (!data.hasOwnProperty('urgencyLevels')) data.urgencyLevels = [];
+                 if (!data.hasOwnProperty('urgencyLevels')) {
+                    data.urgencyLevels = [
+                        { name: 'Critical', color: '#dc2626' },
+                        { name: 'High', color: '#f97316' },
+                        { name: 'Medium', color: '#facc15' },
+                        { name: 'Low', color: '#4ade80' },
+                    ];
+                 }
 
 
                  const dataWithIds = addIdsToData(data);

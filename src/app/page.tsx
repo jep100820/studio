@@ -37,7 +37,7 @@ import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
 import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check } from 'lucide-react';
 import { useTheme } from "next-themes";
-import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval } from 'date-fns';
+import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -127,15 +127,62 @@ const seedDatabase = async () => {
         { name: 'Low', color: '#10b981' },
       ],
       urgencyLevels: [
-        { name: 'High', color: '#ef4444' },
-        { name: 'Medium', color: '#f59e0b' },
-        { name: 'Low', color: '#10b981' },
+        { name: 'Critical', color: '#dc2626' },
+        { name: 'High', color: '#f97316' },
+        { name: 'Medium', color: '#facc15' },
+        { name: 'Low', color: '#4ade80' },
       ],
       customTags: [],
       enableTimeTracking: false,
     });
     console.log('Default settings created.');
+  } else {
+    // Logic to add urgencyLevels if they don't exist
+    const settingsData = settingsSnap.data();
+    if (!settingsData.urgencyLevels) {
+        await updateDoc(settingsRef, {
+            urgencyLevels: [
+                { name: 'Critical', color: '#dc2626' },
+                { name: 'High', color: '#f97316' },
+                { name: 'Medium', color: '#facc15' },
+                { name: 'Low', color: '#4ade80' },
+            ]
+        });
+    }
   }
+};
+
+const getEffectiveUrgency = (task, urgencyLevels) => {
+    if (task.urgency) {
+        return {
+            name: task.urgency,
+            source: 'manual'
+        };
+    }
+
+    const dueDate = toDate(task.dueDate);
+    if (!dueDate) {
+        return { name: '', source: 'none' };
+    }
+
+    const today = startOfToday();
+    const daysDiff = differenceInDays(dueDate, today);
+
+    let calculatedUrgencyName;
+    if (daysDiff < 0) {
+        calculatedUrgencyName = 'Critical';
+    } else if (daysDiff <= 2) {
+        calculatedUrgencyName = 'High';
+    } else if (daysDiff <= 5) {
+        calculatedUrgencyName = 'Medium';
+    } else {
+        calculatedUrgencyName = 'Low';
+    }
+
+    return {
+        name: calculatedUrgencyName,
+        source: 'auto'
+    };
 };
 
 
@@ -166,7 +213,10 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const isOverdue = task.dueDate && toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
   
   const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
-  const urgency = settings.urgencyLevels?.find(urg => urg.name === task.urgency);
+  
+  const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
+  const urgency = settings.urgencyLevels?.find(urg => urg.name === effectiveUrgency.name);
+
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
@@ -208,7 +258,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
             {urgency && (
               <div className="flex items-center text-xs">
                  <span style={{ backgroundColor: urgency.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
-                 {task.urgency}
+                 {urgency.name}
               </div>
              )}
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
@@ -302,6 +352,8 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
+    
+    const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -397,7 +449,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     <div className="space-y-2">
                         <Label htmlFor="urgency">Urgency</Label>
                          <select name="urgency" id="urgency" value={task?.urgency || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                              <option value="">None</option>
+                              <option value="">Auto-Calculated ({effectiveUrgency.name})</option>
                              {settings.urgencyLevels?.map(urg => <option key={urg.name} value={urg.name}>{urg.name}</option>)}
                          </select>
                     </div>
@@ -947,7 +999,7 @@ function KanbanPageContent() {
         }
 
         return options;
-    }, [settings.importanceLevels, settings.urgencyLevels, settings.customTags]);
+    }, [settings]);
 
 
     const filteredTasks = useMemo(() => {
@@ -975,7 +1027,8 @@ function KanbanPageContent() {
                         return selectedValues.includes(task.importance);
                     }
                     if (category === 'Urgency') {
-                        return selectedValues.includes(task.urgency);
+                        const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
+                        return selectedValues.includes(effectiveUrgency.name);
                     }
                     return selectedValues.includes(task.tags?.[category]);
                 });
@@ -983,7 +1036,7 @@ function KanbanPageContent() {
         }
         
         return tasksToFilter;
-    }, [tasks, searchTerm, tagFilters]);
+    }, [tasks, searchTerm, tagFilters, settings.urgencyLevels]);
 
 
     const sortedTasks = useMemo(() => {
