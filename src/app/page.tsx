@@ -35,11 +35,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval } from 'date-fns';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 // A robust, unified date parsing function
@@ -610,6 +614,75 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
     );
 }
 
+function MultiSelectFilter({ options, selected, onSelectionChange }) {
+    const selectedCount = Object.values(selected).reduce((acc, curr) => acc + curr.length, 0);
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                    <FilterIcon className="mr-2 h-4 w-4" />
+                    Filter
+                    {selectedCount > 0 && (
+                        <>
+                            <div className="mx-2 h-4 w-px bg-border" />
+                            <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                {selectedCount}
+                            </Badge>
+                        </>
+                    )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[250px] p-0" align="end">
+                <Command>
+                    <CommandInput placeholder="Search filters..." />
+                    <CommandList>
+                        <CommandEmpty>No results found.</CommandEmpty>
+                        {options.map((category) => (
+                            <CommandGroup key={category.name} heading={category.name}>
+                                {category.tags.map((tag) => {
+                                    const isSelected = selected[category.name]?.includes(tag.name);
+                                    return (
+                                        <CommandItem
+                                            key={tag.name}
+                                            onSelect={() => onSelectionChange(category.name, tag.name)}
+                                        >
+                                            <div
+                                                className={cn(
+                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                    isSelected
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "opacity-50 [&_svg]:invisible"
+                                                )}
+                                            >
+                                                <CheckIcon className={cn("h-4 w-4")} />
+                                            </div>
+                                            <span>{tag.name}</span>
+                                        </CommandItem>
+                                    );
+                                })}
+                            </CommandGroup>
+                        ))}
+                    </CommandList>
+                    {selectedCount > 0 && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem
+                                    onSelect={() => onSelectionChange('__clear__')}
+                                    className="justify-center text-center"
+                                >
+                                    Clear filters
+                                </CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -809,8 +882,29 @@ function KanbanPageContent() {
       }
   };
 
-    const handleFilterChange = (filterName, value) => {
-        setTagFilters(prev => ({ ...prev, [filterName]: value }));
+    const handleFilterChange = (category, value) => {
+        if (category === '__clear__') {
+            setTagFilters({});
+            return;
+        }
+
+        setTagFilters(prev => {
+            const newFilters = { ...prev };
+            const currentSelection = newFilters[category] || [];
+            
+            if (currentSelection.includes(value)) {
+                newFilters[category] = currentSelection.filter(item => item !== value);
+            } else {
+                newFilters[category] = [...currentSelection, value];
+            }
+            
+            // If a category has no items selected, remove it from the filter object
+            if (newFilters[category].length === 0) {
+                delete newFilters[category];
+            }
+            
+            return newFilters;
+        });
     };
 
     const filteredTasks = useMemo(() => {
@@ -827,11 +921,14 @@ function KanbanPageContent() {
         }
 
         // Apply tag filters
-        const activeTagFilters = Object.entries(tagFilters).filter(([_, value]) => value && value !== 'all');
+        const activeTagFilters = Object.entries(tagFilters);
         if (activeTagFilters.length > 0) {
             tasksToFilter = tasksToFilter.filter(task => {
-                return activeTagFilters.every(([category, value]) => {
-                    return task.tags && task.tags[category] === value;
+                return activeTagFilters.every(([category, selectedValues]) => {
+                    if (!selectedValues || selectedValues.length === 0) {
+                        return true;
+                    }
+                    return selectedValues.includes(task.tags?.[category]);
                 });
             });
         }
@@ -918,24 +1015,13 @@ function KanbanPageContent() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <div className="flex items-center gap-4">
-                {settings.customTags?.map(tagCategory => (
-                    <div key={tagCategory.name} className="flex items-center gap-2">
-                        <Label htmlFor={`filter-${tagCategory.name}`} className="text-sm">{tagCategory.name}:</Label>
-                        <select
-                            id={`filter-${tagCategory.name}`}
-                            onChange={(e) => handleFilterChange(tagCategory.name, e.target.value)}
-                            className="border rounded px-2 py-1.5 bg-input text-sm h-9"
-                            value={tagFilters[tagCategory.name] || 'all'}
-                        >
-                            <option value="all">All</option>
-                            {tagCategory.tags.map(tag => (
-                                <option key={tag.name} value={tag.name}>{tag.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                ))}
-            </div>
+            {settings.customTags && settings.customTags.length > 0 && (
+                <MultiSelectFilter
+                    options={settings.customTags}
+                    selected={tagFilters}
+                    onSelectionChange={handleFilterChange}
+                />
+            )}
         </div>
         
         <main className="flex-grow p-4 flex gap-6 overflow-hidden">
@@ -990,6 +1076,22 @@ function KanbanPageContent() {
     </DndContext>
   );
 }
+
+const CheckIcon = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 
 export default function KanbanPage() {
     return (
