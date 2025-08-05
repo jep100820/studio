@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -442,7 +442,73 @@ function ArchiveZone({ isDragging }) {
     );
 }
 
-function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly }) {
+function ChecklistModal({ isOpen, onClose, checklist, onUpdateChecklist }) {
+    const [localChecklist, setLocalChecklist] = useState([]);
+
+    useEffect(() => {
+        // Deep copy to avoid mutating parent state directly
+        setLocalChecklist(JSON.parse(JSON.stringify(checklist || [])));
+    }, [isOpen, checklist]);
+
+    const handleChecklistChange = (id, field, value) => {
+        setLocalChecklist(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const handleAddChecklistItem = () => {
+        const newItem = { id: `item-${Date.now()}`, text: '', completed: false };
+        setLocalChecklist(prev => [...prev, newItem]);
+    };
+
+    const handleDeleteChecklistItem = (id) => {
+        setLocalChecklist(prev => prev.filter(item => item.id !== id));
+    };
+
+    const handleSave = () => {
+        onUpdateChecklist(localChecklist);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Task Checklist</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-4 max-h-[50vh] overflow-y-auto">
+                    {localChecklist.map(item => (
+                        <div key={item.id} className="flex items-center gap-2">
+                           <Checkbox
+                                checked={item.completed}
+                                onCheckedChange={(checked) => handleChecklistChange(item.id, 'completed', checked)}
+                            />
+                            <Input
+                                value={item.text}
+                                onChange={(e) => handleChecklistChange(item.id, 'text', e.target.value)}
+                                className={cn("h-9 text-sm", item.completed && "line-through text-muted-foreground")}
+                                placeholder="Checklist item..."
+                            />
+                             <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklistItem(item.id)} className="h-9 w-9 flex-shrink-0">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="mt-2">
+                        <Plus className="h-4 w-4 mr-2"/>
+                        Add Item
+                    </Button>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Checklist</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings, isReadOnly, onSetReadOnly, onOpenChecklist }) {
     if (!isOpen) return null;
     
     const isEditing = !!task?.id;
@@ -471,28 +537,15 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
         const timestamp = parseDateStringToTimestamp(value);
         setTask(prev => ({ ...prev, [name]: timestamp }));
     };
-
-    const handleChecklistChange = (id, field, value) => {
-        setTask(prev => ({
-            ...prev,
-            checklist: prev.checklist.map(item => item.id === id ? { ...item, [field]: value } : item)
-        }));
-    };
-
-    const handleAddChecklistItem = () => {
-        const newItem = { id: `item-${Date.now()}`, text: '', completed: false };
-        setTask(prev => ({
-            ...prev,
-            checklist: [...(prev.checklist || []), newItem]
-        }));
-    };
-
-    const handleDeleteChecklistItem = (id) => {
-        setTask(prev => ({
-            ...prev,
-            checklist: prev.checklist.filter(item => item.id !== id)
-        }));
-    };
+    
+    const checklistProgress = useMemo(() => {
+        if (!task?.checklist || task.checklist.length === 0) {
+            return null;
+        }
+        const completed = task.checklist.filter(item => item.completed).length;
+        const total = task.checklist.length;
+        return { completed, total };
+    }, [task?.checklist]);
 
 
     const formatDateForInput = (timestamp) => {
@@ -625,6 +678,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     </div>
                   ))}
               </div>
+              
+              <Button onClick={onOpenChecklist} variant="outline" size="sm" className="w-full justify-start">
+                  <ListChecks className="h-4 w-4 mr-2" />
+                  Checklist
+                  {checklistProgress && (
+                      <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          {checklistProgress.completed} / {checklistProgress.total}
+                      </span>
+                  )}
+              </Button>
+
 
               <div>
                   <Label htmlFor="desc">Description</Label>
@@ -674,33 +738,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                          {task?.remarks || <span className="text-muted-foreground">Click to add remarks...</span>}
                       </div>
                   )}
-              </div>
-               
-              <div>
-                <Label>Checklist</Label>
-                <div className="space-y-2 mt-1">
-                    {task.checklist?.map(item => (
-                        <div key={item.id} className="flex items-center gap-2">
-                           <Checkbox
-                                checked={item.completed}
-                                onCheckedChange={(checked) => handleChecklistChange(item.id, 'completed', checked)}
-                            />
-                            <Input
-                                value={item.text}
-                                onChange={(e) => handleChecklistChange(item.id, 'text', e.target.value)}
-                                className={cn("h-8 text-sm", item.completed && "line-through text-muted-foreground")}
-                                placeholder="New checklist item..."
-                            />
-                             <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklistItem(item.id)} className="h-8 w-8 flex-shrink-0">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                     <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="mt-2">
-                        <Plus className="h-4 w-4 mr-2"/>
-                        Add item
-                    </Button>
-                </div>
               </div>
 
               {isEditing && task.status === 'Completed' && (
@@ -1086,6 +1123,7 @@ function KanbanPageContent() {
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
 
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
@@ -1412,6 +1450,15 @@ function KanbanPageContent() {
             return 0;
         });
     }, [filteredTasks]);
+    
+    const handleUpdateChecklist = (newChecklist) => {
+        if(selectedTask) {
+            setSelectedTask(prev => ({
+                ...prev,
+                checklist: newChecklist
+            }));
+        }
+    };
 
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
@@ -1535,7 +1582,16 @@ function KanbanPageContent() {
         settings={settings}
         isReadOnly={isModalReadOnly}
         onSetReadOnly={setIsModalReadOnly}
+        onOpenChecklist={() => setIsChecklistModalOpen(true)}
        />
+       {selectedTask && (
+         <ChecklistModal
+            isOpen={isChecklistModalOpen}
+            onClose={() => setIsChecklistModalOpen(false)}
+            checklist={selectedTask.checklist}
+            onUpdateChecklist={handleUpdateChecklist}
+         />
+       )}
         <SubStatusModal 
             isOpen={isSubStatusModalOpen}
             onClose={() => setIsSubStatusModalOpen(false)}
