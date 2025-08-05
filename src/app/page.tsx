@@ -126,6 +126,11 @@ const seedDatabase = async () => {
         { name: 'Medium', color: '#f59e0b' },
         { name: 'Low', color: '#10b981' },
       ],
+      urgencyLevels: [
+        { name: 'High', color: '#ef4444' },
+        { name: 'Medium', color: '#f59e0b' },
+        { name: 'Low', color: '#10b981' },
+      ],
       customTags: [],
       enableTimeTracking: false,
     });
@@ -161,6 +166,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const isOverdue = task.dueDate && toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
   
   const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
+  const urgency = settings.urgencyLevels?.find(urg => urg.name === task.urgency);
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
@@ -197,6 +203,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
               <div className="flex items-center text-xs">
                  <span style={{ backgroundColor: importance.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
                  {task.importance}
+              </div>
+             )}
+            {urgency && (
+              <div className="flex items-center text-xs">
+                 <span style={{ backgroundColor: urgency.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
+                 {task.urgency}
               </div>
              )}
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
@@ -378,6 +390,15 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                          <select name="importance" id="importance" value={task?.importance || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
                               <option value="">None</option>
                              {settings.importanceLevels?.map(imp => <option key={imp.name} value={imp.name}>{imp.name}</option>)}
+                         </select>
+                    </div>
+                  )}
+                   {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
+                    <div className="space-y-2">
+                        <Label htmlFor="urgency">Urgency</Label>
+                         <select name="urgency" id="urgency" value={task?.urgency || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
+                              <option value="">None</option>
+                             {settings.urgencyLevels?.map(urg => <option key={urg.name} value={urg.name}>{urg.name}</option>)}
                          </select>
                     </div>
                   )}
@@ -682,7 +703,7 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
 function KanbanPageContent() {
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
-  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], customTags: [], enableTimeTracking: false, workWeek: [] });
+  const [settings, setSettings] = useState({ workflowCategories: [], importanceLevels: [], urgencyLevels: [], customTags: [], enableTimeTracking: false, workWeek: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalReadOnly, setIsModalReadOnly] = useState(false);
@@ -742,6 +763,7 @@ function KanbanPageContent() {
           status: settings.workflowCategories?.[0]?.name || 'Not Started',
           subStatus: '',
           importance: '',
+          urgency: '',
           desc: '',
           remarks: '',
           completionDate: null,
@@ -903,6 +925,31 @@ function KanbanPageContent() {
         });
     };
 
+    const filterOptions = useMemo(() => {
+        const options = [];
+
+        if (settings.importanceLevels?.length > 0) {
+            options.push({
+                name: 'Importance',
+                tags: settings.importanceLevels.map(imp => ({ name: imp.name }))
+            });
+        }
+        
+        if (settings.urgencyLevels?.length > 0) {
+            options.push({
+                name: 'Urgency',
+                tags: settings.urgencyLevels.map(urg => ({ name: urg.name }))
+            });
+        }
+
+        if (settings.customTags?.length > 0) {
+            options.push(...settings.customTags);
+        }
+
+        return options;
+    }, [settings.importanceLevels, settings.urgencyLevels, settings.customTags]);
+
+
     const filteredTasks = useMemo(() => {
         let tasksToFilter = tasks;
 
@@ -923,6 +970,12 @@ function KanbanPageContent() {
                 return activeTagFilters.every(([category, selectedValues]) => {
                     if (!selectedValues || selectedValues.length === 0) {
                         return true;
+                    }
+                    if (category === 'Importance') {
+                        return selectedValues.includes(task.importance);
+                    }
+                    if (category === 'Urgency') {
+                        return selectedValues.includes(task.urgency);
                     }
                     return selectedValues.includes(task.tags?.[category]);
                 });
@@ -1011,9 +1064,9 @@ function KanbanPageContent() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            {settings.customTags && settings.customTags.length > 0 && (
+            {filterOptions.length > 0 && (
                 <MultiSelectFilter
-                    options={settings.customTags}
+                    options={filterOptions}
                     selected={tagFilters}
                     onSelectionChange={handleFilterChange}
                 />

@@ -811,6 +811,9 @@ export default function SettingsPage() {
         if (dataCopy.importanceLevels) {
             dataCopy.importanceLevels = dataCopy.importanceLevels.map(imp => ({ ...imp, id: imp.id || getNextId('imp') }));
         }
+        if (dataCopy.urgencyLevels) {
+            dataCopy.urgencyLevels = dataCopy.urgencyLevels.map(urg => ({ ...urg, id: urg.id || getNextId('urg') }));
+        }
         if (dataCopy.customTags) {
             dataCopy.customTags = dataCopy.customTags.map(tag => ({
                 ...tag,
@@ -839,6 +842,7 @@ export default function SettingsPage() {
                     };
                 }
                  if (!data.hasOwnProperty('customTags')) data.customTags = [];
+                 if (!data.hasOwnProperty('urgencyLevels')) data.urgencyLevels = [];
 
 
                  const dataWithIds = addIdsToData(data);
@@ -881,6 +885,8 @@ export default function SettingsPage() {
             newItem.subStatuses = [];
             newItem.isExpanded = false;
         } else if (fieldName === 'importanceLevels') {
+            newItem.color = '#cccccc';
+        } else if (fieldName === 'urgencyLevels') {
             newItem.color = '#cccccc';
         } else if (fieldName === 'customTags') {
             newItem.name = `New Tag Category ${currentItems.length + 1}`;
@@ -938,6 +944,7 @@ export default function SettingsPage() {
         const detectedChanges = [
             ...findRenames(originalSettings.workflowCategories, settings.workflowCategories, 'Status'),
             ...findRenames(originalSettings.importanceLevels, settings.importanceLevels, 'Importance'),
+            ...findRenames(originalSettings.urgencyLevels, settings.urgencyLevels, 'Urgency'),
             ...mainTagRenames,
             ...subTagRenames,
         ];
@@ -971,6 +978,10 @@ export default function SettingsPage() {
                     case 'Importance':
                         q = query(collection(db, "tasks"), where("importance", "==", change.from));
                         updateData = { importance: change.to };
+                        break;
+                    case 'Urgency':
+                        q = query(collection(db, "tasks"), where("urgency", "==", change.from));
+                        updateData = { urgency: change.to };
                         break;
                     case 'Tag Category':
                         q = query(collection(db, "tasks"), where(`tags.${change.from}`, "!=", null));
@@ -1110,6 +1121,18 @@ export default function SettingsPage() {
                                 onUpdate={handleSettingsUpdate}
                                 onAddItem={handleAddNewItem}
                                 fieldName="importanceLevels"
+                            />
+                        </AccordionSection>
+
+                        <AccordionSection 
+                            title="Urgency Levels"
+                            summary={settings?.urgencyLevels?.map(c => c.name).join(', ') || 'No urgency levels configured.'}
+                        >
+                            <SettingsSection
+                                items={settings?.urgencyLevels}
+                                onUpdate={handleSettingsUpdate}
+                                onAddItem={handleAddNewItem}
+                                fieldName="urgencyLevels"
                             />
                         </AccordionSection>
 
