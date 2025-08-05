@@ -249,8 +249,8 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
             className="absolute left-0 top-0 h-full w-2 flex flex-col"
             title={`Importance: ${importance?.name || 'N/A'}\nUrgency: ${urgency?.name || 'N/A'}`}
         >
-            <div className="h-1/2 w-full" style={{ backgroundColor: importance?.color || 'transparent' }}></div>
-            <div className="h-1/2 w-full" style={{ backgroundColor: urgency?.color || 'transparent' }}></div>
+            <div className="flex-1 w-full" style={{ backgroundColor: importance?.color || 'transparent' }}></div>
+            <div className="flex-1 w-full" style={{ backgroundColor: urgency?.color || 'transparent' }}></div>
         </div>
       <div 
         className="flex-grow cursor-grab"
@@ -692,15 +692,15 @@ function DueDateSummary({ tasks, onTaskClick, settings }) {
     );
 }
 
-function MultiSelectFilter({ options, selected, onSelectionChange }) {
-    const selectedCount = Object.values(selected).reduce((acc, curr) => acc + curr.length, 0);
+function CategoryFilter({ category, selected, onSelectionChange }) {
+    const selectedCount = selected.length;
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
                     <FilterIcon className="mr-2 h-4 w-4" />
-                    Filter
+                    {category.name}
                     {selectedCount > 0 && (
                         <>
                             <div className="mx-2 h-4 w-px bg-border" />
@@ -713,40 +713,38 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
             </PopoverTrigger>
             <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Search filters..." />
+                    <CommandInput placeholder={`Filter ${category.name}...`} />
                     <CommandList>
                         <CommandEmpty>No results found.</CommandEmpty>
-                        {options.map((category) => (
-                            <CommandGroup key={category.name} heading={category.name}>
-                                {category.tags.map((tag) => {
-                                    const isSelected = selected[category.name]?.includes(tag.name);
-                                    return (
-                                        <CommandItem
-                                            key={tag.name}
-                                            onSelect={() => onSelectionChange(category.name, tag.name)}
-                                            className="flex items-center"
-                                        >
-                                            <Checkbox
-                                                checked={isSelected}
-                                                className="mr-2"
-                                                id={`${category.name}-${tag.name}`}
-                                            />
-                                            <Label htmlFor={`${category.name}-${tag.name}`} className="flex-grow cursor-pointer">{tag.name}</Label>
-                                        </CommandItem>
-                                    );
-                                })}
-                            </CommandGroup>
-                        ))}
+                        <CommandGroup>
+                            {category.tags.map((tag) => {
+                                const isSelected = selected.includes(tag.name);
+                                return (
+                                    <CommandItem
+                                        key={tag.name}
+                                        onSelect={() => onSelectionChange(category.name, tag.name)}
+                                        className="flex items-center"
+                                    >
+                                        <Checkbox
+                                            checked={isSelected}
+                                            className="mr-2"
+                                            id={`${category.name}-${tag.name}`}
+                                        />
+                                        <Label htmlFor={`${category.name}-${tag.name}`} className="flex-grow cursor-pointer">{tag.name}</Label>
+                                    </CommandItem>
+                                );
+                            })}
+                        </CommandGroup>
                     </CommandList>
                     {selectedCount > 0 && (
                         <>
                             <CommandSeparator />
                             <CommandGroup>
                                 <CommandItem
-                                    onSelect={() => onSelectionChange('__clear__')}
+                                    onSelect={() => onSelectionChange(category.name, '__clear__')}
                                     className="justify-center text-center"
                                 >
-                                    Clear filters
+                                    Clear filter
                                 </CommandItem>
                             </CommandGroup>
                         </>
@@ -958,8 +956,12 @@ function KanbanPageContent() {
   };
 
     const handleFilterChange = (category, value) => {
-        if (category === '__clear__') {
-            setTagFilters({});
+        if (value === '__clear__') {
+            setTagFilters(prev => {
+                const newFilters = { ...prev };
+                delete newFilters[category];
+                return newFilters;
+            });
             return;
         }
 
@@ -973,7 +975,6 @@ function KanbanPageContent() {
                 newFilters[category] = [...currentSelection, value];
             }
             
-            // If a category has no items selected, remove it from the filter object
             if (newFilters[category].length === 0) {
                 delete newFilters[category];
             }
@@ -1008,7 +1009,8 @@ function KanbanPageContent() {
                     if (!selectedValues || selectedValues.length === 0) {
                         return true;
                     }
-                    return selectedValues.includes(task.tags?.[category]);
+                    const taskValue = task.tags?.[category];
+                    return selectedValues.includes(taskValue);
                 });
             });
         }
@@ -1085,7 +1087,7 @@ function KanbanPageContent() {
           </div>
         </header>
 
-        <div className="p-4 border-b flex items-center gap-4">
+        <div className="p-4 border-b flex items-center gap-4 flex-wrap">
             <div className="relative flex-grow max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -1095,13 +1097,14 @@ function KanbanPageContent() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            {filterOptions.length > 0 && (
-                <MultiSelectFilter
-                    options={filterOptions}
-                    selected={tagFilters}
+            {filterOptions.map((category) => (
+                <CategoryFilter
+                    key={category.name}
+                    category={category}
+                    selected={tagFilters[category.name] || []}
                     onSelectionChange={handleFilterChange}
                 />
-            )}
+            ))}
         </div>
         
         <main className="flex-grow p-4 flex gap-6 overflow-hidden">
