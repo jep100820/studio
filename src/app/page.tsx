@@ -404,7 +404,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
     const formatDateForInput = (timestamp) => {
         if (!timestamp) return '';
-        const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-dd-MM';
+        const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd";
         return formatDate(timestamp, formatString);
     };
 
@@ -424,7 +424,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
           </DialogHeader>
           <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 group">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
                   <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
@@ -507,7 +507,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   <Textarea id="remarks" name="remarks" value={task?.remarks || ''} onChange={handleChange} />
               </div>
 
-              {isEditing && (
+              {isEditing && task.status === 'Completed' && (
                  <div className="space-y-2">
                     <Label htmlFor="completionDate">Completion Date</Label>                    
                     <Input 
@@ -518,11 +518,11 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                       onChange={handleDateChange} 
                       className="w-full" 
                     />
-                     <p className="text-xs text-muted-foreground pt-1">
-                        Date Started: {formatDate(task.date, displayFormat)}
-                    </p>
                 </div>
               )}
+               <p className="text-xs text-muted-foreground pt-1">
+                  Date Started: {formatDate(task.date, displayFormat)}
+              </p>
           </fieldset>
           <DialogFooter className="sm:justify-between pt-4">
             <div>
@@ -891,9 +891,9 @@ function KanbanPageContent() {
   }, []);
 
   const { activeTasks, archivedTasks } = useMemo(() => {
-    const activeTasks = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
-    const archivedTasks = allTasks.filter(t => t.isArchived);
-    return { activeTasks, archivedTasks };
+    const active = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
+    const archived = allTasks.filter(t => t.isArchived);
+    return { activeTasks: active, archivedTasks: archived };
   }, [allTasks]);
 
   useEffect(() => {
