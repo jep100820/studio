@@ -26,7 +26,7 @@ export const initialTasks = [
   { status: 'Completed', date: '15/07/2025', dueDate: '', taskid: 'I-89 / 25071330 (999)', desc: '-', remarks: '329,026.50', subStatus: '', importance: '', completionDate: '15/07/2025' },
   { status: 'Completed', date: '15/07/2025', dueDate: '', taskid: 'L-113 / 25071409 (1003)', desc: '-', remarks: '27,202.56', subStatus: '', importance: '', completionDate: '15/07/2025' },
   { status: 'Completed', date: '15/07/2025', dueDate: '', taskid: 'E-46 / 25071319 (988)', desc: '-', remarks: '10,152.00', subStatus: '', importance: '', completionDate: '15/07/2025' },
-  { status: 'Approved for Submission', date: '01/07/2025', dueDate: '26/07/2025', taskid: '703/25070108(905)', desc: '', remarks: 'Spare parts', subStatus: 'On-Hold', importance: 'Low', completionDate: '' },
+  { status: 'Archived', date: '01/07/2025', dueDate: '26/07/2025', taskid: '703/25070108(905)', desc: '', remarks: 'Spare parts', subStatus: 'On-Hold', importance: 'Low', completionDate: '' },
   { status: 'Completed', date: '13/07/2025', dueDate: '', taskid: 'Q-167 25070809 (956)', desc: '-', remarks: 'Submitted, 26,680.00', subStatus: '', importance: '', completionDate: '14/07/2025' },
   { status: 'Completed', date: '14/07/2025', dueDate: '', taskid: 'H-75/25071007 (967)', desc: '-', remarks: 'Submitted, 5,847.75', subStatus: '', importance: '', completionDate: '' },
   { status: 'Completed', date: '14/07/2025', dueDate: '', taskid: 'E-46/25071013(973)', desc: '-', remarks: 'Submitted, 32,220.00', subStatus: '', importance: '', completionDate: '' },
