@@ -623,6 +623,7 @@ function KanbanPageContent() {
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [tagFilters, setTagFilters] = useState({});
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
   const [subStatusData, setSubStatusData] = useState({ task: null, newStatus: '', subStatuses: [] });
@@ -808,17 +809,35 @@ function KanbanPageContent() {
       }
   };
 
+    const handleFilterChange = (filterName, value) => {
+        setTagFilters(prev => ({ ...prev, [filterName]: value }));
+    };
+
     const filteredTasks = useMemo(() => {
-        if (!searchTerm) {
-            return tasks;
+        let tasksToFilter = tasks;
+
+        // Apply search term filter
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            tasksToFilter = tasksToFilter.filter(task => 
+                (task.taskid?.toLowerCase().includes(lowercasedTerm)) ||
+                (task.desc?.toLowerCase().includes(lowercasedTerm)) ||
+                (task.remarks?.toLowerCase().includes(lowercasedTerm))
+            );
         }
-        const lowercasedTerm = searchTerm.toLowerCase();
-        return tasks.filter(task => 
-            (task.taskid?.toLowerCase().includes(lowercasedTerm)) ||
-            (task.desc?.toLowerCase().includes(lowercasedTerm)) ||
-            (task.remarks?.toLowerCase().includes(lowercasedTerm))
-        );
-    }, [tasks, searchTerm]);
+
+        // Apply tag filters
+        const activeTagFilters = Object.entries(tagFilters).filter(([_, value]) => value && value !== 'all');
+        if (activeTagFilters.length > 0) {
+            tasksToFilter = tasksToFilter.filter(task => {
+                return activeTagFilters.every(([category, value]) => {
+                    return task.tags && task.tags[category] === value;
+                });
+            });
+        }
+        
+        return tasksToFilter;
+    }, [tasks, searchTerm, tagFilters]);
 
 
     const sortedTasks = useMemo(() => {
@@ -889,8 +908,8 @@ function KanbanPageContent() {
           </div>
         </header>
 
-        <div className="p-4 border-b">
-            <div className="relative w-full max-w-md mx-auto">
+        <div className="p-4 border-b flex items-center gap-4">
+            <div className="relative flex-grow max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     placeholder="Search by Task ID, Description, Remarks..."
@@ -898,6 +917,24 @@ function KanbanPageContent() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+            </div>
+            <div className="flex items-center gap-4">
+                {settings.customTags?.map(tagCategory => (
+                    <div key={tagCategory.name} className="flex items-center gap-2">
+                        <Label htmlFor={`filter-${tagCategory.name}`} className="text-sm">{tagCategory.name}:</Label>
+                        <select
+                            id={`filter-${tagCategory.name}`}
+                            onChange={(e) => handleFilterChange(tagCategory.name, e.target.value)}
+                            className="border rounded px-2 py-1.5 bg-input text-sm h-9"
+                            value={tagFilters[tagCategory.name] || 'all'}
+                        >
+                            <option value="all">All</option>
+                            {tagCategory.tags.map(tag => (
+                                <option key={tag.name} value={tag.name}>{tag.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                ))}
             </div>
         </div>
         
@@ -961,3 +998,5 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
+
+    
