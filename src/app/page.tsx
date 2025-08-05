@@ -476,10 +476,10 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
             </DialogHeader>
           </div>
           <fieldset disabled={isReadOnly} className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-1 gap-y-2.5 gap-x-2">
-                  <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-x-2">
+                  <div className="space-y-1 col-span-2">
                     <Label htmlFor="taskid" className="text-xs sm:text-sm">Task ID</Label>
-                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-7 sm:h-8 text-xs sm:text-sm min-w-[140px]" />
+                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-7 sm:h-8 text-xs sm:text-sm" />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="dueDate" className="text-xs sm:text-sm">Due Date</Label>
@@ -490,7 +490,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.dueDate)} 
                           onChange={handleDateChange} 
-                          className="h-7 sm:h-8 text-xs sm:text-sm min-w-[140px] pr-8"
+                          className="h-7 sm:h-8 text-xs sm:text-sm pr-8"
                         />
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
@@ -618,7 +618,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.completionDate)} 
                           onChange={handleDateChange} 
-                          className="h-7 sm:h-8 text-xs sm:text-sm min-w-[140px] pr-8"
+                          className="h-7 sm:h-8 text-xs sm:text-sm pr-8"
                         />
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
