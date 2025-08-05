@@ -503,7 +503,7 @@ function ImportConfirmationDialog({ isOpen, onCancel, onConfirm, fileName, fileT
                 <DialogHeader>
                     <DialogTitle>Confirm Data Import</DialogTitle>
                     <DialogDescription>
-                        You are about to import tasks from strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
+                        You are about to import tasks from <strong>{fileName}</strong>. This will overwrite tasks with the same Task ID if they exist and add new ones if they don't. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
