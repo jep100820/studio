@@ -1035,24 +1035,24 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive
           </fieldset>
           <DialogFooter className="p-4 border-t sm:justify-between">
             <div>
-                {isEditing && !isReadOnly && task.status !== 'Completed' && (
-                    <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
-                        Delete
+                {isEditing && !isReadOnly && (
+                    <Button variant="ghost" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete
                     </Button>
                 )}
-                 {isEditing && !isReadOnly && task.status === 'Completed' && (
+                 {isEditing && !isReadOnly && task.status !== 'Completed' && (
                      <Button variant="secondary" onClick={() => onArchive(task)} size="sm" disabled={isSaving}>
                         <Archive className="h-3 w-3 mr-1" /> Archive
                     </Button>
                 )}
-                {isEditing && isReadOnly && task.status !== 'Archived' &&(
-                    <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
-                        <Pencil className="h-3 w-3 mr-1"/>Edit
-                    </Button>
-                )}
-                 {isEditing && isReadOnly && task.status === 'Archived' && (
+                {isEditing && isReadOnly && task.status === 'Archived' && (
                     <Button variant="secondary" onClick={() => onArchive(task)} size="sm">
                         <ArchiveRestore className="h-3 w-3 mr-1"/> Unarchive
+                    </Button>
+                )}
+                {isEditing && isReadOnly && task.status !== 'Archived' && (
+                    <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
+                        <Pencil className="h-3 w-3 mr-1"/>Edit
                     </Button>
                 )}
                 {!isEditing && <div />}
@@ -1527,15 +1527,16 @@ function KanbanPageContent() {
     setViewMode('kanban'); // Switch to kanban view if not already
     setTimeout(() => {
         const task = allTasks.find(t => t.id === taskId);
-        if (task && task.status === 'Archived') {
+        if (task) {
             handleOpenModal(task);
-        } else {
-            setHighlightedTaskId(taskId);
-            setExpandedTaskId(taskId);
-            // Use a timer to remove the highlight class after the animation
-            setTimeout(() => {
-                setHighlightedTaskId(null);
-            }, 2000); // The duration of your pulse/highlight effect
+            if(task.status !== 'Archived') {
+                setHighlightedTaskId(taskId);
+                setExpandedTaskId(taskId);
+                // Use a timer to remove the highlight class after the animation
+                setTimeout(() => {
+                    setHighlightedTaskId(null);
+                }, 2000); // The duration of your pulse/highlight effect
+            }
         }
     }, 100);
   };
@@ -1610,7 +1611,7 @@ function KanbanPageContent() {
 
   const handleArchiveTask = async (task) => {
       const taskRef = doc(db, 'tasks', task.id);
-      const newStatus = task.status === 'Archived' ? 'Completed' : 'Archived';
+      const newStatus = task.status === 'Archived' ? 'Not Started' : 'Archived';
       await updateDoc(taskRef, { status: newStatus, lastModified: Timestamp.now() });
       handleCloseModal();
   };
@@ -1749,7 +1750,7 @@ function KanbanPageContent() {
                 onTaskClick={handleSummaryTaskClick} 
                 settings={settings}
                 archivedTasksCount={archivedTasks.length}
-                onArchiveClick={() => handleSummaryTaskClick(null)}
+                onArchiveClick={() => handleWidgetClick("Archived Tasks", archivedTasks)}
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

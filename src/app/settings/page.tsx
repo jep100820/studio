@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as SettingsCardDescription } from '@/components/ui/card';
-import { X, Plus, Paintbrush, GripVertical, ChevronDown, ChevronUp, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil, BarChart2 } from 'lucide-react';
+import { X, Plus, Paintbrush, GripVertical, ChevronDown, ChevronUp, Undo, Save, Upload, Download, Moon, Sun, LayoutDashboard, Settings, Info, Loader2, Pencil, BarChart2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -1108,7 +1108,7 @@ export default function SettingsPage() {
                         
                         <AccordionSection 
                             title="Workflow Statuses"
-                            summary={settings?.workflowCategories?.filter(c => c.name !== 'Completed').map(c => c.name).join(', ') || 'No statuses configured.'}
+                            summary={settings?.workflowCategories?.filter(c => c.name !== 'Completed' && c.name !== 'Archived').map(c => c.name).join(', ') || 'No statuses configured.'}
                         >
                             <SettingsSection
                                 items={settings?.workflowCategories}
