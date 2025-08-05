@@ -284,7 +284,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
                 value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
              ))}
-             {checklistProgress && (
+             {checklistProgress && !isExpanded && (
                 <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
                     <Check className="h-3 w-3"/>
                     {checklistProgress.completed}/{checklistProgress.total}
@@ -293,7 +293,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
           </div>
         
         {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-black/20 space-y-1 text-sm">
+            <div className="mt-4 pt-4 border-t border-black/20 space-y-2 text-sm">
                 <p><span className="font-semibold">Description:</span> {task.desc || 'No description'}</p>
                 <p><span className="font-semibold">Remarks:</span> {task.remarks || 'No remarks'}</p>
                 <p><span className="font-semibold">Date Started:</span> {formatDate(task.date, displayFormat)}</p>
@@ -305,6 +305,23 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                 {task.tags && Object.entries(task.tags).map(([key, value]) => (
                     value && <p key={key}><span className="font-semibold">{key}:</span> {value}</p>
                 ))}
+
+                {task.checklists && task.checklists.length > 0 && (
+                    <div>
+                        <p className="font-semibold">Checklists:</p>
+                        <div className="pl-2 mt-1 space-y-1">
+                            {task.checklists.map(cl => {
+                                const total = cl.items.length;
+                                const completed = cl.items.filter(i => i.completed).length;
+                                return (
+                                    <p key={cl.id} className="text-xs">
+                                        - {cl.name}: {completed}/{total}
+                                    </p>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         )}
       </div>
