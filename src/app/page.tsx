@@ -466,21 +466,21 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[90vw] max-w-[360px] sm:max-w-[448px] p-3 sm:p-4">
-          <div className="relative">
-            <DialogHeader className="mb-1.5 flex flex-row items-center justify-between">
-                <DialogTitle className="text-base sm:text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
-                <p className="text-[0.65rem] sm:text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
-            </DialogHeader>
-          </div>
-          <fieldset disabled={isReadOnly} className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-3 gap-x-2">
-                  <div className="col-span-2">
-                    <Label htmlFor="taskid" className="text-xs sm:text-sm">Task ID</Label>
-                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-7 sm:h-8 text-xs sm:text-sm" />
+        <DialogContent className="w-[90vw] max-w-[448px] p-0">
+          <DialogHeader className="p-4 border-b">
+            <div className="flex justify-between items-center">
+              <DialogTitle className="text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
+              <p className="text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
+            </div>
+          </DialogHeader>
+          <fieldset disabled={isReadOnly} className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label htmlFor="taskid" className="text-sm">Task ID</Label>
+                    <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-8 text-sm" />
                   </div>
                   <div>
-                    <Label htmlFor="dueDate" className="text-xs sm:text-sm">Due Date</Label>
+                    <Label htmlFor="dueDate" className="text-sm">Due Date</Label>
                     <div className="relative">
                         <Input 
                           id="dueDate" 
@@ -488,22 +488,20 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.dueDate)} 
                           onChange={handleDateChange} 
-                          className="h-7 sm:h-8 text-xs sm:text-sm pr-8"
+                          className="h-8 text-sm pr-8"
                         />
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                   </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-y-2 gap-x-2">
                   <div>
-                      <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
+                      <Label htmlFor="status" className="text-sm">Status</Label>
                       <select 
                         name="status" 
                         id="status" 
                         value={task?.status || 'Not Started'} 
                         onChange={handleChange} 
-                        className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                        className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                       >
                           {settings.workflowCategories?.map(cat => (
                               <option key={cat.name} value={cat.name}>{cat.name}</option>
@@ -512,13 +510,13 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
                   {currentSubStatuses.length > 0 && (
                     <div>
-                        <Label htmlFor="subStatus" className="text-xs sm:text-sm">Sub-Status</Label>
+                        <Label htmlFor="subStatus" className="text-sm">Sub-Status</Label>
                         <select 
                           name="subStatus" 
                           id="subStatus" 
                           value={task?.subStatus || ''} 
                           onChange={handleChange} 
-                          className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                          className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                         >
                             <option value="">None</option>
                             {currentSubStatuses.map(sub => (
@@ -530,13 +528,13 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div>
-                        <Label htmlFor="importance" className="text-xs sm:text-sm">Importance</Label>
+                        <Label htmlFor="importance" className="text-sm">Importance</Label>
                         <select 
                           name="importance" 
                           id="importance" 
                           value={task?.importance || ''} 
                           onChange={handleChange} 
-                          className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                          className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                         >
                             <option value="">None</option>
                             {settings.importanceLevels?.map(imp => (
@@ -547,31 +545,31 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   )}
                   {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
                     <div>
-                        <Label htmlFor="urgency" className="text-xs sm:text-sm">Urgency</Label>
+                        <Label htmlFor="urgency" className="text-sm">Urgency</Label>
                         <select 
                           name="urgency" 
                           id="urgency" 
                           value={task?.urgency || ''} 
                           onChange={handleChange} 
-                          className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                          className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                         >
                             <option value="">Auto-Calculate</option>
                             {settings.urgencyLevels?.map(urg => (
                                 <option key={urg.name} value={urg.name}>{urg.name}</option>
                             ))}
                         </select>
-                        <p className="text-[0.65rem] sm:text-xs text-muted-foreground">Effective: <span className="font-medium">{effectiveUrgency.name}</span></p>
+                        <p className="text-xs text-muted-foreground">Effective: <span className="font-medium">{effectiveUrgency.name}</span></p>
                     </div>
                   )}
                   {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
                     <div key={mainTag.name}>
-                        <Label htmlFor={`tag-${mainTag.name}`} className="text-xs sm:text-sm">{mainTag.name}</Label>
+                        <Label htmlFor={`tag-${mainTag.name}`} className="text-sm">{mainTag.name}</Label>
                         <select 
                             name={mainTag.name} 
                             id={`tag-${mainTag.name}`} 
                             value={task?.tags?.[mainTag.name] || ''} 
                             onChange={handleTagChange} 
-                            className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                            className="w-full border rounded px-2 py-1 bg-input text-sm group-disabled:opacity-100 h-8"
                         >
                             <option value="">None</option>
                             {mainTag.tags.map(tag => (
@@ -583,30 +581,30 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               </div>
 
               <div>
-                  <Label htmlFor="desc" className="text-xs sm:text-sm">Description</Label>
+                  <Label htmlFor="desc" className="text-sm">Description</Label>
                   <Textarea 
                     id="desc" 
                     name="desc" 
                     value={task?.desc || ''} 
                     onChange={handleChange} 
-                    className="min-h-[50px] sm:min-h-[60px] text-xs sm:text-sm"
+                    className="min-h-[60px] text-sm"
                   />
               </div>
               
               <div>
-                  <Label htmlFor="remarks" className="text-xs sm:text-sm">Remarks</Label>
+                  <Label htmlFor="remarks" className="text-sm">Remarks</Label>
                   <Textarea 
                     id="remarks" 
                     name="remarks" 
                     value={task?.remarks || ''} 
                     onChange={handleChange} 
-                    className="min-h-[50px] sm:min-h-[60px] text-xs sm:text-sm"
+                    className="min-h-[60px] text-sm"
                   />
               </div>
 
               {isEditing && task.status === 'Completed' && (
                 <div>
-                    <Label htmlFor="completionDate" className="text-xs sm:text-sm">Completion Date</Label>                    
+                    <Label htmlFor="completionDate" className="text-sm">Completion Date</Label>                    
                     <div className="relative">
                         <Input 
                           id="completionDate" 
@@ -614,14 +612,14 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.completionDate)} 
                           onChange={handleDateChange} 
-                          className="h-7 sm:h-8 text-xs sm:text-sm pr-8"
+                          className="h-8 text-sm pr-8"
                         />
-                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                 </div>
               )}
           </fieldset>
-          <DialogFooter className="sm:justify-between pt-1.5">
+          <DialogFooter className="p-4 border-t sm:justify-between">
             <div>
                 {isEditing && !isReadOnly && (
                     <Button variant="destructive" onClick={() => onDelete(task.id)} size="sm">
@@ -635,7 +633,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                 )}
                 {!isEditing && <div />}
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               <Button variant="ghost" onClick={onClose} size="sm">Cancel</Button>
               {!isReadOnly && (
                   <Button onClick={onSave} disabled={isSaveDisabled} size="sm">
