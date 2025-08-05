@@ -1281,14 +1281,6 @@ function KanbanPageContent() {
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('kanban')}>
-                    <LayoutGrid className="h-5 w-5" />
-                </Button>
-                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                    <List className="h-5 w-5" />
-                </Button>
-            </div>
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
@@ -1313,24 +1305,35 @@ function KanbanPageContent() {
           </div>
         </header>
 
-        <div className="p-4 border-b flex items-center gap-4 flex-wrap">
-            <div className="relative flex-grow max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Search by Task ID, Description, Remarks..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        <div className="p-4 border-b flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4 flex-grow">
+                <div className="relative flex-grow max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by Task ID, Description, Remarks..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                {filterOptions.map((category) => (
+                    <CategoryFilter
+                        key={category.name}
+                        category={category}
+                        selected={tagFilters[category.name] || []}
+                        onSelectionChange={handleFilterChange}
+                    />
+                ))}
             </div>
-            {filterOptions.map((category) => (
-                <CategoryFilter
-                    key={category.name}
-                    category={category}
-                    selected={tagFilters[category.name] || []}
-                    onSelectionChange={handleFilterChange}
-                />
-            ))}
+
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('kanban')}>
+                    <LayoutGrid className="h-5 w-5" />
+                </Button>
+                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                    <List className="h-5 w-5" />
+                </Button>
+            </div>
         </div>
         
         <main className="flex-grow p-4 flex gap-6 overflow-hidden">
