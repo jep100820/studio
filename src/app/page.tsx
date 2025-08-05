@@ -340,7 +340,7 @@ function CompletionZone({ isDragging }) {
         <div
             ref={setNodeRef}
             className={cn(
-                'fixed top-0 right-0 h-full w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                'fixed top-0 right-0 h-1/2 w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
@@ -361,7 +361,7 @@ function ArchiveZone({ isDragging }) {
         <div
             ref={setNodeRef}
             className={cn(
-                'fixed top-1/3 right-0 h-1/3 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out z-10',
+                'fixed bottom-0 right-0 h-1/2 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
@@ -425,6 +425,11 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
           <fieldset disabled={isReadOnly} className="py-4 space-y-6 max-h-[80vh] overflow-y-auto pr-4 group">
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
+                   <div className="md:col-span-2 space-y-2">
+                      <p className="text-xs text-muted-foreground">Date Started: {formatDate(task.date, displayFormat)}</p>
+                  </div>
+                  <div className="md:col-span-1" />
+
                   <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} />
@@ -520,9 +525,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     />
                 </div>
               )}
-               <p className="text-xs text-muted-foreground pt-1">
-                  Date Started: {formatDate(task.date, displayFormat)}
-              </p>
           </fieldset>
           <DialogFooter className="sm:justify-between pt-4">
             <div>
