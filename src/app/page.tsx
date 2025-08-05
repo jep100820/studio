@@ -871,7 +871,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive
                           {settings.workflowCategories?.filter(c => c.name !== 'Completed' && c.name !== 'Archived').map(cat => (
                               <option key={cat.name} value={cat.name}>{cat.name}</option>
                           ))}
-                          {task?.status === 'Archived' && (
+                           {task?.status === 'Archived' && (
                               <option value="Archived" disabled>Archived</option>
                           )}
                       </select>
@@ -1038,27 +1038,31 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, onArchive
           </fieldset>
           <DialogFooter className="p-4 border-t sm:justify-between">
             <div>
-                {isEditing && !isReadOnly && (
-                    <Button variant="ghost" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete
-                    </Button>
+                {isEditing && (
+                    <>
+                        {!isReadOnly && (
+                            <Button variant="ghost" onClick={() => onDelete(task.id)} size="sm" disabled={isSaving}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </Button>
+                        )}
+                        {task.status !== 'Completed' && task.status !== 'Archived' && !isReadOnly && (
+                            <Button variant="secondary" onClick={() => onArchive(task)} size="sm" disabled={isSaving}>
+                                <Archive className="h-3 w-3 mr-1" /> Archive
+                            </Button>
+                        )}
+                        {task.status === 'Archived' && (
+                            <Button variant="secondary" onClick={() => onArchive(task)} size="sm">
+                                <ArchiveRestore className="h-3 w-3 mr-1"/> Unarchive
+                            </Button>
+                        )}
+                         {isReadOnly && task.status !== 'Archived' && (
+                            <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
+                                <Pencil className="h-3 w-3 mr-1"/>Edit
+                            </Button>
+                        )}
+                    </>
                 )}
-                 {isEditing && !isReadOnly && task.status !== 'Completed' && task.status !== 'Archived' && (
-                     <Button variant="secondary" onClick={() => onArchive(task)} size="sm" disabled={isSaving}>
-                        <Archive className="h-3 w-3 mr-1" /> Archive
-                    </Button>
-                )}
-                {isEditing && isReadOnly && task.status === 'Archived' && (
-                    <Button variant="secondary" onClick={() => onArchive(task)} size="sm">
-                        <ArchiveRestore className="h-3 w-3 mr-1"/> Unarchive
-                    </Button>
-                )}
-                {isEditing && isReadOnly && task.status !== 'Archived' && (
-                    <Button variant="secondary" onClick={() => onSetReadOnly(false)} size="sm">
-                        <Pencil className="h-3 w-3 mr-1"/>Edit
-                    </Button>
-                )}
-                {!isEditing && <div />}
+                 {!isEditing && <div />}
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={onClose} size="sm" disabled={isSaving}>Cancel</Button>
