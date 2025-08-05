@@ -153,36 +153,46 @@ const seedDatabase = async () => {
 };
 
 const getEffectiveUrgency = (task, urgencyLevels) => {
-    if (task.urgency) {
-        return {
-            name: task.urgency,
-            source: 'manual'
-        };
-    }
-
-    const dueDate = toDate(task.dueDate);
-    if (!dueDate) {
+    if (!urgencyLevels || urgencyLevels.length === 0) {
         return { name: '', source: 'none' };
     }
 
-    const today = startOfToday();
-    const daysDiff = differenceInDays(dueDate, today);
+    // --- Auto-calculated Urgency ---
+    const dueDate = toDate(task.dueDate);
+    let autoUrgencyName = urgencyLevels[urgencyLevels.length - 1]?.name || ''; // Default to lowest
+    if (dueDate) {
+        const today = startOfToday();
+        const daysDiff = differenceInDays(dueDate, today);
 
-    let calculatedUrgencyName;
-    if (daysDiff < 0) {
-        calculatedUrgencyName = 'Critical';
-    } else if (daysDiff <= 2) {
-        calculatedUrgencyName = 'High';
-    } else if (daysDiff <= 5) {
-        calculatedUrgencyName = 'Medium';
-    } else {
-        calculatedUrgencyName = 'Low';
+        if (daysDiff < 0) autoUrgencyName = 'Critical';
+        else if (daysDiff <= 2) autoUrgencyName = 'High';
+        else if (daysDiff <= 5) autoUrgencyName = 'Medium';
+        else autoUrgencyName = 'Low';
+    }
+    
+    // --- Manual Urgency ---
+    const manualUrgencyName = task.urgency;
+
+    // If no manual urgency, return the auto-calculated one
+    if (!manualUrgencyName) {
+        return { name: autoUrgencyName, source: 'auto' };
     }
 
-    return {
-        name: calculatedUrgencyName,
-        source: 'auto'
-    };
+    // --- Comparison Logic ---
+    // Lower index in the array means higher priority
+    const manualIndex = urgencyLevels.findIndex(u => u.name === manualUrgencyName);
+    const autoIndex = urgencyLevels.findIndex(u => u.name === autoUrgencyName);
+
+    // If either isn't found in the settings, something is off, but we can provide fallbacks.
+    if (manualIndex === -1) return { name: autoUrgencyName, source: 'auto' };
+    if (autoIndex === -1) return { name: manualUrgencyName, source: 'manual' };
+
+    // Compare indices: the lower index wins (higher priority)
+    if (autoIndex < manualIndex) {
+        return { name: autoUrgencyName, source: 'auto-override' };
+    } else {
+        return { name: manualUrgencyName, source: 'manual' };
+    }
 };
 
 
@@ -256,9 +266,10 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
               </div>
              )}
             {urgency && (
-              <div className="flex items-center text-xs">
+              <div className="flex items-center text-xs" title={`Urgency: ${urgency.name} (${effectiveUrgency.source})`}>
                  <span style={{ backgroundColor: urgency.color }} className="w-3 h-3 rounded-full mr-1.5"></span>
                  {urgency.name}
+                 {effectiveUrgency.source === 'auto-override' && <Sparkles className="h-3 w-3 ml-1 text-yellow-300" />}
               </div>
              )}
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
@@ -379,7 +390,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
     const formatDateForInput = (timestamp) => {
         if (!timestamp) return '';
-        const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd';
+        const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-dd-MM';
         return formatDate(timestamp, formatString);
     };
 
@@ -449,9 +460,10 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     <div className="space-y-2">
                         <Label htmlFor="urgency">Urgency</Label>
                          <select name="urgency" id="urgency" value={task?.urgency || ''} onChange={handleChange} className="w-full border rounded px-2 py-2.5 bg-input text-sm group-disabled:opacity-100">
-                              <option value="">Auto-Calculated ({effectiveUrgency.name})</option>
+                              <option value="">Auto-Calculate</option>
                              {settings.urgencyLevels?.map(urg => <option key={urg.name} value={urg.name}>{urg.name}</option>)}
                          </select>
+                         <p className="text-xs text-muted-foreground pt-1">Effective Urgency: <span className="font-bold">{effectiveUrgency.name}</span></p>
                     </div>
                   )}
                   {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
