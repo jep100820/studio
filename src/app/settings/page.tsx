@@ -478,15 +478,15 @@ function AccordionSection({ title, children, summary }) {
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex justify-between items-start text-left p-4"
             >
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-grow min-w-0">
                     <span className="font-semibold">{title}</span>
                      {!isOpen && (
-                         <span className="text-sm text-muted-foreground mt-1 pr-4 truncate max-w-full">
+                         <span className="text-sm text-muted-foreground mt-1 pr-4 truncate">
                             {summary}
                         </span>
                      )}
                 </div>
-                {isOpen ? <ChevronUp className="h-5 w-5 flex-shrink-0" /> : <ChevronDown className="h-5 w-5 flex-shrink-0" />}
+                {isOpen ? <ChevronUp className="h-5 w-5 flex-shrink-0 ml-4" /> : <ChevronDown className="h-5 w-5 flex-shrink-0 ml-4" />}
             </button>
             {isOpen && <div className="p-4 pt-0">{children}</div>}
         </div>
