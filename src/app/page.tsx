@@ -232,6 +232,15 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
 
+  const checklistProgress = useMemo(() => {
+    if (!task.checklist || task.checklist.length === 0) {
+        return null;
+    }
+    const completed = task.checklist.filter(item => item.completed).length;
+    const total = task.checklist.length;
+    return { completed, total };
+  }, [task.checklist]);
+
   return (
     <div
       ref={(node) => {
@@ -269,6 +278,12 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
                 value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
              ))}
+             {checklistProgress && (
+                <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
+                    <Check className="h-3 w-3"/>
+                    {checklistProgress.completed}/{checklistProgress.total}
+                </span>
+             )}
           </div>
         
         {isExpanded && (
@@ -337,45 +352,50 @@ function TodoListView({ tasks, settings, onTaskClick }) {
 
     return (
         <div className="bg-muted/50 rounded-lg p-4 flex-1 h-full overflow-y-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[40%]">Task ID</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {tasks.map(task => {
-                        const isOverdue = toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
-                        const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
-                        const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
-                        const urgency = settings.urgencyLevels?.find(urg => urg.name === effectiveUrgency.name);
+            {tasks.length > 0 ? (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[40%]">Task ID</TableHead>
+                            <TableHead>Priority</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead>Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {tasks.map(task => {
+                            const isOverdue = toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
+                            const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
+                            const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
+                            const urgency = settings.urgencyLevels?.find(urg => urg.name === effectiveUrgency.name);
 
-                        return (
-                            <TableRow key={task.id} onClick={() => onTaskClick(task)} className="cursor-pointer">
-                                <TableCell className="font-medium">{task.taskid}</TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        {importance && <div className="h-4 w-4 rounded-full" style={{ backgroundColor: importance.color }} title={`Importance: ${importance.name}`} />}
-                                        {urgency && <div className="h-4 w-4 rounded-sm" style={{ backgroundColor: urgency.color }} title={`Urgency: ${urgency.name}`} />}
-                                    </div>
-                                </TableCell>
-                                <TableCell className={cn(isOverdue && "text-red-500 font-semibold")}>
-                                    {formatDate(task.dueDate, displayFormat) || 'No Due Date'}
-                                </TableCell>
-                                <TableCell>
-                                    <Badge style={{ backgroundColor: settings.workflowCategories?.find(c => c.name === task.status)?.color || '#ccc' }}>
-                                        {task.status}
-                                    </Badge>
-                                </TableCell>
-                            </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
-             {tasks.length === 0 && <p className="text-center text-muted-foreground p-8">No tasks match the current filters.</p>}
+                            return (
+                                <TableRow key={task.id} onClick={() => onTaskClick(task)} className="cursor-pointer">
+                                    <TableCell className="font-medium">{task.taskid}</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            {importance && <div className="h-4 w-4 rounded-full" style={{ backgroundColor: importance.color }} title={`Importance: ${importance.name}`} />}
+                                            {urgency && <div className="h-4 w-4 rounded-sm" style={{ backgroundColor: urgency.color }} title={`Urgency: ${urgency.name}`} />}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className={cn(isOverdue && "text-red-500 font-semibold")}>
+                                        {formatDate(task.dueDate, displayFormat) || 'No Due Date'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge style={{ backgroundColor: settings.workflowCategories?.find(c => c.name === task.status)?.color || '#ccc' }}>
+                                            {task.status}
+                                        </Badge>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            ) : (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-center text-muted-foreground p-8">No tasks match the current filters.</p>
+                </div>
+            )}
         </div>
     );
 }
@@ -452,6 +472,29 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
         setTask(prev => ({ ...prev, [name]: timestamp }));
     };
 
+    const handleChecklistChange = (id, field, value) => {
+        setTask(prev => ({
+            ...prev,
+            checklist: prev.checklist.map(item => item.id === id ? { ...item, [field]: value } : item)
+        }));
+    };
+
+    const handleAddChecklistItem = () => {
+        const newItem = { id: `item-${Date.now()}`, text: '', completed: false };
+        setTask(prev => ({
+            ...prev,
+            checklist: [...(prev.checklist || []), newItem]
+        }));
+    };
+
+    const handleDeleteChecklistItem = (id) => {
+        setTask(prev => ({
+            ...prev,
+            checklist: prev.checklist.filter(item => item.id !== id)
+        }));
+    };
+
+
     const formatDateForInput = (timestamp) => {
         if (!timestamp) return '';
         const formatString = settings.enableTimeTracking ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd";
@@ -464,7 +507,6 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     }, [task?.status, settings.workflowCategories]);
 
     const isSaveDisabled = !task?.taskid || !task?.dueDate;
-    const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
   
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -472,17 +514,17 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
           <DialogHeader className="p-4 pb-2 border-b">
             <div className="flex justify-between items-center">
               <DialogTitle className="text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
-              <p className="text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(task.date, settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy')}</p>
             </div>
           </DialogHeader>
           <fieldset disabled={isReadOnly} className="p-4 space-y-1.5 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-3 gap-y-2 gap-x-2">
                   <div className="col-span-2">
-                    <Label htmlFor="taskid" className="text-sm">Task ID</Label>
+                    <Label htmlFor="taskid">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-8 text-sm" />
                   </div>
                   <div>
-                    <Label htmlFor="dueDate" className="text-sm">Due Date</Label>
+                    <Label htmlFor="dueDate">Due Date</Label>
                     <div className="relative">
                         <Input 
                           id="dueDate" 
@@ -490,7 +532,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.dueDate)} 
                           onChange={handleDateChange} 
-                          className="h-8 text-sm pr-8"
+                          className="h-8 text-sm pr-8 w-full"
                         />
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
@@ -499,7 +541,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
               <div className="grid grid-cols-2 gap-y-2 gap-x-2">
                   <div>
-                      <Label htmlFor="status" className="text-sm">Status</Label>
+                      <Label htmlFor="status">Status</Label>
                       <select 
                         name="status" 
                         id="status" 
@@ -514,7 +556,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
                   {currentSubStatuses.length > 0 && (
                     <div>
-                        <Label htmlFor="subStatus" className="text-sm">Sub-Status</Label>
+                        <Label htmlFor="subStatus">Sub-Status</Label>
                         <select 
                           name="subStatus" 
                           id="subStatus" 
@@ -532,7 +574,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div>
-                        <Label htmlFor="importance" className="text-sm">Importance</Label>
+                        <Label htmlFor="importance">Importance</Label>
                         <select 
                           name="importance" 
                           id="importance" 
@@ -549,7 +591,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   )}
                   {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
                     <div>
-                        <Label htmlFor="urgency" className="text-sm">Urgency</Label>
+                        <Label htmlFor="urgency">Urgency</Label>
                         <select 
                           name="urgency" 
                           id="urgency" 
@@ -567,7 +609,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   )}
                   {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
                     <div key={mainTag.name}>
-                        <Label htmlFor={`tag-${mainTag.name}`} className="text-sm">{mainTag.name}</Label>
+                        <Label htmlFor={`tag-${mainTag.name}`}>{mainTag.name}</Label>
                         <select 
                             name={mainTag.name} 
                             id={`tag-${mainTag.name}`} 
@@ -585,7 +627,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               </div>
 
               <div>
-                  <Label htmlFor="desc" className="text-sm">Description</Label>
+                  <Label htmlFor="desc">Description</Label>
                   {isEditingDesc ? (
                       <Textarea 
                         id="desc" 
@@ -610,7 +652,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               </div>
               
               <div>
-                  <Label htmlFor="remarks" className="text-sm">Remarks</Label>
+                  <Label htmlFor="remarks">Remarks</Label>
                    {isEditingRemarks ? (
                       <Textarea 
                         id="remarks" 
@@ -633,10 +675,37 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                       </div>
                   )}
               </div>
+               
+              <div>
+                <Label>Checklist</Label>
+                <div className="space-y-2 mt-1">
+                    {task.checklist?.map(item => (
+                        <div key={item.id} className="flex items-center gap-2">
+                           <Checkbox
+                                checked={item.completed}
+                                onCheckedChange={(checked) => handleChecklistChange(item.id, 'completed', checked)}
+                            />
+                            <Input
+                                value={item.text}
+                                onChange={(e) => handleChecklistChange(item.id, 'text', e.target.value)}
+                                className={cn("h-8 text-sm", item.completed && "line-through text-muted-foreground")}
+                                placeholder="New checklist item..."
+                            />
+                             <Button variant="ghost" size="icon" onClick={() => handleDeleteChecklistItem(item.id)} className="h-8 w-8 flex-shrink-0">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                     <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="mt-2">
+                        <Plus className="h-4 w-4 mr-2"/>
+                        Add item
+                    </Button>
+                </div>
+              </div>
 
               {isEditing && task.status === 'Completed' && (
                 <div>
-                    <Label htmlFor="completionDate" className="text-sm">Completion Date</Label>                    
+                    <Label htmlFor="completionDate">Completion Date</Label>                    
                     <div className="relative">
                         <Input 
                           id="completionDate" 
@@ -644,7 +713,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           type={settings.enableTimeTracking ? "datetime-local" : "date"} 
                           value={formatDateForInput(task?.completionDate)} 
                           onChange={handleDateChange} 
-                          className="h-8 text-sm pr-8"
+                          className="h-8 text-sm pr-8 w-full"
                         />
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
@@ -1084,6 +1153,7 @@ function KanbanPageContent() {
           subStatusChangeCount: 0,
           lastModified: Timestamp.now(),
           isArchived: false,
+          checklist: [],
       };
       setSelectedTask(task ? { ...task } : defaultTask);
       setIsModalReadOnly(task ? (task.status === 'Completed' ? true : false) : false);
