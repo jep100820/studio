@@ -711,7 +711,7 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[250px] p-0" align="start" side="right">
+            <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search filters..." />
                     <CommandList>
@@ -983,28 +983,8 @@ function KanbanPageContent() {
     };
 
     const filterOptions = useMemo(() => {
-        const options = [];
-
-        if (settings.importanceLevels?.length > 0) {
-            options.push({
-                name: 'Importance',
-                tags: settings.importanceLevels.map(imp => ({ name: imp.name }))
-            });
-        }
-        
-        if (settings.urgencyLevels?.length > 0) {
-            options.push({
-                name: 'Urgency',
-                tags: settings.urgencyLevels.map(urg => ({ name: urg.name }))
-            });
-        }
-
-        if (settings.customTags?.length > 0) {
-            options.push(...settings.customTags);
-        }
-
-        return options;
-    }, [settings]);
+        return settings.customTags || [];
+    }, [settings.customTags]);
 
 
     const filteredTasks = useMemo(() => {
@@ -1028,20 +1008,13 @@ function KanbanPageContent() {
                     if (!selectedValues || selectedValues.length === 0) {
                         return true;
                     }
-                    if (category === 'Importance') {
-                        return selectedValues.includes(task.importance);
-                    }
-                    if (category === 'Urgency') {
-                        const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
-                        return selectedValues.includes(effectiveUrgency.name);
-                    }
                     return selectedValues.includes(task.tags?.[category]);
                 });
             });
         }
         
         return tasksToFilter;
-    }, [tasks, searchTerm, tagFilters, settings.urgencyLevels]);
+    }, [tasks, searchTerm, tagFilters]);
 
 
     const sortedTasks = useMemo(() => {
