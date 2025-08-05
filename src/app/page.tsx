@@ -619,17 +619,17 @@ function AttachmentPreviewModal({ isOpen, onClose, attachment }) {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-                <DialogHeader className="p-4 border-b">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 bg-transparent border-0 shadow-none">
+                <DialogHeader className="p-4 border-b bg-background rounded-t-lg">
                     <DialogTitle className="truncate">{attachment.name}</DialogTitle>
                 </DialogHeader>
-                <div className="flex-grow p-4 bg-muted/20 flex items-center justify-center overflow-auto">
+                <div className="flex-grow p-4 flex items-center justify-center overflow-auto">
                     {isImage ? (
-                        <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-full object-contain" />
+                        <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-full object-contain rounded-b-lg" />
                     ) : isPdf ? (
-                        <iframe src={attachment.dataUrl} title={attachment.name} className="w-full h-full border-0" />
+                        <iframe src={attachment.dataUrl} title={attachment.name} className="w-full h-full border-0 rounded-b-lg" />
                     ) : (
-                        <div className="text-center">
+                        <div className="text-center p-8 bg-background rounded-b-lg">
                             <p className="text-lg text-muted-foreground mb-4">No preview available for this file type.</p>
                             <Button asChild>
                                 <a href={attachment.dataUrl} download={attachment.name}>
