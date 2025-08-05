@@ -293,7 +293,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                     {checklistProgress.completed}/{checklistProgress.total}
                 </span>
              )}
-             {attachmentCount > 0 && (
+             {attachmentCount > 0 && !isExpanded && (
                 <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
                     <Paperclip className="h-3 w-3"/>
                     {attachmentCount}
@@ -328,6 +328,20 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
                                     </p>
                                 );
                             })}
+                        </div>
+                    </div>
+                )}
+
+                {attachmentCount > 0 && (
+                     <div>
+                        <p className="font-semibold">Attachments:</p>
+                        <div className="pl-2 mt-1 space-y-1">
+                           {task.attachments.map(att => (
+                                <p key={att.id} className="text-sm flex items-center gap-2">
+                                    <Paperclip className="h-3 w-3"/>
+                                    <span>{att.name}</span>
+                                </p>
+                           ))}
                         </div>
                     </div>
                 )}
@@ -619,7 +633,7 @@ function AttachmentPreviewModal({ isOpen, onClose, attachment }) {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 bg-transparent border-0 shadow-none">
+            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0 bg-transparent border-0 shadow-none">
                 <DialogHeader className="p-4 border-b bg-background rounded-t-lg">
                     <DialogTitle className="truncate">{attachment.name}</DialogTitle>
                 </DialogHeader>
@@ -707,7 +721,7 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments, on
                         onChange={handleFileChange}
                         className="hidden"
                     />
-                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full">
+                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="w-full">
                         <Upload className="h-4 w-4 mr-2" />
                         Add Attachment (Max 1MB)
                     </Button>
@@ -727,18 +741,18 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments, on
                                 <div key={att.id} className="flex items-center gap-3 p-2 bg-muted/50 rounded-md">
                                     <button
                                         onClick={() => onPreviewAttachment(att)}
-                                        className="h-12 w-12 flex-shrink-0 bg-background rounded flex items-center justify-center overflow-hidden border"
+                                        className="h-10 w-10 flex-shrink-0 bg-background rounded flex items-center justify-center overflow-hidden border"
                                     >
                                         {att.type.startsWith('image/') ? (
                                             <img src={att.dataUrl} alt={att.name} className="h-full w-full object-cover" />
                                         ) : (
-                                            <FileText className="h-6 w-6 text-muted-foreground" />
+                                            <FileText className="h-5 w-5 text-muted-foreground" />
                                         )}
                                     </button>
                                     <div className="flex-grow truncate">
                                         <button
                                             onClick={() => onPreviewAttachment(att)}
-                                            className="text-sm font-medium text-primary underline-offset-4 hover:underline truncate text-left"
+                                            className="text-xs font-medium text-primary underline-offset-4 hover:underline truncate text-left"
                                         >
                                             {att.name}
                                         </button>
