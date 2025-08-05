@@ -230,11 +230,6 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
   const statusColor = settings.workflowCategories?.find(cat => cat.name === task.status)?.color || '#d1d5db';
   const textColor = isColorLight(statusColor) ? 'text-black' : 'text-white';
   const displayFormat = settings.enableTimeTracking ? 'MMM d, yyyy, h:mm a' : 'MMM d, yyyy';
-  
-  const indicatorStyle = {
-    background: `linear-gradient(to right, ${importance?.color || 'transparent'} 50%, ${urgency?.color || 'transparent'} 50%)`,
-  };
-
 
   return (
     <div
@@ -244,18 +239,19 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
       }}
       style={{ backgroundColor: statusColor }}
       className={cn(
-        `p-3 rounded-lg shadow-sm mb-4 flex items-start gap-3 transition-all duration-300 relative`,
+        `p-3 pl-6 rounded-lg shadow-sm mb-4 flex items-start gap-3 transition-all duration-300 relative overflow-hidden`,
         isOverdue && "border-2 border-red-500",
         isHighlighted && "ring-4 ring-offset-2 ring-primary ring-offset-background animate-pulse",
         textColor
       )}
     >
-       <div
-        title={`Importance: ${importance?.name || 'N/A'}\nUrgency: ${urgency?.name || 'N/A'}`}
-        style={indicatorStyle}
-        className="w-4 h-4 rounded-sm flex-shrink-0 mt-1 border border-black/20"
-       />
-
+        <div 
+            className="absolute left-0 top-0 h-full w-2 flex flex-col"
+            title={`Importance: ${importance?.name || 'N/A'}\nUrgency: ${urgency?.name || 'N/A'}`}
+        >
+            <div className="h-1/2 w-full" style={{ backgroundColor: importance?.color || 'transparent' }}></div>
+            <div className="h-1/2 w-full" style={{ backgroundColor: urgency?.color || 'transparent' }}></div>
+        </div>
       <div 
         className="flex-grow cursor-grab"
         onClick={() => onCardClick(task.id)}
@@ -1195,4 +1191,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
