@@ -1271,7 +1271,7 @@ function KanbanPageContent() {
       <div className="flex flex-col h-screen bg-background text-foreground">
         <header className="flex-shrink-0 flex items-center justify-between p-4 border-b gap-4">
           <div className="flex items-center gap-4 flex-shrink-0">
-            <h1 className="text-2xl font-bold">KanbanFlow</h1>
+            <h1 className="text-2xl font-bold">{viewMode === 'kanban' ? 'KanbanFlow' : 'To-Do List'}</h1>
             <DueDateSummary 
                 tasks={tasks} 
                 onTaskClick={handleSummaryTaskClick} 
