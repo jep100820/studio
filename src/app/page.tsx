@@ -633,7 +633,7 @@ function MultiSelectFilter({ options, selected, onSelectionChange }) {
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[250px] p-0" align="end">
+            <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search filters..." />
                     <CommandList>
