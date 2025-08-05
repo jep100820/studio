@@ -468,18 +468,18 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="w-[90vw] max-w-[360px] sm:max-w-[448px] p-3 sm:p-4">
           <div className="relative">
-            <DialogHeader className="mb-1.5 pr-6 flex flex-row items-center justify-between">
+            <DialogHeader className="mb-1.5 flex flex-row items-center justify-between">
                 <DialogTitle className="text-base sm:text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
                 <p className="text-[0.65rem] sm:text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
             </DialogHeader>
           </div>
-          <fieldset disabled={isReadOnly} className="space-y-2 max-h-[55vh] overflow-y-auto pr-2">
+          <fieldset disabled={isReadOnly} className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-3 gap-x-2">
-                  <div className="space-y-1 col-span-2">
+                  <div className="col-span-2">
                     <Label htmlFor="taskid" className="text-xs sm:text-sm">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-7 sm:h-8 text-xs sm:text-sm" />
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <Label htmlFor="dueDate" className="text-xs sm:text-sm">Due Date</Label>
                     <div className="relative">
                         <Input 
@@ -495,43 +495,41 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-y-2 gap-x-2">
-                  <div className={cn("space-y-1", currentSubStatuses.length === 0 && "md:col-span-2")}>
-                      <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
-                      <select 
-                        name="status" 
-                        id="status" 
-                        value={task?.status || 'Not Started'} 
-                        onChange={handleChange} 
-                        className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
-                      >
-                          {settings.workflowCategories?.map(cat => (
-                              <option key={cat.name} value={cat.name}>{cat.name}</option>
-                          ))}
-                      </select>
-                  </div>
-                  {currentSubStatuses.length > 0 && (
-                    <div className="space-y-1">
-                        <Label htmlFor="subStatus" className="text-xs sm:text-sm">Sub-Status</Label>
-                        <select 
-                          name="subStatus" 
-                          id="subStatus" 
-                          value={task?.subStatus || ''} 
-                          onChange={handleChange} 
-                          className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
-                        >
-                            <option value="">None</option>
-                            {currentSubStatuses.map(sub => (
-                                <option key={sub.name} value={sub.name}>{sub.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                  )}
+              <div>
+                  <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
+                  <select 
+                    name="status" 
+                    id="status" 
+                    value={task?.status || 'Not Started'} 
+                    onChange={handleChange} 
+                    className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                  >
+                      {settings.workflowCategories?.map(cat => (
+                          <option key={cat.name} value={cat.name}>{cat.name}</option>
+                      ))}
+                  </select>
               </div>
+              {currentSubStatuses.length > 0 && (
+                <div>
+                    <Label htmlFor="subStatus" className="text-xs sm:text-sm">Sub-Status</Label>
+                    <select 
+                      name="subStatus" 
+                      id="subStatus" 
+                      value={task?.subStatus || ''} 
+                      onChange={handleChange} 
+                      className="w-full border rounded px-2 py-1 bg-input text-xs sm:text-sm group-disabled:opacity-100 h-7 sm:h-8 min-w-[140px]"
+                    >
+                        <option value="">None</option>
+                        {currentSubStatuses.map(sub => (
+                            <option key={sub.name} value={sub.name}>{sub.name}</option>
+                        ))}
+                    </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
-                    <div className="space-y-1">
+                    <div>
                         <Label htmlFor="importance" className="text-xs sm:text-sm">Importance</Label>
                         <select 
                           name="importance" 
@@ -548,7 +546,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     </div>
                   )}
                   {(settings.urgencyLevels && settings.urgencyLevels.length > 0) && (
-                    <div className="space-y-1">
+                    <div>
                         <Label htmlFor="urgency" className="text-xs sm:text-sm">Urgency</Label>
                         <select 
                           name="urgency" 
@@ -566,7 +564,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                     </div>
                   )}
                   {(settings.customTags && settings.customTags.length > 0) && settings.customTags?.map(mainTag => (
-                    <div className="space-y-1" key={mainTag.name}>
+                    <div key={mainTag.name}>
                         <Label htmlFor={`tag-${mainTag.name}`} className="text-xs sm:text-sm">{mainTag.name}</Label>
                         <select 
                             name={mainTag.name} 
@@ -584,7 +582,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   ))}
               </div>
 
-              <div className="space-y-1">
+              <div>
                   <Label htmlFor="desc" className="text-xs sm:text-sm">Description</Label>
                   <Textarea 
                     id="desc" 
@@ -595,7 +593,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   />
               </div>
               
-              <div className="space-y-1">
+              <div>
                   <Label htmlFor="remarks" className="text-xs sm:text-sm">Remarks</Label>
                   <Textarea 
                     id="remarks" 
@@ -607,7 +605,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
               </div>
 
               {isEditing && task.status === 'Completed' && (
-                <div className="space-y-1">
+                <div>
                     <Label htmlFor="completionDate" className="text-xs sm:text-sm">Completion Date</Label>                    
                     <div className="relative">
                         <Input 
