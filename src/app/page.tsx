@@ -891,8 +891,8 @@ function KanbanPageContent() {
   }, []);
 
   const { activeTasks, archivedTasks } = useMemo(() => {
-    const active = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
-    const archived = allTasks.filter(t => t.isArchived);
+    const activeTasks = allTasks.filter(t => t.status !== 'Completed' && !t.isArchived);
+    const archivedTasks = allTasks.filter(t => t.isArchived);
     return { activeTasks, archivedTasks };
   }, [allTasks]);
 
@@ -1288,4 +1288,3 @@ export default function KanbanPage() {
         </Suspense>
     );
 }
-
