@@ -427,6 +427,8 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     
     const isEditing = !!task?.id;
     const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
+    const [isEditingDesc, setIsEditingDesc] = useState(false);
+    const [isEditingRemarks, setIsEditingRemarks] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -467,15 +469,15 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="w-[90vw] max-w-[448px] p-0">
-          <DialogHeader className="p-4 border-b">
+          <DialogHeader className="p-4 pb-2 border-b">
             <div className="flex justify-between items-center">
               <DialogTitle className="text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
               <p className="text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
             </div>
           </DialogHeader>
-          <fieldset disabled={isReadOnly} className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <div className="col-span-2 sm:col-span-1">
+          <fieldset disabled={isReadOnly} className="p-4 space-y-1.5 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-3 gap-y-2 gap-x-2">
+                  <div className="col-span-2">
                     <Label htmlFor="taskid" className="text-sm">Task ID</Label>
                     <Input id="taskid" name="taskid" value={task?.taskid || ''} onChange={handleChange} className="h-8 text-sm" />
                   </div>
@@ -493,7 +495,9 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                   </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-y-2 gap-x-2">
                   <div>
                       <Label htmlFor="status" className="text-sm">Status</Label>
                       <select 
@@ -582,24 +586,52 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
 
               <div>
                   <Label htmlFor="desc" className="text-sm">Description</Label>
-                  <Textarea 
-                    id="desc" 
-                    name="desc" 
-                    value={task?.desc || ''} 
-                    onChange={handleChange} 
-                    className="min-h-[60px] text-sm"
-                  />
+                  {isEditingDesc ? (
+                      <Textarea 
+                        id="desc" 
+                        name="desc" 
+                        value={task?.desc || ''} 
+                        onChange={handleChange} 
+                        className="min-h-[60px] text-sm"
+                        autoFocus
+                        onBlur={() => setIsEditingDesc(false)}
+                      />
+                  ) : (
+                      <div
+                          onClick={() => !isReadOnly && setIsEditingDesc(true)}
+                          className={cn(
+                              "w-full rounded-md border border-transparent hover:border-input bg-muted/50 px-3 py-2 text-sm min-h-[40px] cursor-text",
+                              isReadOnly && "cursor-not-allowed"
+                          )}
+                      >
+                         {task?.desc || <span className="text-muted-foreground">Click to add a description...</span>}
+                      </div>
+                  )}
               </div>
               
               <div>
                   <Label htmlFor="remarks" className="text-sm">Remarks</Label>
-                  <Textarea 
-                    id="remarks" 
-                    name="remarks" 
-                    value={task?.remarks || ''} 
-                    onChange={handleChange} 
-                    className="min-h-[60px] text-sm"
-                  />
+                   {isEditingRemarks ? (
+                      <Textarea 
+                        id="remarks" 
+                        name="remarks" 
+                        value={task?.remarks || ''} 
+                        onChange={handleChange} 
+                        className="min-h-[60px] text-sm"
+                        autoFocus
+                        onBlur={() => setIsEditingRemarks(false)}
+                      />
+                  ) : (
+                      <div
+                          onClick={() => !isReadOnly && setIsEditingRemarks(true)}
+                          className={cn(
+                            "w-full rounded-md border border-transparent hover:border-input bg-muted/50 px-3 py-2 text-sm min-h-[40px] cursor-text",
+                            isReadOnly && "cursor-not-allowed"
+                          )}
+                      >
+                         {task?.remarks || <span className="text-muted-foreground">Click to add remarks...</span>}
+                      </div>
+                  )}
               </div>
 
               {isEditing && task.status === 'Completed' && (
