@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2 } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -44,6 +44,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // A robust, unified date parsing function
@@ -329,6 +330,54 @@ function KanbanColumn({ id, title, tasks, onEditClick, onCardClick, expandedTask
       </div>
     </div>
   );
+}
+
+function TodoListView({ tasks, settings, onTaskClick }) {
+    const displayFormat = settings.enableTimeTracking ? 'MMM d, yy, h:mm a' : 'MMM d, yyyy';
+
+    return (
+        <div className="bg-muted/50 rounded-lg p-4 flex-1 h-full overflow-y-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[40%]">Task ID</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {tasks.map(task => {
+                        const isOverdue = toDate(task.dueDate) < startOfToday() && task.status !== 'Completed';
+                        const importance = settings.importanceLevels?.find(imp => imp.name === task.importance);
+                        const effectiveUrgency = getEffectiveUrgency(task, settings.urgencyLevels);
+                        const urgency = settings.urgencyLevels?.find(urg => urg.name === effectiveUrgency.name);
+
+                        return (
+                            <TableRow key={task.id} onClick={() => onTaskClick(task)} className="cursor-pointer">
+                                <TableCell className="font-medium">{task.taskid}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        {importance && <div className="h-4 w-4 rounded-full" style={{ backgroundColor: importance.color }} title={`Importance: ${importance.name}`} />}
+                                        {urgency && <div className="h-4 w-4 rounded-sm" style={{ backgroundColor: urgency.color }} title={`Urgency: ${urgency.name}`} />}
+                                    </div>
+                                </TableCell>
+                                <TableCell className={cn(isOverdue && "text-red-500 font-semibold")}>
+                                    {formatDate(task.dueDate, displayFormat) || 'No Due Date'}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge style={{ backgroundColor: settings.workflowCategories?.find(c => c.name === task.status)?.color || '#ccc' }}>
+                                        {task.status}
+                                    </Badge>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+             {tasks.length === 0 && <p className="text-center text-muted-foreground p-8">No tasks match the current filters.</p>}
+        </div>
+    );
 }
 
 function CompletionZone({ isDragging }) {
@@ -876,6 +925,7 @@ function KanbanPageContent() {
   const [tagFilters, setTagFilters] = useState({});
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', description: '', onConfirm: () => {} });
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
 
 
   const [isSubStatusModalOpen, setIsSubStatusModalOpen] = useState(false);
@@ -1038,12 +1088,15 @@ function KanbanPageContent() {
   };
   
   const handleSummaryTaskClick = (taskId) => {
-    setHighlightedTaskId(taskId);
-    setExpandedTaskId(taskId);
-    // Use a timer to remove the highlight class after the animation
+    setViewMode('kanban'); // Switch to kanban view if not already
     setTimeout(() => {
-        setHighlightedTaskId(null);
-    }, 2000); // The duration of your pulse/highlight effect
+        setHighlightedTaskId(taskId);
+        setExpandedTaskId(taskId);
+        // Use a timer to remove the highlight class after the animation
+        setTimeout(() => {
+            setHighlightedTaskId(null);
+        }, 2000); // The duration of your pulse/highlight effect
+    }, 100);
   };
 
   const handleSubStatusSave = async (selectedSubStatus) => {
@@ -1228,6 +1281,14 @@ function KanbanPageContent() {
             />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('kanban')}>
+                    <LayoutGrid className="h-5 w-5" />
+                </Button>
+                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                    <List className="h-5 w-5" />
+                </Button>
+            </div>
             <Button onClick={() => handleOpenModal()} size="sm">
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Task
@@ -1273,20 +1334,28 @@ function KanbanPageContent() {
         </div>
         
         <main className="flex-grow p-4 flex gap-6 overflow-hidden">
-          {columns.map((status) => (
-            <KanbanColumn
-              key={status}
-              id={status}
-              title={status}
-              tasks={sortedTasks.filter((task) => task.status === status)}
-              onEditClick={handleOpenModal}
-              onCardClick={handleCardClick}
-              expandedTaskId={expandedTaskId}
-              settings={settings}
-              highlightedTaskId={highlightedTaskId}
-              activeId={activeId}
-            />
-          ))}
+            {viewMode === 'kanban' ? (
+                columns.map((status) => (
+                    <KanbanColumn
+                      key={status}
+                      id={status}
+                      title={status}
+                      tasks={sortedTasks.filter((task) => task.status === status)}
+                      onEditClick={handleOpenModal}
+                      onCardClick={handleCardClick}
+                      expandedTaskId={expandedTaskId}
+                      settings={settings}
+                      highlightedTaskId={highlightedTaskId}
+                      activeId={activeId}
+                    />
+                ))
+            ) : (
+                <TodoListView
+                    tasks={sortedTasks}
+                    settings={settings}
+                    onTaskClick={handleOpenModal}
+                />
+            )}
         </main>
 
         <CompletionZone isDragging={!!activeId} />
@@ -1351,3 +1420,4 @@ export default function KanbanPage() {
     );
 }
 
+    
