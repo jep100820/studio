@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon, Upload } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -46,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 // A robust, unified date parsing function
@@ -286,7 +287,7 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
              {task.tags && Object.entries(task.tags).map(([key, value]) => (
                 value && <span key={key} className="text-xs bg-black/20 px-2 py-1 rounded-full">{value}</span>
              ))}
-             {checklistProgress && !isExpanded && (
+             {checklistProgress && (
                 <span className="text-xs bg-black/20 px-2 py-1 rounded-full flex items-center gap-1">
                     <Check className="h-3 w-3"/>
                     {checklistProgress.completed}/{checklistProgress.total}
@@ -612,17 +613,40 @@ function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
 
 function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) {
     const [localAttachments, setLocalAttachments] = useState([]);
-    const [newAttachment, setNewAttachment] = useState({ name: '', url: '' });
+    const [error, setError] = useState('');
+    const fileInputRef = useRef(null);
+    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB
 
     useEffect(() => {
         setLocalAttachments(attachments ? [...attachments] : []);
+        setError('');
     }, [isOpen, attachments]);
 
-    const handleAddAttachment = () => {
-        if (!newAttachment.name || !newAttachment.url) return;
-        const toAdd = { ...newAttachment, id: `att-${Date.now()}` };
-        setLocalAttachments(prev => [...prev, toAdd]);
-        setNewAttachment({ name: '', url: '' });
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (file.size > MAX_FILE_SIZE) {
+            setError('File is too large. Maximum size is 1MB.');
+            return;
+        }
+
+        setError('');
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const newAttachment = {
+                id: `att-${Date.now()}`,
+                name: file.name,
+                type: file.type,
+                dataUrl: reader.result,
+            };
+            setLocalAttachments(prev => [...prev, newAttachment]);
+        };
+        reader.onerror = (err) => {
+            setError('Failed to read file.');
+            console.error(err);
+        };
     };
 
     const handleDeleteAttachment = (id) => {
@@ -632,6 +656,17 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) 
     const handleSave = () => {
         onUpdateAttachments(localAttachments);
         onClose();
+    };
+    
+    const openFile = (dataUrl, type) => {
+        const win = window.open();
+        if (type.startsWith('image/')) {
+            win.document.write(`<img src="${dataUrl}" style="max-width: 100%;">`);
+        } else if (type === 'application/pdf') {
+             win.document.write(`<iframe src="${dataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        } else {
+            win.location.href = dataUrl;
+        }
     };
 
     if (!isOpen) return null;
@@ -643,38 +678,37 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) 
                     <DialogTitle>Manage Attachments</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <div className="space-y-2">
-                        <Label>New Attachment</Label>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                placeholder="Attachment Name (e.g., 'Design Mockup')"
-                                value={newAttachment.name}
-                                onChange={(e) => setNewAttachment(p => ({ ...p, name: e.target.value }))}
-                            />
-                            <Input
-                                placeholder="URL (e.g., 'https://...')"
-                                value={newAttachment.url}
-                                onChange={(e) => setNewAttachment(p => ({ ...p, url: e.target.value }))}
-                            />
-                            <Button onClick={handleAddAttachment} size="icon" className="flex-shrink-0">
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Add Attachment (Max 1MB)
+                    </Button>
+
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+
                     <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 -mr-2">
-                        <Label>Existing Attachments</Label>
+                        <Label>Current Attachments</Label>
                         {localAttachments.length > 0 ? (
                             localAttachments.map(att => (
                                 <div key={att.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                                    <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    <a
-                                        href={att.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex-grow text-sm font-medium text-primary underline-offset-4 hover:underline truncate"
+                                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <button
+                                        onClick={() => openFile(att.dataUrl, att.type)}
+                                        className="flex-grow text-sm font-medium text-primary underline-offset-4 hover:underline truncate text-left"
                                     >
                                         {att.name}
-                                    </a>
+                                    </button>
                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id)} className="h-8 w-8 flex-shrink-0">
                                         <X className="h-4 w-4" />
                                     </Button>
