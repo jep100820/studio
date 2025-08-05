@@ -468,14 +468,12 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="w-[90vw] max-w-[360px] sm:max-w-[448px] p-3 sm:p-4">
           <div className="relative">
-            <DialogHeader className="mb-1.5 pr-6">
-              <div className="flex items-center justify-between">
+            <DialogHeader className="mb-1.5 pr-6 flex flex-row items-center justify-between">
                 <DialogTitle className="text-base sm:text-lg">{isEditing ? (isReadOnly ? 'View Task' : 'Edit Task') : 'Add Task'}</DialogTitle>
                 <p className="text-[0.65rem] sm:text-xs text-muted-foreground">{formatDate(task.date, displayFormat)}</p>
-              </div>
             </DialogHeader>
           </div>
-          <fieldset disabled={isReadOnly} className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-2">
+          <fieldset disabled={isReadOnly} className="space-y-2 max-h-[55vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-3 gap-x-2">
                   <div className="space-y-1 col-span-2">
                     <Label htmlFor="taskid" className="text-xs sm:text-sm">Task ID</Label>
@@ -497,7 +495,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-y-2.5 gap-x-2">
+              <div className="grid grid-cols-1 gap-y-2 gap-x-2">
                   <div className={cn("space-y-1", currentSubStatuses.length === 0 && "md:col-span-2")}>
                       <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
                       <select 
@@ -531,7 +529,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                   )}
               </div>
 
-              <div className="grid grid-cols-1 gap-y-2.5 gap-x-2">
+              <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
                   {(settings.importanceLevels && settings.importanceLevels.length > 0) && (
                     <div className="space-y-1">
                         <Label htmlFor="importance" className="text-xs sm:text-sm">Importance</Label>
@@ -620,7 +618,7 @@ function TaskModal({ isOpen, onClose, task, setTask, onSave, onDelete, settings,
                           onChange={handleDateChange} 
                           className="h-7 sm:h-8 text-xs sm:text-sm pr-8"
                         />
-                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                         <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                 </div>
               )}
