@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client';
 
@@ -198,37 +199,21 @@ function TaskCard({ task, onEditClick, onCardClick, isExpanded, settings, isHigh
              ))}
           </div>
         
-         {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-black/20">
-                <p className="text-sm font-semibold">Description:</p>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{task.desc || 'No description'}</p>
-                
-                <p className="text-sm font-semibold mt-2">Remarks:</p>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{task.remarks || 'No remarks'}</p>
-                
-                <p className="text-sm font-semibold mt-2">Date Started:</p>
-                <p className="text-sm mt-1">{formatDate(task.date, displayFormat)}</p>
+        {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-black/20 space-y-1 text-sm">
+                <p><span className="font-semibold">Description:</span> {task.desc || 'No description'}</p>
+                <p><span className="font-semibold">Remarks:</span> {task.remarks || 'No remarks'}</p>
+                <p><span className="font-semibold">Date Started:</span> {formatDate(task.date, displayFormat)}</p>
 
                 {task.completionDate && (
-                    <>
-                        <p className="text-sm font-semibold mt-2">Completed:</p>
-                        <p className="text-sm mt-1">{formatDate(task.completionDate, displayFormat)}</p>
-                    </>
+                    <p><span className="font-semibold">Completed:</span> {formatDate(task.completionDate, displayFormat)}</p>
                 )}
-                 {task.tags && Object.keys(task.tags).length > 0 && (
-                    <div className="mt-2">
-                        {Object.entries(task.tags).map(([key, value]) => (
-                            value && (
-                                <div key={key} className="mt-2">
-                                    <p className="text-sm font-semibold">{key}:</p>
-                                    <p className="text-sm mt-1">{value}</p>
-                                </div>
-                            )
-                        ))}
-                    </div>
-                 )}
+
+                {task.tags && Object.entries(task.tags).map(([key, value]) => (
+                    value && <p key={key}><span className="font-semibold">{key}:</span> {value}</p>
+                ))}
                 
-                <div className="mt-4 flex justify-end">
+                <div className="!mt-4 flex justify-end">
                     <Button 
                         onClick={(e) => { e.stopPropagation(); onEditClick(task); }} 
                         size="sm" 
