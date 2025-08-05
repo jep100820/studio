@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { initialTasks } from '@/lib/seed-data';
 import { cn } from '@/lib/utils';
-import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon, Upload } from 'lucide-react';
+import { PlusCircle, GripVertical, Moon, Sun, Settings, CheckCircle2, Pencil, LayoutDashboard, AlertTriangle, Calendar, Clock, Search, Sparkles, Plus, X, Filter as FilterIcon, Check, Archive, ArchiveRestore, Loader2, LayoutGrid, List, ListChecks, Trash2, Paperclip, Link as LinkIcon, Upload, Download as DownloadIcon } from 'lucide-react';
 import { useTheme } from "next-themes";
 import { parse, isValid, format, parseISO, startOfToday, isSameDay, isBefore, nextFriday, isFriday, isSaturday, addDays, endOfWeek, startOfWeek, isSunday, eachDayOfInterval, differenceInDays } from 'date-fns';
 import Link from 'next/link';
@@ -611,7 +611,41 @@ function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
     );
 }
 
-function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) {
+function AttachmentPreviewModal({ isOpen, onClose, attachment }) {
+    if (!isOpen || !attachment) return null;
+
+    const isImage = attachment.type.startsWith('image/');
+    const isPdf = attachment.type === 'application/pdf';
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+                <DialogHeader className="p-4 border-b">
+                    <DialogTitle className="truncate">{attachment.name}</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow p-4 bg-muted/20 flex items-center justify-center overflow-auto">
+                    {isImage ? (
+                        <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-full object-contain" />
+                    ) : isPdf ? (
+                        <iframe src={attachment.dataUrl} title={attachment.name} className="w-full h-full border-0" />
+                    ) : (
+                        <div className="text-center">
+                            <p className="text-lg text-muted-foreground mb-4">No preview available for this file type.</p>
+                            <Button asChild>
+                                <a href={attachment.dataUrl} download={attachment.name}>
+                                    <DownloadIcon className="h-4 w-4 mr-2" />
+                                    Download {attachment.name}
+                                </a>
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments, onPreviewAttachment }) {
     const [localAttachments, setLocalAttachments] = useState([]);
     const [error, setError] = useState('');
     const fileInputRef = useRef(null);
@@ -657,17 +691,6 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) 
         onUpdateAttachments(localAttachments);
         onClose();
     };
-    
-    const openFile = (dataUrl, type) => {
-        const win = window.open();
-        if (type.startsWith('image/')) {
-            win.document.write(`<img src="${dataUrl}" style="max-width: 100%;">`);
-        } else if (type === 'application/pdf') {
-             win.document.write(`<iframe src="${dataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-        } else {
-            win.location.href = dataUrl;
-        }
-    };
 
     if (!isOpen) return null;
 
@@ -704,7 +727,7 @@ function AttachmentModal({ isOpen, onClose, attachments, onUpdateAttachments }) 
                                 <div key={att.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
                                     <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     <button
-                                        onClick={() => openFile(att.dataUrl, att.type)}
+                                        onClick={() => onPreviewAttachment(att)}
                                         className="flex-grow text-sm font-medium text-primary underline-offset-4 hover:underline truncate text-left"
                                     >
                                         {att.name}
@@ -1367,6 +1390,8 @@ function KanbanPageContent() {
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' or 'list'
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewingAttachment, setPreviewingAttachment] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
 
@@ -1731,6 +1756,11 @@ function KanbanPageContent() {
             }));
         }
     };
+    
+    const handlePreviewAttachment = (attachment) => {
+        setPreviewingAttachment(attachment);
+        setIsPreviewOpen(true);
+    };
 
   const columns = useMemo(() => {
     return settings.workflowCategories?.map(cat => cat.name).filter(name => name !== 'Completed') || [];
@@ -1872,8 +1902,14 @@ function KanbanPageContent() {
             onClose={() => setIsAttachmentModalOpen(false)}
             attachments={selectedTask.attachments}
             onUpdateAttachments={handleUpdateAttachments}
+            onPreviewAttachment={handlePreviewAttachment}
         />
        )}
+        <AttachmentPreviewModal 
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            attachment={previewingAttachment}
+        />
         <SubStatusModal 
             isOpen={isSubStatusModalOpen}
             onClose={() => setIsSubStatusModalOpen(false)}
