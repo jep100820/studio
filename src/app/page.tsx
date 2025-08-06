@@ -477,6 +477,27 @@ function CompletionZone({ isDragging }) {
     );
 }
 
+function ArchiveZone({ isDragging }) {
+    const { setNodeRef } = useDroppable({
+        id: 'archive-zone',
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={cn(
+                'fixed top-1/2 -translate-y-1/2 right-24 h-32 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                isDragging ? 'translate-x-0' : 'translate-x-full'
+            )}
+        >
+            <div className="text-center text-gray-700 dark:text-gray-300">
+                <Archive className="h-8 w-8 mx-auto" />
+                <p className="font-semibold mt-2">Archive</p>
+            </div>
+        </div>
+    );
+}
+
 
 function ChecklistModal({ isOpen, onClose, checklists, onUpdateChecklists }) {
     const [localChecklists, setLocalChecklists] = useState([]);
@@ -1513,6 +1534,19 @@ function KanbanPageContent() {
                 handleOpenModal(updatedTask);
             })
         });
+    } else if (over.id === 'archive-zone') {
+        setConfirmation({
+            isOpen: true,
+            title: 'Archive Task',
+            description: 'Are you sure you want to archive this task?',
+            confirmText: 'Archive',
+            onConfirm: () => performAction(async () => {
+                await updateDoc(taskRef, {
+                    status: 'Archived',
+                    lastModified: Timestamp.now(),
+                });
+            })
+        });
     } else if (active.id !== over.id && taskToUpdate.status !== over.id) {
         const newStatus = over.id;
         const targetCategory = settings.workflowCategories.find(cat => cat.name === newStatus);
@@ -1842,6 +1876,7 @@ function KanbanPageContent() {
         </main>
 
         <CompletionZone isDragging={!!activeId} />
+        <ArchiveZone isDragging={!!activeId} />
       </div>
       <TaskModal 
         isOpen={isModalOpen}
