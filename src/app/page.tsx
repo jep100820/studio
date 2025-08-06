@@ -465,7 +465,7 @@ function CompletionZone({ isDragging }) {
         <div
             ref={setNodeRef}
             className={cn(
-                'fixed top-1/2 -translate-y-1/2 right-0 h-32 w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                'fixed top-1/2 -translate-y-full right-0 h-32 w-24 bg-green-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out mt-[-0.5rem]',
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
@@ -486,7 +486,7 @@ function ArchiveZone({ isDragging }) {
         <div
             ref={setNodeRef}
             className={cn(
-                'fixed top-1/2 -translate-y-1/2 right-24 h-32 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out',
+                'fixed top-1/2 right-0 h-32 w-24 bg-gray-500/20 flex items-center justify-center transition-transform duration-300 ease-in-out mt-[0.5rem]',
                 isDragging ? 'translate-x-0' : 'translate-x-full'
             )}
         >
